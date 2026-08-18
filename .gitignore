@@ -1,15 +1,22 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
+# ======================================================
+# Dependencies
+# ======================================================
 node_modules/
 
+# ======================================================
 # Expo
+# ======================================================
 .expo/
+.expo-shared/
 dist/
 web-build/
 expo-env.d.ts
 
+# ======================================================
 # Native
+# ======================================================
 .kotlin/
 *.orig.*
 *.jks
@@ -18,26 +25,57 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# ======================================================
 # Metro
+# ======================================================
 .metro-health-check*
 
-# debug
+# ======================================================
+# Debug / Logs
+# ======================================================
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
 
-# macOS
+# ======================================================
+# macOS / OS
+# ======================================================
 .DS_Store
+Thumbs.db
 *.pem
 
-# local env files
-.env*.local
+# ======================================================
+# Environment Variables
+# ======================================================
+.env
+.env.*
+!.env.example
 
-# typescript
+# Backend environment
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Frontend environment
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# ======================================================
+# TypeScript
+# ======================================================
 *.tsbuildinfo
 
-example
-
-# generated native folders
+# ======================================================
+# Generated Native Folders
+# ======================================================
 /ios
 /android
+
+# ======================================================
+# IDE
+# ======================================================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
