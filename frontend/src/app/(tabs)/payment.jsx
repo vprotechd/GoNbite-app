@@ -139,11 +139,18 @@ export default function PaymentScreen() {
           color: "#F5B82E",
         },
 
-        handler: async (response) => {
-          console.log(
-            "✅ Payment Successful:",
-            response,
-          );
+       handler: async (response) => {
+  console.log(
+    "✅ Payment Successful:",
+    response,
+  );
+
+  // =================================================
+  // CLEAR CART AFTER SUCCESSFUL PAYMENT
+  // =================================================
+
+  await clearCart();
+
 
           // =================================================
           // NAVIGATE AFTER SUCCESS

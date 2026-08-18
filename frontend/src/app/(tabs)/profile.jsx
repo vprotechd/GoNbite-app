@@ -137,27 +137,37 @@ export default function ProfileScreen() {
             HEADER
         ======================================================= */}
 
-        <View style={styles.header}>
+       <View style={styles.header}>
 
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="arrow-back"
-              size={20}
-              color="#081A33"
-            />
-          </TouchableOpacity>
+  <TouchableOpacity
+    style={styles.backButton}
+    onPress={() => router.back()}
+    activeOpacity={0.7}
+  >
+    <Ionicons
+      name="arrow-back"
+      size={20}
+      color="#081A33"
+    />
+  </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>
-            My Profile
-          </Text>
+  <Text style={styles.headerTitle}>
+    My Profile
+  </Text>
 
-          <View style={styles.headerSpacer} />
+  <TouchableOpacity
+    style={styles.settingsButton}
+    onPress={() => router.push("/settings")}
+    activeOpacity={0.7}
+  >
+    <Ionicons
+      name="settings-outline"
+      size={20}
+      color="#081A33"
+    />
+  </TouchableOpacity>
 
-        </View>
+</View>
 
         {/* ======================================================
             KEYBOARD AVOIDING VIEW
@@ -436,9 +446,12 @@ const styles = StyleSheet.create({
     color: "#081A33",
   },
 
-  headerSpacer: {
-    width: 30,
-  },
+settingsButton: {
+  width: 30,
+  height: 30,
+  alignItems: "center",
+  justifyContent: "center",
+},
 
   // ==============================================================
   // SCROLL
