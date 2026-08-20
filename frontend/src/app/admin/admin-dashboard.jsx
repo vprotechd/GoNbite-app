@@ -70,6 +70,29 @@ export default function AdminDashboard() {
           </TouchableOpacity>
         </View>
 
+
+{/* --- MANAGE FESTIVAL / OCCASIONAL OFFERS --- */}
+<View style={styles.card}>
+  <Ionicons name="pricetags-outline" size={40} color="#F5B82E" />
+
+  <Text style={styles.cardTitle}>Festival & Special Offers</Text>
+
+  <Text style={styles.cardDesc}>
+    Create, edit, activate, deactivate, and delete occasional offers for
+    festivals and special events.
+  </Text>
+
+  <TouchableOpacity
+    style={styles.btn}
+    onPress={() => router.push("/admin/offers")}
+  >
+    <Text style={styles.btnText}>Manage Offers</Text>
+  </TouchableOpacity>
+</View>
+
+
+
+
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>

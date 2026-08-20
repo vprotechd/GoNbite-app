@@ -88,19 +88,7 @@ export default function TabsLayout() {
             ),
           }}
         />
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: "Profile",
-            tabBarIcon: ({ color, size, focused }) => (
-              <Ionicons
-                name={focused ? "person" : "person-outline"}
-                size={size}
-                color={color}
-              />
-            ),
-          }}
-        />
+        
 
         <Tabs.Screen
           name="orders"
@@ -115,7 +103,7 @@ export default function TabsLayout() {
             ),
           }}
         />
-
+        
         {/* Hides the admin-dashboard tab for customers */}
         <Tabs.Screen name="admin-dashboard" options={{ href: null }} />
          <Tabs.Screen name="review-order" options={{ href: null }} />
@@ -123,6 +111,9 @@ export default function TabsLayout() {
         <Tabs.Screen name="payment" options={{ href: null }} />
         <Tabs.Screen name="confirm-order" options={{ href: null }} />
          <Tabs.Screen name="limited-offer" options={{ href: null }} />
+        <Tabs.Screen name="privacy-security" options={{ href: null }} />
+         <Tabs.Screen name="profile" options={{ href: null }} />
+
       </Tabs>
     );
   }

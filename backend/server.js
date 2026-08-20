@@ -19,6 +19,7 @@ import publicRoutes from "./routes/publicRoutes.js";
 import restaurantRoutes from "./routes/restaurantRoutes.js";
 import deliveryRoutes from "./routes/deliveryRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
+import offerRoutes  from "./routes/offerRoutes.js";
 
 // =====================================================
 // APP
@@ -117,6 +118,8 @@ app.use(
   "/api/reviews",
   reviewRoutes
 );
+
+app.use("/api/admin/offers", offerRoutes);
 
 // =====================================================
 // 404 HANDLER

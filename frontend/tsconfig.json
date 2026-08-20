@@ -6,5 +6,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-, "src/app/(tabs)/index.jsx"  ]
+, "src/app/(tabs)/index.jsx", "src/app/privacy-policy.jsx"  ]
 }
