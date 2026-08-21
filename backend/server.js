@@ -20,6 +20,7 @@ import restaurantRoutes from "./routes/restaurantRoutes.js";
 import deliveryRoutes from "./routes/deliveryRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import offerRoutes  from "./routes/offerRoutes.js";
+import publicOfferRoutes from "./routes/publicOfferRoutes.js";
 
 // =====================================================
 // APP
@@ -119,7 +120,18 @@ app.use(
   reviewRoutes
 );
 
+app.use((req, res, next) => {
+  console.log("=================================");
+  console.log("INCOMING REQUEST");
+  console.log("METHOD:", req.method);
+  console.log("URL:", req.originalUrl);
+  console.log("=================================");
+  next();
+});
+
 app.use("/api/admin/offers", offerRoutes);
+
+app.use("/api/public/offers", publicOfferRoutes);
 
 // =====================================================
 // 404 HANDLER

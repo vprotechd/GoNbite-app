@@ -94,6 +94,8 @@ const categories = [
 export default function HomeScreen() {
   const [restaurants, setRestaurants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [offers, setOffers] = useState([]);
+const [isOffersLoading, setIsOffersLoading] = useState(true);
 
   const [greeting, setGreeting] = useState("Good Morning");
 
@@ -169,6 +171,48 @@ export default function HomeScreen() {
 
     fetchRestaurants();
   }, []);
+
+
+  // ======================================================
+// FETCH FESTIVAL OFFERS
+// ======================================================
+
+useEffect(() => {
+  const fetchOffers = async () => {
+    try {
+      setIsOffersLoading(true);
+
+      // IMPORTANT:
+      // This must be a PUBLIC endpoint.
+      // Do NOT call the admin-protected /offers route here.
+      const response = await api.get("/public/offers");
+
+      const offerData = response.data?.offers || response.data || [];
+
+      const now = new Date();
+
+      const activeOffers = offerData.filter((offer) => {
+        const startDate = new Date(offer.startDate);
+        const endDate = new Date(offer.endDate);
+
+        return (
+          offer.isActive === true &&
+          startDate <= now &&
+          endDate >= now
+        );
+      });
+
+      setOffers(activeOffers);
+    } catch (error) {
+      console.error("Failed to load festival offers:", error);
+      setOffers([]);
+    } finally {
+      setIsOffersLoading(false);
+    }
+  };
+
+  fetchOffers();
+}, []);
 
   // ======================================================
   // CURRENT LOCATION
@@ -283,6 +327,24 @@ export default function HomeScreen() {
   // ======================================================
   // RENDER
   // ======================================================
+
+  // ======================================================
+// OFFER PRESS
+// ======================================================
+
+const handleOfferPress = (offer) => {
+  Alert.alert(
+    offer.name || "Festival Offer",
+    `${offer.description || "Special offer available now."}\n\nCoupon Code: ${offer.code}`,
+    [
+      {
+        text: "OK",
+        style: "default",
+      },
+    ],
+  );
+};
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -429,7 +491,135 @@ export default function HomeScreen() {
               PROMOTION
           ================================================== */}
 
-         <TouchableOpacity
+
+          {/* ==================================================
+    FESTIVAL OFFERS
+================================================== */}
+
+{(isOffersLoading || offers.length > 0) && (
+  <>
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>Festival Offers</Text>
+
+      <TouchableOpacity
+        onPress={() => router.push("/offer")}
+      >
+        <Text style={styles.seeAll}>See all</Text>
+      </TouchableOpacity>
+    </View>
+
+    {isOffersLoading ? (
+      <ActivityIndicator
+        size="small"
+        color="#F5B82E"
+        style={{ marginVertical: 15 }}
+      />
+    ) : (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.offerContainer}
+      >
+        {offers.map((offer) => {
+          const discountText =
+            offer.discountType === "percentage"
+              ? `${offer.discountValue}% OFF`
+              : `₹${offer.discountValue} OFF`;
+
+          return (
+            <TouchableOpacity
+              key={offer._id}
+              style={styles.offerCard}
+              activeOpacity={0.9}
+              onPress={() => handleOfferPress(offer)}
+            >
+              <View style={styles.offerTopRow}>
+                <View style={styles.offerIcon}>
+                  <Ionicons
+                    name="pricetag"
+                    size={17}
+                    color="#F5B82E"
+                  />
+                </View>
+
+                <View style={styles.offerDiscountBox}>
+                  <Text style={styles.offerDiscount}>
+                    {discountText}
+                  </Text>
+                </View>
+              </View>
+
+              <Text
+                style={styles.offerName}
+                numberOfLines={1}
+              >
+                {offer.name}
+              </Text>
+
+              <Text
+                style={styles.offerFestival}
+                numberOfLines={1}
+              >
+                {offer.festival}
+              </Text>
+
+              {offer.description ? (
+                <Text
+                  style={styles.offerDescription}
+                  numberOfLines={2}
+                >
+                  {offer.description}
+                </Text>
+              ) : null}
+
+              <View style={styles.offerCodeContainer}>
+                <Text style={styles.offerCodeLabel}>
+                  CODE
+                </Text>
+
+                <Text style={styles.offerCode}>
+                  {offer.code}
+                </Text>
+              </View>
+
+              {offer.minimumOrder > 0 && (
+                <Text style={styles.offerMinimum}>
+                  Min. order ₹{offer.minimumOrder}
+                </Text>
+              )}
+
+             <TouchableOpacity
+  style={styles.offerButton}
+  activeOpacity={0.8}
+  onPress={() =>
+    router.push({
+      pathname: "/(tabs)/limited-offer",
+      params: {
+        offerId: offer._id,
+        code: offer.code,
+      },
+    })
+  }
+>
+  <Text style={styles.offerButtonText}>
+    View Offer
+  </Text>
+
+  <Ionicons
+    name="arrow-forward"
+    size={12}
+    color="#081A33"
+  />
+</TouchableOpacity>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    )}
+  </>
+)}
+
+         {/* <TouchableOpacity
   style={styles.banner}
   activeOpacity={0.9}
   onPress={() => router.push("/(tabs)/limited-offer")}
@@ -467,7 +657,7 @@ export default function HomeScreen() {
       color="#F5B82E"
     />
   </View>
-</TouchableOpacity>
+</TouchableOpacity> */}
 
           {/* ==================================================
               CATEGORIES HEADER
@@ -1296,4 +1486,183 @@ const styles = StyleSheet.create({
 
     fontWeight: "500",
   },
+
+
+  // ====================================================
+// FESTIVAL OFFERS
+// ====================================================
+
+offerContainer: {
+  paddingRight: 8,
+  paddingBottom: 2,
+},
+
+offerCard: {
+  width: 235,
+  minHeight: 145,
+
+  backgroundColor: "#081A33",
+
+  borderRadius: 13,
+
+  marginRight: 9,
+
+  padding: 11,
+
+  borderWidth: 1,
+  borderColor: "#F5B82E",
+
+  overflow: "hidden",
+},
+
+offerTopRow: {
+  flexDirection: "row",
+
+  alignItems: "center",
+
+  justifyContent: "space-between",
+
+  marginBottom: 7,
+},
+
+offerIcon: {
+  width: 31,
+  height: 31,
+
+  borderRadius: 16,
+
+  backgroundColor: "rgba(245, 184, 46, 0.12)",
+
+  alignItems: "center",
+  justifyContent: "center",
+
+  borderWidth: 1,
+  borderColor: "#F5B82E",
+},
+
+offerDiscountBox: {
+  backgroundColor: "#F5B82E",
+
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+
+  borderRadius: 6,
+},
+
+offerDiscount: {
+  color: "#081A33",
+
+  fontSize: 11,
+
+  fontWeight: "900",
+},
+
+offerName: {
+  color: "#FFFFFF",
+
+  fontSize: 13,
+
+  fontWeight: "800",
+
+  marginTop: 2,
+},
+
+offerFestival: {
+  color: "#F5B82E",
+
+  fontSize: 10,
+
+  fontWeight: "700",
+
+  marginTop: 2,
+},
+
+offerDescription: {
+  color: "#CBD5E1",
+
+  fontSize: 9,
+
+  lineHeight: 13,
+
+  marginTop: 4,
+},
+
+offerCodeContainer: {
+  flexDirection: "row",
+
+  alignItems: "center",
+
+  alignSelf: "flex-start",
+
+  marginTop: 7,
+
+  paddingHorizontal: 7,
+  paddingVertical: 3,
+
+  borderRadius: 5,
+
+  borderWidth: 1,
+
+  borderColor: "#64748B",
+
+  backgroundColor: "#0D2A4A",
+},
+
+offerCodeLabel: {
+  color: "#94A3B8",
+
+  fontSize: 8,
+
+  fontWeight: "700",
+
+  marginRight: 5,
+},
+
+offerCode: {
+  color: "#FFFFFF",
+
+  fontSize: 9,
+
+  fontWeight: "900",
+
+  letterSpacing: 0.5,
+},
+
+offerMinimum: {
+  color: "#94A3B8",
+
+  fontSize: 8,
+
+  marginTop: 4,
+},
+
+offerButton: {
+  position: "absolute",
+
+  bottom: 9,
+
+  right: 10,
+
+  flexDirection: "row",
+
+  alignItems: "center",
+
+  backgroundColor: "#F5B82E",
+
+  paddingHorizontal: 8,
+
+  paddingVertical: 5,
+
+  borderRadius: 6,
+},
+
+offerButtonText: {
+  color: "#081A33",
+
+  fontSize: 9,
+
+  fontWeight: "800",
+
+  marginRight: 3,
+},
 });

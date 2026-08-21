@@ -1,23 +1,27 @@
-const Offer = require("../models/Offer");
+import Offer from "../models/Offer.js";
 
 // ======================================================
 // GET ALL OFFERS
 // ======================================================
-const getOffers = async (req, res) => {
+export const getOffers = async (req, res) => {
   try {
-    const offers = await Offer.find().sort({ createdAt: -1 });
+    const offers = await Offer.find().sort({
+      createdAt: -1,
+    });
 
-    // Automatically mark expired offers inactive
+    // Automatically deactivate expired offers
     const now = new Date();
 
     for (const offer of offers) {
-      if (offer.endDate < now && offer.isActive) {
+      if (offer.endDate <= now && offer.isActive) {
         offer.isActive = false;
         await offer.save();
       }
     }
 
-    const updatedOffers = await Offer.find().sort({ createdAt: -1 });
+    const updatedOffers = await Offer.find().sort({
+      createdAt: -1,
+    });
 
     res.status(200).json({
       success: true,
@@ -37,7 +41,7 @@ const getOffers = async (req, res) => {
 // ======================================================
 // GET SINGLE OFFER
 // ======================================================
-const getOfferById = async (req, res) => {
+export const getOfferById = async (req, res) => {
   try {
     const offer = await Offer.findById(req.params.id);
 
@@ -65,7 +69,7 @@ const getOfferById = async (req, res) => {
 // ======================================================
 // CREATE OFFER
 // ======================================================
-const createOffer = async (req, res) => {
+export const createOffer = async (req, res) => {
   try {
     const {
       name,
@@ -96,37 +100,67 @@ const createOffer = async (req, res) => {
       });
     }
 
-    if (!["percentage", "fixed"].includes(discountType)) {
+    if (
+      !["percentage", "fixed"].includes(discountType)
+    ) {
       return res.status(400).json({
         success: false,
         message: "Invalid discount type",
       });
     }
 
-    if (discountValue <= 0) {
+    const numericDiscount = Number(discountValue);
+
+    if (
+      Number.isNaN(numericDiscount) ||
+      numericDiscount <= 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Discount value must be greater than 0",
+        message:
+          "Discount value must be greater than 0",
       });
     }
 
-    if (discountType === "percentage" && discountValue > 100) {
+    if (
+      discountType === "percentage" &&
+      numericDiscount > 100
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Percentage discount cannot exceed 100%",
+        message:
+          "Percentage discount cannot exceed 100%",
       });
     }
 
-    if (new Date(endDate) <= new Date(startDate)) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime())
+    ) {
       return res.status(400).json({
         success: false,
-        message: "End date must be after start date",
+        message: "Invalid start or end date",
       });
     }
 
-    const existingOffer = await Offer.findOne({
-      code: code.toUpperCase(),
-    });
+    if (end <= start) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "End date must be after start date",
+      });
+    }
+
+    const normalizedCode =
+      code.trim().toUpperCase();
+
+    const existingOffer =
+      await Offer.findOne({
+        code: normalizedCode,
+      });
 
     if (existingOffer) {
       return res.status(409).json({
@@ -136,19 +170,23 @@ const createOffer = async (req, res) => {
     }
 
     const offer = await Offer.create({
-      name,
-      festival,
-      code: code.toUpperCase(),
+      name: name.trim(),
+      festival: festival.trim(),
+      code: normalizedCode,
       discountType,
-      discountValue,
-      minimumOrder: minimumOrder || 0,
+      discountValue: numericDiscount,
+      minimumOrder: Number(minimumOrder || 0),
       maximumDiscount:
-        maximumDiscount === "" || maximumDiscount === undefined
+        maximumDiscount === "" ||
+        maximumDiscount === undefined ||
+        maximumDiscount === null
           ? null
-          : maximumDiscount,
-      startDate,
-      endDate,
-      description: description || "",
+          : Number(maximumDiscount),
+      startDate: start,
+      endDate: end,
+      description: description
+        ? description.trim()
+        : "",
       isActive: isActive !== false,
     });
 
@@ -158,7 +196,10 @@ const createOffer = async (req, res) => {
       offer,
     });
   } catch (error) {
-    console.error("Create offer error:", error);
+    console.error(
+      "Create offer error:",
+      error
+    );
 
     res.status(500).json({
       success: false,
@@ -170,7 +211,7 @@ const createOffer = async (req, res) => {
 // ======================================================
 // UPDATE OFFER
 // ======================================================
-const updateOffer = async (req, res) => {
+export const updateOffer = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -212,62 +253,106 @@ const updateOffer = async (req, res) => {
       });
     }
 
-    if (!["percentage", "fixed"].includes(discountType)) {
+    if (
+      !["percentage", "fixed"].includes(discountType)
+    ) {
       return res.status(400).json({
         success: false,
         message: "Invalid discount type",
       });
     }
 
-    if (discountValue <= 0) {
+    const numericDiscount =
+      Number(discountValue);
+
+    if (
+      Number.isNaN(numericDiscount) ||
+      numericDiscount <= 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Discount value must be greater than 0",
+        message:
+          "Discount value must be greater than 0",
       });
     }
 
-    if (discountType === "percentage" && discountValue > 100) {
+    if (
+      discountType === "percentage" &&
+      numericDiscount > 100
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Percentage discount cannot exceed 100%",
+        message:
+          "Percentage discount cannot exceed 100%",
       });
     }
 
-    if (new Date(endDate) <= new Date(startDate)) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime())
+    ) {
       return res.status(400).json({
         success: false,
-        message: "End date must be after start date",
+        message: "Invalid start or end date",
       });
     }
 
-    const duplicateCode = await Offer.findOne({
-      code: code.toUpperCase(),
-      _id: { $ne: id },
-    });
+    if (end <= start) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "End date must be after start date",
+      });
+    }
+
+    const normalizedCode =
+      code.trim().toUpperCase();
+
+    const duplicateCode =
+      await Offer.findOne({
+        code: normalizedCode,
+        _id: { $ne: id },
+      });
 
     if (duplicateCode) {
       return res.status(409).json({
         success: false,
-        message: "Another offer already uses this code",
+        message:
+          "Another offer already uses this code",
       });
     }
 
-    offer.name = name;
-    offer.festival = festival;
-    offer.code = code.toUpperCase();
+    offer.name = name.trim();
+    offer.festival = festival.trim();
+    offer.code = normalizedCode;
     offer.discountType = discountType;
-    offer.discountValue = discountValue;
-    offer.minimumOrder = minimumOrder || 0;
-    offer.maximumDiscount =
-      maximumDiscount === "" || maximumDiscount === undefined
-        ? null
-        : maximumDiscount;
-    offer.startDate = startDate;
-    offer.endDate = endDate;
-    offer.description = description || "";
-    offer.isActive = isActive !== false;
+    offer.discountValue = numericDiscount;
 
-    if (new Date(endDate) < new Date()) {
+    offer.minimumOrder =
+      Number(minimumOrder || 0);
+
+    offer.maximumDiscount =
+      maximumDiscount === "" ||
+      maximumDiscount === undefined ||
+      maximumDiscount === null
+        ? null
+        : Number(maximumDiscount);
+
+    offer.startDate = start;
+    offer.endDate = end;
+
+    offer.description = description
+      ? description.trim()
+      : "";
+
+    offer.isActive =
+      isActive !== false;
+
+    // Automatically deactivate expired offer
+    if (end < new Date()) {
       offer.isActive = false;
     }
 
@@ -279,7 +364,10 @@ const updateOffer = async (req, res) => {
       offer,
     });
   } catch (error) {
-    console.error("Update offer error:", error);
+    console.error(
+      "Update offer error:",
+      error
+    );
 
     res.status(500).json({
       success: false,
@@ -291,7 +379,7 @@ const updateOffer = async (req, res) => {
 // ======================================================
 // ACTIVATE / DEACTIVATE OFFER
 // ======================================================
-const toggleOfferStatus = async (req, res) => {
+export const toggleOfferStatus = async (req, res) => {
   try {
     const offer = await Offer.findById(req.params.id);
 
@@ -302,13 +390,25 @@ const toggleOfferStatus = async (req, res) => {
       });
     }
 
-    if (new Date() > offer.endDate) {
+    const now = new Date();
+
+    // Cannot activate expired offer
+    if (now >= offer.endDate) {
       offer.isActive = false;
       await offer.save();
 
       return res.status(400).json({
         success: false,
         message: "Expired offers cannot be activated",
+        offer,
+      });
+    }
+
+    // Cannot activate future offer
+    if (!offer.isActive && now < offer.startDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Upcoming offers cannot be activated before their start date",
       });
     }
 
@@ -316,7 +416,7 @@ const toggleOfferStatus = async (req, res) => {
 
     await offer.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: offer.isActive
         ? "Offer activated successfully"
@@ -326,7 +426,7 @@ const toggleOfferStatus = async (req, res) => {
   } catch (error) {
     console.error("Toggle offer error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to update offer status",
     });
@@ -336,9 +436,14 @@ const toggleOfferStatus = async (req, res) => {
 // ======================================================
 // DELETE OFFER
 // ======================================================
-const deleteOffer = async (req, res) => {
+export const deleteOffer = async (
+  req,
+  res
+) => {
   try {
-    const offer = await Offer.findById(req.params.id);
+    const offer = await Offer.findById(
+      req.params.id
+    );
 
     if (!offer) {
       return res.status(404).json({
@@ -347,27 +452,25 @@ const deleteOffer = async (req, res) => {
       });
     }
 
-    await Offer.findByIdAndDelete(req.params.id);
+    await Offer.findByIdAndDelete(
+      req.params.id
+    );
 
     res.status(200).json({
       success: true,
-      message: "Offer deleted successfully",
+      message:
+        "Offer deleted successfully",
     });
   } catch (error) {
-    console.error("Delete offer error:", error);
+    console.error(
+      "Delete offer error:",
+      error
+    );
 
     res.status(500).json({
       success: false,
-      message: "Failed to delete offer",
+      message:
+        "Failed to delete offer",
     });
   }
-};
-
-module.exports = {
-  getOffers,
-  getOfferById,
-  createOffer,
-  updateOffer,
-  toggleOfferStatus,
-  deleteOffer,
 };

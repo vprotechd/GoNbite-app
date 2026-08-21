@@ -1,33 +1,56 @@
-const express = require("express");
+import express from "express";
 
-const {
+import {
   getOffers,
   getOfferById,
   createOffer,
   updateOffer,
   toggleOfferStatus,
   deleteOffer,
-} = require("../controllers/offerController");
+} from "../controllers/offerController.js";
 
-// Change this import to match your project
-const { protect, adminOnly } = require("../middleware/authMiddleware");
+import adminAuthMiddleware from "../middleware/adminAuthMiddleware.js";
 
 const router = express.Router();
 
-// All offer management routes require admin authentication
-router.use(protect);
-router.use(adminOnly);
 
+
+// All offer routes require admin authentication
+router.use(adminAuthMiddleware);
+
+// GET all offers
 router.get("/", getOffers);
 
+// GET single offer
 router.get("/:id", getOfferById);
 
+// CREATE offer
 router.post("/", createOffer);
 
+// UPDATE offer
 router.put("/:id", updateOffer);
 
-router.patch("/:id/status", toggleOfferStatus);
+// ACTIVATE / DEACTIVATE offer
+router.patch(
+  "/:id/status",
+  (req, res, next) => {
+    console.log("🔥 PATCH STATUS ROUTE REACHED");
+    console.log("ID:", req.params.id);
+    next();
+  },
+  toggleOfferStatus
+);
 
-router.delete("/:id", deleteOffer);
+router.delete(
+  "/:id",
+  (req, res, next) => {
+    console.log("🔥 DELETE ROUTE REACHED");
+    console.log("ID:", req.params.id);
+    next();
+  },
+  deleteOffer
+);
 
-module.exports = router;
+
+
+export default router;

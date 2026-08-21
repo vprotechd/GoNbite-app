@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const offerSchema = new mongoose.Schema(
   {
@@ -72,13 +72,6 @@ const offerSchema = new mongoose.Schema(
   }
 );
 
-// Automatically deactivate expired offers
-offerSchema.pre("save", function (next) {
-  if (this.endDate && new Date() > this.endDate) {
-    this.isActive = false;
-  }
+const Offer = mongoose.model("Offer", offerSchema);
 
-  next();
-});
-
-module.exports = mongoose.model("Offer", offerSchema);
+export default Offer;

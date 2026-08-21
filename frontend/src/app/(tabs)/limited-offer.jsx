@@ -495,7 +495,7 @@ export default function LimitedOfferScreen() {
           </Text>
 
           <Text style={styles.offerTitle}>
-            50% OFF
+            20% OFF
           </Text>
 
           <Text style={styles.offerDescription}>
