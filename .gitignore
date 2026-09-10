@@ -84,6 +84,5 @@ frontend/.env.*
 /backend/uploads/
 
 # Frontend generated Android project
-/frontend/android/
 # Backend uploaded files
 /backend/uploads/
