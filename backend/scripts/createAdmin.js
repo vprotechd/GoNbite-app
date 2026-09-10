@@ -11,8 +11,8 @@ const createAdmin = async () => {
     // ADMIN CREDENTIALS
     // ==========================================
 
-    const adminEmail = "admin12@.com";
-    const adminPassword = "pass123@";
+    const adminEmail = "rajatkumarvpro.com";
+    const adminPassword = "Rajat.kmr@#116";
 
     // ==========================================
     // CONNECT DATABASE
