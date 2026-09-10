@@ -1,74 +1,69 @@
 import jwt from "jsonwebtoken";
+import Admin from "../models/Admin.js";
 
-const adminAuthMiddleware = (req, res, next) => {
+const adminMiddleware = async (req, res, next) => {
   try {
-    const authHeader = req.header("Authorization");
+    // ==========================================
+    // GET TOKEN
+    // ==========================================
 
-    console.log("=================================");
-    console.log("ADMIN AUTH DEBUG");
-    console.log("Authorization:", authHeader);
-    console.log("=================================");
+    const authHeader = req.headers.authorization;
 
     if (!authHeader) {
       return res.status(401).json({
-        success: false,
-        message: "Access denied. No token provided.",
+        error: "Authentication required.",
       });
     }
 
-    const parts = authHeader.split(" ");
-
-    if (
-      parts.length !== 2 ||
-      parts[0] !== "Bearer"
-    ) {
+    if (!authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
-        success: false,
-        message: "Malformed token format.",
+        error: "Invalid authorization format.",
       });
     }
 
-    const token = parts[1];
+    const token = authHeader.split(" ")[1];
+
+    // ==========================================
+    // VERIFY JWT
+    // ==========================================
 
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET
     );
 
-    console.log("Decoded admin token:", decoded);
+    // ==========================================
+    // FIND ADMIN
+    // ==========================================
 
-    // Make sure this is actually an admin token
-    if (decoded.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Admin access required.",
-      });
-    }
+    const admin = await Admin.findById(
+      decoded.id
+    ).select("-password");
 
-    // Support both possible token structures
-    const adminId =
-      decoded.id ||
-      decoded.adminId ||
-      decoded._id;
-
-    if (!adminId) {
+    if (!admin) {
       return res.status(401).json({
-        success: false,
-        message: "Invalid admin token.",
+        error: "Admin account not found.",
       });
     }
 
-    req.admin = {
-      id: adminId,
-      role: decoded.role,
-      name: decoded.name || "",
-    };
+    // ==========================================
+    // CHECK ACTIVE STATUS
+    // ==========================================
 
-    console.log("ADMIN AUTH SUCCESS");
-    console.log("Admin ID:", req.admin.id);
-    console.log("Admin role:", req.admin.role);
+    if (!admin.isActive) {
+      return res.status(403).json({
+        error: "Admin account is inactive.",
+      });
+    }
+
+    // ==========================================
+    // SAVE ADMIN IN REQUEST
+    // ==========================================
+
+    req.admin = admin;
 
     next();
+
   } catch (error) {
     console.error(
       "ADMIN AUTH ERROR:",
@@ -76,11 +71,9 @@ const adminAuthMiddleware = (req, res, next) => {
     );
 
     return res.status(401).json({
-      success: false,
-      message:
-        "Invalid or expired admin token. Please login again.",
+      error: "Invalid or expired admin token.",
     });
   }
 };
 
-export default adminAuthMiddleware;
+export default adminMiddleware;

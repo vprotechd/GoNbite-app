@@ -42,6 +42,8 @@ export default function PaymentScreen() {
     ? JSON.parse(items)
     : [];
 
+  
+
   const parsedTotal =
     parseFloat(String(total || "0")) || 0;
 
@@ -78,146 +80,249 @@ export default function PaymentScreen() {
   // =====================================================
 
   const handlePayment = async () => {
-    if (!isRazorpayLoaded) {
-      Alert.alert(
-        "Loading",
-        "Payment gateway is still loading. Please wait.",
-      );
+  if (!isRazorpayLoaded) {
+    Alert.alert(
+      "Loading",
+      "Payment gateway is still loading. Please wait.",
+    );
+    return;
+  }
 
-      return;
+  if (parsedTotal <= 0) {
+    Alert.alert(
+      "Invalid Amount",
+      "The payment amount is invalid.",
+    );
+    return;
+  }
+
+  setIsProcessing(true);
+
+  try {
+    // =================================================
+    // 1. CREATE RAZORPAY ORDER
+    // =================================================
+
+    console.log("Creating Razorpay order:", parsedTotal);
+
+    const orderRes = await api.post(
+      "/payments/create-order",
+      {
+        amount: parsedTotal,
+      },
+    );
+
+    console.log(
+      "Create order response:",
+      orderRes.data,
+    );
+
+    const razorpayOrder = orderRes.data.order;
+
+    if (!razorpayOrder?.id) {
+      throw new Error(
+        "Razorpay order ID was not received.",
+      );
     }
 
-    if (parsedTotal <= 0) {
-      Alert.alert(
-        "Invalid Amount",
-        "The payment amount is invalid.",
-      );
+    // =================================================
+    // 2. RAZORPAY CHECKOUT OPTIONS
+    // =================================================
 
-      return;
-    }
+    const options = {
+      description: "SNAX Food Order",
 
-    setIsProcessing(true);
+      currency: "INR",
 
-    try {
+      key: "rzp_test_TYH6IKW7lUHOxY",
+
+      amount: razorpayOrder.amount,
+
+      order_id: razorpayOrder.id,
+
+      name: "SNAX",
+
+      prefill: {
+        email: "user@example.com",
+        contact: "9999999999",
+      },
+
+      theme: {
+        color: "#F5B82E",
+      },
+
       // =================================================
-      // CREATE RAZORPAY ORDER
+      // 3. PAYMENT SUCCESS
       // =================================================
 
-      const orderRes = await api.post(
-        "/orders/create-razorpay-order",
-        {
-          amount: parsedTotal,
-        },
-      );
-
-      const razorpayOrder =
-        orderRes.data;
-
-      // =================================================
-      // RAZORPAY OPTIONS
-      // =================================================
-
-      const options = {
-        description: "Food Order",
-
-        currency: "INR",
-
-        key: "rzp_test_TOQf3vNxkjDCbc",
-
-        amount: razorpayOrder.amount,
-
-        order_id: razorpayOrder.id,
-
-        name: "SNAX",
-
-        prefill: {
-          email: "user@example.com",
-          contact: "9999999999",
-        },
-
-        theme: {
-          color: "#F5B82E",
-        },
-
-       handler: async (response) => {
-  console.log(
-    "✅ Payment Successful:",
-    response,
-  );
-
-  // =================================================
-  // CLEAR CART AFTER SUCCESSFUL PAYMENT
-  // =================================================
-
-  await clearCart();
-
+      handler: async (response) => {
+        try {
+          console.log(
+            "Razorpay payment response:",
+            response,
+          );
 
           // =================================================
-          // NAVIGATE AFTER SUCCESS
+          // 4. VERIFY PAYMENT WITH BACKEND
           // =================================================
 
-          router.push({
-            pathname: "/(tabs)/orders",
+          const verifyRes = await api.post(
+            "/payments/verify",
+            {
+              razorpay_order_id:
+                response.razorpay_order_id,
 
-            params: {
-              restaurantId:
-                restaurantId || "unknown",
+              razorpay_payment_id:
+                response.razorpay_payment_id,
 
-              items: JSON.stringify(
-                parsedItems,
-              ),
-
-              total: parsedTotal,
-
-              address: String(
-                address || "",
-              ),
-
-              paymentMethod:
-                "Online (Razorpay)",
+              razorpay_signature:
+                response.razorpay_signature,
             },
-          });
-        },
-      };
+          );
 
-      // =================================================
-      // OPEN RAZORPAY
-      // =================================================
+          console.log(
+            "Payment verification response:",
+            verifyRes.data,
+          );
 
-      if (Platform.OS === "web") {
-        if (
-          typeof window !== "undefined" &&
-          window.Razorpay
-        ) {
-          const rzp =
-            new window.Razorpay(options);
 
-          rzp.open();
-        } else {
+
+
+          if (!verifyRes.data.success) {
+  throw new Error(
+    "Payment verification failed.",
+  );
+}
+
+// =================================================
+// 5. CREATE ORDER AFTER SUCCESSFUL PAYMENT
+// =================================================
+
+console.log("Payment verified. Creating order...");
+
+const orderRes = await api.post(
+  "/orders/create",
+  {
+    restaurantId: String(restaurantId),
+
+    items: parsedItems.map((item) => ({
+      foodItemId:
+        item.foodItemId || item._id,
+
+      name: item.name,
+
+      quantity:
+        Number(item.quantity) || 1,
+
+      price:
+        Number(item.price) || 0,
+    })),
+
+    totalAmount: parsedTotal,
+
+    deliveryAddress: String(
+      address || "",
+    ),
+
+    paymentMethod: "Online (Razorpay)",
+  },
+);
+
+console.log(
+  "Order creation response:",
+  orderRes.data,
+);
+
+if (!orderRes.data?.order) {
+  throw new Error(
+    "Payment succeeded but order could not be created.",
+  );
+}
+
+// =================================================
+// 6. ORDER CREATED SUCCESSFULLY
+// =================================================
+
+// await clearCart();
+
+// Alert.alert(
+//   "Order Placed Successfully",
+//   "Your payment was successful and your order has been placed.",
+//   [
+//     {
+//       text: "Continue",
+//       onPress: () => {
+//         router.replace("/(tabs)/orders");
+//       },
+//     },
+//   ],
+// );
+
+console.log("ORDER CREATED SUCCESSFULLY");
+
+await clearCart();
+
+router.replace("/(tabs)/orders");
+
+          // =================================================
+          // 5. PAYMENT VERIFIED
+          // =================================================
+
+        
+        } catch (error) {
+          console.error(
+            "Payment verification error:",
+            error,
+          );
+
           Alert.alert(
-            "Error",
-            "Razorpay SDK is not available.",
+            "Verification Failed",
+            "Payment was received, but verification failed. Please contact support before trying again.",
           );
         }
+      },
+    };
+
+    // =================================================
+    // 6. OPEN RAZORPAY
+    // =================================================
+
+    if (Platform.OS === "web") {
+      if (
+        typeof window !== "undefined" &&
+        window.Razorpay
+      ) {
+        const rzp =
+          new window.Razorpay(options);
+
+        rzp.open();
       } else {
-        await RazorpayCheckout.open(
-          options,
+        Alert.alert(
+          "Error",
+          "Razorpay SDK is not available.",
         );
       }
-    } catch (error) {
-      console.error(
-        "Payment Error:",
-        error,
-      );
-
-      Alert.alert(
-        "Payment Failed",
-        "Your payment could not be completed.",
-      );
-    } finally {
-      setIsProcessing(false);
+    } else {
+      await RazorpayCheckout.open(options);
     }
-  };
+  } catch (error) {
+    console.error(
+      "Payment Error:",
+      error?.response?.data ||
+        error?.message ||
+        error,
+    );
+
+    Alert.alert(
+      "Payment Failed",
+      error?.response?.data?.error ||
+        error?.message ||
+        "Your payment could not be completed.",
+    );
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   // =====================================================
   // UI

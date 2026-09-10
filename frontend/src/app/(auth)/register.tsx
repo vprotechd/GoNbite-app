@@ -142,18 +142,16 @@ export default function RegisterScreen() {
         password,
       });
 
-      const { token, user } = response.data;
+   const { token, user } = response.data;
 
-      await AsyncStorage.setItem("token", token);
-      await AsyncStorage.setItem("user", JSON.stringify(user));
+await AsyncStorage.setItem("token", token);
+await AsyncStorage.setItem("user", JSON.stringify(user));
 
-      // SUCCESS TOAST
-      showSuccessToast("Registration Successful!");
+showSuccessToast("Registration Successful!");
 
-      // Delay navigation so user can see toast
-      setTimeout(() => {
-        router.replace("/(tabs)");
-      }, 1500);
+setTimeout(() => {
+  router.replace("/(tabs)");
+}, 1500);
     } catch (error: any) {
       console.log(
         "Registration error:",

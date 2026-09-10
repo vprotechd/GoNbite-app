@@ -45,64 +45,63 @@ export default function AdminLoginScreen() {
   }, []);
 
   const handleAdminLogin = async () => {
-    if (!email.trim()) {
-      Alert.alert("Required", "Please enter admin email.");
+  console.log("🔥🔥 ADMIN LOGIN BUTTON CLICKED 🔥🔥");
+
+  console.log("Email:", email);
+  console.log("Password entered:", password ? "YES" : "NO");
+
+  if (!email.trim()) {
+    console.log("❌ Email is empty");
+    Alert.alert("Required", "Please enter admin email.");
+    return;
+  }
+
+  if (!password) {
+    console.log("❌ Password is empty");
+    Alert.alert("Required", "Please enter admin password.");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    console.log("📤 Sending request to backend...");
+    console.log("API URL:", api.defaults.baseURL);
+    console.log("Endpoint:", "/admin/login");
+
+    const response = await api.post("/admin/login", {
+      email: email.trim().toLowerCase(),
+      password,
+    });
+
+    console.log("✅ BACKEND RESPONSE:", response.data);
+
+    const { token } = response.data;
+
+    if (!token) {
+      console.log("❌ No token received");
+      Alert.alert("Login Error", "Admin token was not received.");
       return;
     }
 
-    if (!password) {
-      Alert.alert("Required", "Please enter admin password.");
-      return;
-    }
+    await AsyncStorage.setItem("adminToken", token);
 
-    try {
-      setLoading(true);
+    await AsyncStorage.removeItem("token");
+    await AsyncStorage.removeItem("user");
 
-      console.log("Admin login request started");
+    console.log("✅ Admin token stored");
 
-      const response = await api.post("/admin/login", {
-        email: email.trim().toLowerCase(),
-        password,
-      });
+    router.replace("/admin");
 
-      console.log("Admin login response:", response.data);
-
-      const { token } = response.data;
-
-      if (!token) {
-        Alert.alert("Login Error", "Admin token was not received.");
-        return;
-      }
-
-      // IMPORTANT:
-      // Admin authentication is stored separately
-      await AsyncStorage.setItem("adminToken", token);
-
-      // Remove normal user authentication
-      await AsyncStorage.removeItem("token");
-      await AsyncStorage.removeItem("user");
-
-      console.log("Admin token stored");
-
-      // Directly open admin dashboard
-      router.replace("/admin");
-    } catch (error) {
-      console.log(
-        "Admin login error:",
-        error?.response?.data || error?.message,
-      );
-
-      Alert.alert(
-        "Admin Login Failed",
-        error?.response?.data?.error ||
-          error?.response?.data?.message ||
-          "Invalid admin email or password.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  } catch (error) {
+    console.log("❌ ADMIN LOGIN ERROR");
+    console.log("Message:", error?.message);
+    console.log("Status:", error?.response?.status);
+    console.log("Response:", error?.response?.data);
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#081A33" />

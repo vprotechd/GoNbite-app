@@ -1867,36 +1867,43 @@ export default function CheckoutScreen() {
     setIsConfirming(true);
 
     try {
-      const orderData = {
-        restaurantId:
-          cartItems[0]?.restaurantId ||
-          "unknown",
+     const orderData = {
+  restaurantId:
+    cartItems[0]?.restaurantId || "unknown",
 
-        items: cartItems.map((item) => ({
-          _id:
-            item?._id ||
-            item?.id ||
-            item?.productId,
+  items: cartItems.map((item) => ({
+    _id:
+      item?._id ||
+      item?.id ||
+      item?.productId,
 
-          name:
-            item?.name ||
-            "Unnamed Item",
+    name:
+      item?.name ||
+      "Unnamed Item",
 
-          price:
-            Number(item?.price || 0),
+    price:
+      Number(item?.price || 0),
 
-          quantity:
-            Number(item?.quantity || 0),
-        })),
+    quantity:
+      Number(item?.quantity || 0),
+  })),
 
-        totalAmount: total,
+  totalAmount: total,
 
-        deliveryAddress:
-          profile.address,
+  deliveryAddress: profile.address,
 
-        paymentMethod:
-          "Cash on Delivery",
-      };
+  deliveryLocation: {
+  latitude: profile.latitude ?? null,
+  longitude: profile.longitude ?? null,
+},
+
+  deliveryLocation: {
+    latitude: Number(profile.latitude),
+    longitude: Number(profile.longitude),
+  },
+
+  paymentMethod: "Cash on Delivery",
+};
 
       console.log(
         "📦 Sending Order:",

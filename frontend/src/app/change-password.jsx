@@ -11,9 +11,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import api from "../services/api";
 
 export default function ChangePasswordScreen() {
   const [currentPassword, setCurrentPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -21,34 +23,47 @@ export default function ChangePasswordScreen() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const handleChangePassword = () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert(
-        "Missing Information",
-        "Please fill in all password fields."
-      );
-      return;
-    }
+const handleChangePassword = async () => {
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    Alert.alert(
+      "Missing Information",
+      "Please fill in all password fields."
+    );
+    return;
+  }
 
-    if (newPassword.length < 6) {
-      Alert.alert(
-        "Invalid Password",
-        "New password must contain at least 6 characters."
-      );
-      return;
-    }
+  if (newPassword.length < 6) {
+    Alert.alert(
+      "Invalid Password",
+      "New password must contain at least 6 characters."
+    );
+    return;
+  }
 
-    if (newPassword !== confirmPassword) {
-      Alert.alert(
-        "Password Mismatch",
-        "New password and confirm password do not match."
-      );
-      return;
-    }
+  if (newPassword !== confirmPassword) {
+    Alert.alert(
+      "Password Mismatch",
+      "New password and confirm password do not match."
+    );
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const response = await api.post(
+      "/auth/change-password",
+      {
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      }
+    );
 
     Alert.alert(
       "Password Updated",
-      "Your password has been changed successfully.",
+      response.data.message ||
+        "Your password has been changed successfully.",
       [
         {
           text: "OK",
@@ -57,8 +72,25 @@ export default function ChangePasswordScreen() {
       ]
     );
 
-    // Connect your change-password API here.
-  };
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+
+  } catch (error) {
+    console.error(
+      "CHANGE PASSWORD ERROR:",
+      error?.response?.data || error
+    );
+
+    Alert.alert(
+      "Password Change Failed",
+      error?.response?.data?.message ||
+        "Unable to change your password."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <SafeAreaView style={styles.safeArea}>

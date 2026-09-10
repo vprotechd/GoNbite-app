@@ -29,7 +29,12 @@ const userSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["customer", "restaurant", "delivery"],
+      enum: [
+        "customer",
+        "restaurant",
+        "delivery",
+        "admin",
+      ],
       default: "customer",
     },
 
@@ -38,10 +43,38 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
+
+latitude: {
+  type: Number,
+  default: null,
+},
+
+longitude: {
+  type: Number,
+  default: null,
+},
+
+
     isActive: {
       type: Boolean,
       default: true,
     },
+
+
+    isVerified: {
+  type: Boolean,
+  default: false,
+},
+
+registrationOTP: {
+  type: String,
+  default: null,
+},
+
+registrationOTPExpires: {
+  type: Date,
+  default: null,
+},
 
     // ==========================================
     // PASSWORD RESET
@@ -56,8 +89,17 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-  },
 
+    resetPasswordOTP: {
+      type: String,
+      default: null,
+    },
+
+    resetPasswordOTPExpires: {
+      type: Date,
+      default: null,
+    },
+  },
   {
     timestamps: true,
   }

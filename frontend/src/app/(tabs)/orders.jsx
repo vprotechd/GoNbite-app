@@ -1,4 +1,3 @@
-
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
@@ -17,6 +16,7 @@ import {
 
 import { useCart } from "../../context/CartContext";
 import api from "../../services/api";
+// import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function OrdersScreen() {
   const { addToCart } = useCart();
@@ -24,7 +24,8 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [showReorderPopup, setShowReorderPopup] = useState(false);
+  const [showReorderPopup, setShowReorderPopup] =
+    useState(false);
 
   // =====================================================
   // FETCH ORDERS
@@ -38,7 +39,8 @@ export default function OrdersScreen() {
     try {
       setIsLoading(true);
 
-      const response = await api.get("/orders/my-orders");
+      const response =
+        await api.get("/orders/my-orders");
 
       const data = Array.isArray(response.data)
         ? response.data
@@ -46,15 +48,17 @@ export default function OrdersScreen() {
 
       const sortedOrders = [...data].sort(
         (a, b) =>
-          new Date(b.createdAt) -
-          new Date(a.createdAt)
+          new Date(b.createdAt).getTime() -
+          new Date(a.createdAt).getTime()
       );
 
       setOrders(sortedOrders);
     } catch (error) {
       console.error(
         "Failed to load orders:",
-        error?.response?.data || error?.message || error
+        error?.response?.data ||
+          error?.message ||
+          error
       );
 
       setOrders([]);
@@ -115,6 +119,54 @@ export default function OrdersScreen() {
   };
 
   // =====================================================
+  // TRACK ORDER
+  // =====================================================
+
+
+// const handleTrackOrder = (order) => {
+//   const id = order?._id;
+
+//   if (!id) {
+//     Alert.alert("Error", "Order ID not found.");
+//     return;
+//   }
+
+//   console.log("🚀 Opening CUSTOMER Active Order");
+//   console.log("🆔 Order ID:", id);
+
+//   router.push({
+//     pathname: "/(tabs)/active-order",
+//     params: {
+//       orderId: String(id),
+//     },
+//   });
+// };
+
+
+
+const handleTrackOrder = (order) => {
+  const id = order?._id;
+
+  console.log("🔥 TRACK ORDER PRESSED");
+  console.log("📦 FULL ORDER:", order);
+  console.log("🆔 ORDER ID:", id);
+
+  if (!id) {
+    Alert.alert("Error", "Order ID not found.");
+    return;
+  }
+
+  console.log("🚀 Opening CUSTOMER Active Order");
+  console.log("🆔 Sending Order ID:", String(id));
+
+  router.push({
+    pathname: "/(tabs)/active-order",
+    params: {
+      orderId: String(id),
+    },
+  });
+};
+  // =====================================================
   // OPEN REVIEW SCREEN
   // =====================================================
 
@@ -134,19 +186,27 @@ export default function OrdersScreen() {
       );
       return;
     }
-router.push({
-  pathname: "/review-order",
-  params: {
-    orderId: String(order._id),
 
-    restaurantId:
-      typeof order.restaurantId === "object"
-        ? String(order.restaurantId?._id || "")
-        : String(order.restaurantId || ""),
+    router.push({
+      pathname: "/(tabs)/review-order",
+      params: {
+        orderId: String(order._id),
 
-    restaurantName: getRestaurantName(order),
-  },
-});
+        restaurantId:
+          typeof order.restaurantId ===
+          "object"
+            ? String(
+                order.restaurantId?._id ||
+                  ""
+              )
+            : String(
+                order.restaurantId || ""
+              ),
+
+        restaurantName:
+          getRestaurantName(order),
+      },
+    });
   };
 
   // =====================================================
@@ -154,7 +214,10 @@ router.push({
   // =====================================================
 
   const handleReorder = (order) => {
-    if (!order?.items || order.items.length === 0) {
+    if (
+      !order?.items ||
+      order.items.length === 0
+    ) {
       Alert.alert(
         "Reorder Failed",
         "This order has no items to reorder."
@@ -164,7 +227,8 @@ router.push({
 
     try {
       const restaurantId =
-        typeof order.restaurantId === "object"
+        typeof order.restaurantId ===
+        "object"
           ? order.restaurantId?._id
           : order.restaurantId;
 
@@ -176,32 +240,44 @@ router.push({
         return;
       }
 
-      order.items.forEach((item) => {
-        addToCart({
-          _id: item.foodItemId || item._id,
-          foodItemId:
-            item.foodItemId || item._id,
+      order.items.forEach(
+        (item) => {
+          addToCart({
+            _id:
+              item.foodItemId ||
+              item._id,
 
-          name: item.name,
+            foodItemId:
+              item.foodItemId ||
+              item._id,
 
-          price: Number(item.price) || 0,
+            name: item.name,
 
-          quantity:
-            Number(item.quantity) || 1,
+            price:
+              Number(item.price) || 0,
 
-          imageUrl:
-            item.imageUrl || "",
+            quantity:
+              Number(item.quantity) || 1,
 
-          restaurantId: restaurantId,
-        });
-      });
+            imageUrl:
+              item.imageUrl || "",
+
+            restaurantId:
+              restaurantId,
+          });
+        }
+      );
 
       setShowReorderPopup(true);
 
       setTimeout(() => {
         setShowReorderPopup(false);
-        router.push("/(tabs)/cart");
+
+        router.push(
+          "/(tabs)/cart"
+        );
       }, 1500);
+
     } catch (error) {
       console.error(
         "REORDER ERROR:",
@@ -220,7 +296,9 @@ router.push({
   // =====================================================
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView
+      style={styles.safeArea}
+    >
       <StatusBar
         barStyle="light-content"
         backgroundColor="#081A33"
@@ -233,10 +311,15 @@ router.push({
         ================================================= */}
 
         <View style={styles.header}>
-          <View style={styles.headerSide} />
 
           <View
-            style={styles.headerTitleContainer}
+            style={styles.headerSide}
+          />
+
+          <View
+            style={
+              styles.headerTitleContainer
+            }
           >
             <Ionicons
               name="receipt-outline"
@@ -245,13 +328,18 @@ router.push({
             />
 
             <Text
-              style={styles.headerTitle}
+              style={
+                styles.headerTitle
+              }
             >
               My Orders
             </Text>
           </View>
 
-          <View style={styles.headerSide} />
+          <View
+            style={styles.headerSide}
+          />
+
         </View>
 
         {/* =================================================
@@ -259,7 +347,9 @@ router.push({
         ================================================= */}
 
         <ScrollView
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={
+            false
+          }
           contentContainerStyle={
             styles.scrollContent
           }
@@ -270,8 +360,11 @@ router.push({
           ================================================= */}
 
           {isLoading ? (
+
             <View
-              style={styles.loadingContainer}
+              style={
+                styles.loadingContainer
+              }
             >
               <ActivityIndicator
                 size="small"
@@ -279,7 +372,9 @@ router.push({
               />
 
               <Text
-                style={styles.loadingText}
+                style={
+                  styles.loadingText
+                }
               >
                 Loading orders...
               </Text>
@@ -292,7 +387,9 @@ router.push({
             ================================================= */
 
             <View
-              style={styles.emptyState}
+              style={
+                styles.emptyState
+              }
             >
               <View
                 style={
@@ -307,21 +404,29 @@ router.push({
               </View>
 
               <Text
-                style={styles.emptyTitle}
+                style={
+                  styles.emptyTitle
+                }
               >
                 No orders yet
               </Text>
 
               <Text
-                style={styles.emptySubtitle}
+                style={
+                  styles.emptySubtitle
+                }
               >
                 Start ordering your favorite food!
               </Text>
 
               <TouchableOpacity
-                style={styles.orderBtn}
+                style={
+                  styles.orderBtn
+                }
                 onPress={() =>
-                  router.replace("/(tabs)")
+                  router.replace(
+                    "/(tabs)"
+                  )
                 }
                 activeOpacity={0.85}
               >
@@ -332,11 +437,14 @@ router.push({
                 />
 
                 <Text
-                  style={styles.orderBtnText}
+                  style={
+                    styles.orderBtnText
+                  }
                 >
                   Go to Home
                 </Text>
               </TouchableOpacity>
+
             </View>
 
           ) : (
@@ -345,302 +453,432 @@ router.push({
                 ORDER CARDS
             ================================================= */
 
-            orders.map((order, index) => {
-              const isLatest = index === 0;
-              const isDelivered =
-                order.status === "Delivered";
+            orders.map(
+              (
+                order,
+                index
+              ) => {
 
-              return (
-                <View
-                  key={order._id}
-                  style={[
-                    styles.orderCard,
-                    isLatest &&
-                      styles.latestOrderCard,
-                  ]}
-                >
+                const isLatest =
+                  index === 0;
 
-                  {/* NEW BADGE */}
+                const isDelivered =
+                  order.status ===
+                  "Delivered";
 
-                  {isLatest && (
-                    <View
-                      style={styles.latestBadge}
-                    >
-                      <Ionicons
-                        name="sparkles"
-                        size={10}
-                        color="#0B0F14"
-                      />
+                const isActive =
+                  order.status !==
+                    "Delivered" &&
+                  order.status !==
+                    "Cancelled";
 
-                      <Text
+                return (
+                  <View
+                    key={String(
+                      order._id
+                    )}
+                    style={[
+                      styles.orderCard,
+
+                      isLatest &&
+                        styles.latestOrderCard,
+                    ]}
+                  >
+
+                    {/* =================================================
+                        NEW BADGE
+                    ================================================= */}
+
+                    {isLatest && (
+                      <View
                         style={
-                          styles.latestBadgeText
+                          styles.latestBadge
                         }
                       >
-                        New
-                      </Text>
-                    </View>
-                  )}
+                        <Ionicons
+                          name="sparkles"
+                          size={10}
+                          color="#0B0F14"
+                        />
 
-                  {/* ORDER HEADER */}
+                        <Text
+                          style={
+                            styles.latestBadgeText
+                          }
+                        >
+                          New
+                        </Text>
+                      </View>
+                    )}
 
-                  <View
-                    style={styles.orderHeader}
-                  >
+                    {/* =================================================
+                        ORDER HEADER
+                    ================================================= */}
+
                     <View
                       style={
-                        styles.orderTitleContainer
+                        styles.orderHeader
+                      }
+                    >
+
+                      <View
+                        style={
+                          styles.orderTitleContainer
+                        }
+                      >
+                        <Ionicons
+                          name="receipt-outline"
+                          size={15}
+                          color="#F5B82E"
+                        />
+
+                        <Text
+                          style={
+                            styles.restaurantName
+                          }
+                          numberOfLines={1}
+                        >
+                          Order #
+                          {String(
+                            order._id
+                          ).slice(-6)}
+                        </Text>
+                      </View>
+
+                      {/* STATUS */}
+
+                      <View
+                        style={[
+                          styles.statusBadge,
+
+                          {
+                            backgroundColor:
+                              getStatusColor(
+                                order.status
+                              ),
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={
+                            styles.statusText
+                          }
+                        >
+                          {order.status}
+                        </Text>
+                      </View>
+
+                    </View>
+
+                    {/* =================================================
+                        DATE
+                    ================================================= */}
+
+                    <View
+                      style={
+                        styles.dateRow
                       }
                     >
                       <Ionicons
-                        name="receipt-outline"
-                        size={15}
-                        color="#F5B82E"
+                        name="calendar-outline"
+                        size={11}
+                        color="#64748B"
                       />
 
                       <Text
                         style={
-                          styles.restaurantName
+                          styles.orderDate
                         }
-                        numberOfLines={1}
                       >
-                        Order #
-                        {String(order._id).slice(-6)}
+                        {order.createdAt
+                          ? new Date(
+                              order.createdAt
+                            ).toLocaleDateString()
+                          : "N/A"}{" "}
+                        at{" "}
+                        {order.createdAt
+                          ? new Date(
+                              order.createdAt
+                            ).toLocaleTimeString()
+                          : "N/A"}
                       </Text>
                     </View>
 
-                    {/* STATUS */}
+                    {/* =================================================
+                        ITEMS
+                    ================================================= */}
 
                     <View
-                      style={[
-                        styles.statusBadge,
-                        {
-                          backgroundColor:
-                            getStatusColor(
-                              order.status
-                            ),
-                        },
-                      ]}
+                      style={
+                        styles.itemsContainer
+                      }
                     >
-                      <Text
-                        style={
-                          styles.statusText
-                        }
-                      >
-                        {order.status}
-                      </Text>
-                    </View>
-                  </View>
+                      {(
+                        order.items ||
+                        []
+                      ).map(
+                        (
+                          item,
+                          idx
+                        ) => (
 
-                  {/* DATE */}
-
-                  <View
-                    style={styles.dateRow}
-                  >
-                    <Ionicons
-                      name="calendar-outline"
-                      size={11}
-                      color="#64748B"
-                    />
-
-                    <Text
-                      style={styles.orderDate}
-                    >
-                      {order.createdAt
-                        ? new Date(
-                            order.createdAt
-                          ).toLocaleDateString()
-                        : "N/A"}{" "}
-                      at{" "}
-                      {order.createdAt
-                        ? new Date(
-                            order.createdAt
-                          ).toLocaleTimeString()
-                        : "N/A"}
-                    </Text>
-                  </View>
-
-                  {/* ITEMS */}
-
-                  <View
-                    style={
-                      styles.itemsContainer
-                    }
-                  >
-                    {(order.items || []).map(
-                      (item, idx) => (
-                        <View
-                          key={idx}
-                          style={
-                            styles.itemRow
-                          }
-                        >
                           <View
+                            key={idx}
                             style={
-                              styles.itemLeft
+                              styles.itemRow
                             }
                           >
+
                             <View
                               style={
-                                styles.quantityBadge
+                                styles.itemLeft
                               }
                             >
-                              <Text
+
+                              <View
                                 style={
-                                  styles.quantityText
+                                  styles.quantityBadge
                                 }
                               >
-                                {item.quantity}x
+                                <Text
+                                  style={
+                                    styles.quantityText
+                                  }
+                                >
+                                  {
+                                    item.quantity
+                                  }x
+                                </Text>
+                              </View>
+
+                              <Text
+                                style={
+                                  styles.itemName
+                                }
+                                numberOfLines={
+                                  1
+                                }
+                              >
+                                {
+                                  item.name
+                                }
                               </Text>
+
                             </View>
 
                             <Text
                               style={
-                                styles.itemName
+                                styles.itemPrice
                               }
-                              numberOfLines={1}
                             >
-                              {item.name}
+                              ₹
+                              {(
+                                Number(
+                                  item.price
+                                ) || 0
+                              ) *
+                                (
+                                  Number(
+                                    item.quantity
+                                  ) || 0
+                                )}
                             </Text>
+
                           </View>
 
-                          <Text
-                            style={
-                              styles.itemPrice
-                            }
-                          >
-                            ₹
-                            {(Number(item.price) ||
-                              0) *
-                              (Number(
-                                item.quantity
-                              ) || 0)}
-                          </Text>
-                        </View>
-                      )
-                    )}
-                  </View>
-
-                  {/* DIVIDER */}
-
-                  <View
-                    style={styles.divider}
-                  />
-
-                  {/* TOTAL */}
-
-                  <View
-                    style={styles.totalRow}
-                  >
-                    <Text
-                      style={styles.totalLabel}
-                    >
-                      Total
-                    </Text>
-
-                    <Text
-                      style={styles.totalValue}
-                    >
-                      ₹
-                      {Number(
-                        order.totalAmount
-                      ) || 0}
-                    </Text>
-                  </View>
-
-                  {/* PAYMENT */}
-
-                  <View
-                    style={styles.footerRow}
-                  >
-                    <View
-                      style={
-                        styles.paymentIcon
-                      }
-                    >
-                      <Ionicons
-                        name="cash-outline"
-                        size={12}
-                        color="#64748B"
-                      />
+                        )
+                      )}
                     </View>
 
-                    <Text
+                    {/* =================================================
+                        DIVIDER
+                    ================================================= */}
+
+                    <View
                       style={
-                        styles.paymentText
+                        styles.divider
                       }
-                      numberOfLines={1}
+                    />
+
+                    {/* =================================================
+                        TOTAL
+                    ================================================= */}
+
+                    <View
+                      style={
+                        styles.totalRow
+                      }
                     >
-                      {order.paymentMethod ||
-                        "Cash on Delivery"}
-                    </Text>
-                  </View>
+                      <Text
+                        style={
+                          styles.totalLabel
+                        }
+                      >
+                        Total
+                      </Text>
 
-                  {/* =================================================
-                      REVIEW BUTTON
-                      ONLY VISIBLE AFTER DELIVERY
-                  ================================================= */}
+                      <Text
+                        style={
+                          styles.totalValue
+                        }
+                      >
+                        ₹
+                        {Number(
+                          order.totalAmount
+                        ) || 0}
+                      </Text>
+                    </View>
 
-                  {isDelivered && (
+                    {/* =================================================
+                        PAYMENT
+                    ================================================= */}
+
+                    <View
+                      style={
+                        styles.footerRow
+                      }
+                    >
+                      <View
+                        style={
+                          styles.paymentIcon
+                        }
+                      >
+                        <Ionicons
+                          name="cash-outline"
+                          size={12}
+                          color="#64748B"
+                        />
+                      </View>
+
+                      <Text
+                        style={
+                          styles.paymentText
+                        }
+                        numberOfLines={
+                          1
+                        }
+                      >
+                        {order.paymentMethod ||
+                          "Cash on Delivery"}
+                      </Text>
+                    </View>
+
+                    {/* =================================================
+                        TRACK ORDER
+                    ================================================= */}
+
+                    {isActive && (
+
+                      <TouchableOpacity
+                        style={
+                          styles.trackBtn
+                        }
+                        onPress={() =>
+                          handleTrackOrder(
+                            order
+                          )
+                        }
+                        activeOpacity={
+                          0.85
+                        }
+                      >
+                        <Ionicons
+                          name="navigate-outline"
+                          size={14}
+                          color="#0B0F14"
+                        />
+
+                        <Text
+                          style={
+                            styles.trackBtnText
+                          }
+                        >
+                          Track Order
+                        </Text>
+                      </TouchableOpacity>
+
+                    )}
+
+                    {/* =================================================
+                        REVIEW
+                    ================================================= */}
+
+                    {isDelivered && (
+
+                      <TouchableOpacity
+                        style={
+                          styles.reviewBtn
+                        }
+                        onPress={() =>
+                          handleGiveReview(
+                            order
+                          )
+                        }
+                        activeOpacity={
+                          0.85
+                        }
+                      >
+                        <Ionicons
+                          name="star-outline"
+                          size={15}
+                          color="#0B0F14"
+                        />
+
+                        <Text
+                          style={
+                            styles.reviewBtnText
+                          }
+                        >
+                          Give Review
+                        </Text>
+                      </TouchableOpacity>
+
+                    )}
+
+                    {/* =================================================
+                        REORDER
+                    ================================================= */}
+
                     <TouchableOpacity
-                      style={styles.reviewBtn}
+                      style={
+                        styles.reorderBtn
+                      }
                       onPress={() =>
-                        handleGiveReview(
+                        handleReorder(
                           order
                         )
                       }
-                      activeOpacity={0.85}
+                      activeOpacity={
+                        0.85
+                      }
                     >
                       <Ionicons
-                        name="star-outline"
-                        size={15}
-                        color="#0B0F14"
+                        name="refresh-outline"
+                        size={14}
+                        color="#FFFFFF"
                       />
 
                       <Text
                         style={
-                          styles.reviewBtnText
+                          styles.reorderBtnText
                         }
                       >
-                        Give Review
+                        Reorder
                       </Text>
                     </TouchableOpacity>
-                  )}
 
-                  {/* =================================================
-                      REORDER BUTTON
-                  ================================================= */}
-
-                  <TouchableOpacity
-                    style={styles.reorderBtn}
-                    onPress={() =>
-                      handleReorder(order)
-                    }
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons
-                      name="refresh-outline"
-                      size={14}
-                      color="#FFFFFF"
-                    />
-
-                    <Text
-                      style={
-                        styles.reorderBtnText
-                      }
-                    >
-                      Reorder
-                    </Text>
-                  </TouchableOpacity>
-
-                </View>
-              );
-            })
+                  </View>
+                );
+              }
+            )
           )}
 
           <View
-            style={{ height: 25 }}
+            style={{
+              height: 25,
+            }}
           />
+
         </ScrollView>
 
         {/* =================================================
@@ -648,25 +886,37 @@ router.push({
         ================================================= */}
 
         <Modal
-          visible={showReorderPopup}
+          visible={
+            showReorderPopup
+          }
           transparent
           animationType="fade"
           statusBarTranslucent
           onRequestClose={() =>
-            setShowReorderPopup(false)
+            setShowReorderPopup(
+              false
+            )
           }
         >
+
           <View
-            style={styles.modalOverlay}
+            style={
+              styles.modalOverlay
+            }
           >
+
             <View
-              style={styles.reorderModal}
+              style={
+                styles.reorderModal
+              }
             >
 
               {/* SUCCESS ICON */}
 
               <View
-                style={styles.successCircle}
+                style={
+                  styles.successCircle
+                }
               >
                 <Ionicons
                   name="checkmark"
@@ -678,7 +928,9 @@ router.push({
               {/* TITLE */}
 
               <Text
-                style={styles.modalTitle}
+                style={
+                  styles.modalTitle
+                }
               >
                 Order Added!
               </Text>
@@ -686,16 +938,21 @@ router.push({
               {/* DESCRIPTION */}
 
               <Text
-                style={styles.modalSubtitle}
+                style={
+                  styles.modalSubtitle
+                }
               >
-                Your previous order has been
-                added to your cart successfully.
+                Your previous order has
+                been added to your cart
+                successfully.
               </Text>
 
               {/* CART BOX */}
 
               <View
-                style={styles.cartInfoBox}
+                style={
+                  styles.cartInfoBox
+                }
               >
                 <Ionicons
                   name="cart-outline"
@@ -704,7 +961,9 @@ router.push({
                 />
 
                 <Text
-                  style={styles.cartInfoText}
+                  style={
+                    styles.cartInfoText
+                  }
                 >
                   Redirecting to Cart...
                 </Text>
@@ -717,14 +976,18 @@ router.push({
                   marginTop: 18,
                 }}
               />
+
             </View>
+
           </View>
+
         </Modal>
 
       </View>
     </SafeAreaView>
   );
 }
+
 
 // =====================================================
 // STYLES
@@ -798,7 +1061,9 @@ const styles = StyleSheet.create({
     marginTop: 7,
   },
 
-
+  // ===================================================
+  // EMPTY
+  // ===================================================
 
   emptyState: {
     alignItems: "center",
@@ -850,7 +1115,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
 
-  
+  // ===================================================
+  // ORDER CARD
+  // ===================================================
 
   orderCard: {
     width: "96%",
@@ -861,6 +1128,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#E2E6EB",
+
     boxShadow:
       "0px 2px 4px rgba(0,0,0,0.04)",
   },
@@ -870,8 +1138,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     backgroundColor: "#FFFCF5",
   },
-
- 
 
   latestBadge: {
     position: "absolute",
@@ -893,7 +1159,9 @@ const styles = StyleSheet.create({
     fontSize: 8,
   },
 
-
+  // ===================================================
+  // ORDER HEADER
+  // ===================================================
 
   orderHeader: {
     flexDirection: "row",
@@ -917,8 +1185,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-
-
   statusBadge: {
     paddingHorizontal: 7,
     paddingVertical: 3,
@@ -934,6 +1200,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
+  // ===================================================
+  // DATE
+  // ===================================================
 
   dateRow: {
     flexDirection: "row",
@@ -947,7 +1216,9 @@ const styles = StyleSheet.create({
     color: "#64748B",
   },
 
-
+  // ===================================================
+  // ITEMS
+  // ===================================================
 
   itemsContainer: {
     marginTop: 1,
@@ -994,7 +1265,9 @@ const styles = StyleSheet.create({
     color: "#0B0F14",
   },
 
- 
+  // ===================================================
+  // DIVIDER
+  // ===================================================
 
   divider: {
     height: 1,
@@ -1002,6 +1275,9 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
 
+  // ===================================================
+  // TOTAL
+  // ===================================================
 
   totalRow: {
     flexDirection: "row",
@@ -1022,7 +1298,9 @@ const styles = StyleSheet.create({
     color: "#F5B82E",
   },
 
-
+  // ===================================================
+  // PAYMENT
+  // ===================================================
 
   footerRow: {
     flexDirection: "row",
@@ -1046,7 +1324,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  // ===================================================
+  // TRACK
+  // ===================================================
 
+  trackBtn: {
+    width: "100%",
+    height: 36,
+    backgroundColor: "#F5B82E",
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    marginBottom: 7,
+  },
+
+  trackBtnText: {
+    color: "#0B0F14",
+    fontWeight: "800",
+    fontSize: 10,
+  },
+
+  // ===================================================
+  // REVIEW
+  // ===================================================
 
   reviewBtn: {
     width: "100%",
@@ -1066,6 +1368,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
 
+  // ===================================================
+  // REORDER
+  // ===================================================
 
   reorderBtn: {
     width: "100%",
@@ -1084,7 +1389,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
 
-
+  // ===================================================
+  // MODAL
+  // ===================================================
 
   modalOverlay: {
     flex: 1,
@@ -1152,4 +1459,3 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-

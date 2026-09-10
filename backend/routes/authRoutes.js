@@ -1,15 +1,19 @@
-import express from "express";
-import jwt from "jsonwebtoken";
-
 import {
   loginUser,
   registerUser,
+
   forgotPassword,
+  verifyResetOTP,
   resetPassword,
+  changePassword,
 } from "../controllers/authController.js";
+
 
 import authMiddleware from "../middleware/authMiddleware.js";
 import User from "../models/User.js";
+import express from "express";
+
+
 
 const router = express.Router();
 
@@ -19,6 +23,7 @@ const router = express.Router();
 
 // REGISTER
 router.post("/register", registerUser);
+
 
 // LOGIN
 router.post("/login", loginUser);
@@ -31,8 +36,16 @@ router.post("/login", loginUser);
 // Forgot password
 router.post("/forgot-password", forgotPassword);
 
+router.post("/verify-reset-otp", verifyResetOTP);
+
 // Reset password
 router.post("/reset-password", resetPassword);
+
+router.post(
+  "/change-password",
+  authMiddleware,
+  changePassword
+);
 
 // =====================================================
 // PROTECTED ROUTES

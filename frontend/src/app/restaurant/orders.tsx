@@ -43,38 +43,73 @@ export default function ManageOrders() {
     fetchOrders();
   };
 
-  // --- UPDATE ORDER STATUS ---
-  const updateStatus = async (orderId: string, newStatus: string) => {
-    try {
-      await api.put(`/restaurant/orders/${orderId}/status`, {
+// --- UPDATE ORDER STATUS ---
+const updateStatus = async (
+  orderId: string,
+  newStatus: string
+) => {
+  try {
+    console.log("UPDATING ORDER:", orderId);
+    console.log("NEW STATUS:", newStatus);
+
+    const response = await api.put(
+      `/restaurant/orders/${orderId}/status`,
+      {
         status: newStatus,
-      });
-      fetchOrders(); // Refresh list instantly
-      Alert.alert("Updated", `Order status changed to "${newStatus}"`);
-    } catch (error) {
-      Alert.alert("Error", "Failed to update order status.");
-    }
-  };
+      }
+    );
+
+    console.log("UPDATE SUCCESS:", response.data);
+
+    await fetchOrders();
+
+    Alert.alert(
+      "Updated",
+      `Order status changed to "${newStatus}"`
+    );
+
+  } catch (error: any) {
+    console.error(
+      "UPDATE FAILED:",
+      error.response?.data || error
+    );
+
+    Alert.alert(
+      "Error",
+      error.response?.data?.error ||
+        "Failed to update order status."
+    );
+  }
+};
 
   // --- HELPER TO GET STATUS COLOR ---
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Pending":
-        return "#FF5252"; // Red
-      case "Accepted":
-        return "#F48E16"; // Orange
-      case "Preparing":
-        return "#FFA726"; // Light Orange
-      case "Out for Delivery":
-        return "#29B6F6"; // Blue
-      case "Delivered":
-        return "#4CAF50"; // Green
-      case "Cancelled":
-        return "#9E9E9E"; // Grey
-      default:
-        return "#6B7B8D";
-    }
-  };
+ const getStatusColor = (status: string) => {
+  switch (status) {
+    case "Pending":
+      return "#FF5252"; // Red
+
+    case "Accepted":
+      return "#F48E16"; // Orange
+
+    case "Preparing":
+      return "#FFA726"; // Light Orange
+
+    case "Accepted by Delivery":
+      return "#7E57C2"; // Purple
+
+    case "Out for Delivery":
+      return "#29B6F6"; // Blue
+
+    case "Delivered":
+      return "#4CAF50"; // Green
+
+    case "Cancelled":
+      return "#9E9E9E"; // Grey
+
+    default:
+      return "#6B7B8D";
+  }
+};
 
   // --- RENDER ORDER CARD ---
   const renderOrder = ({ item }: { item: any }) => {
@@ -156,28 +191,23 @@ export default function ManageOrders() {
           </TouchableOpacity>
         )}
 
-        {/* 3. PREPARING -> Out for Delivery */}
-        {isPreparing && (
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.deliveryBtn, { width: "100%" }]}
-            onPress={() => updateStatus(item._id, "Out for Delivery")}
-          >
-            <Ionicons name="bicycle" size={20} color="#FFF" />
-            <Text style={styles.actionBtnText}>Out for Delivery</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* 4. OUT FOR DELIVERY -> Delivered */}
-        {item.status === "Out for Delivery" && (
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.deliveredBtn, { width: "100%" }]}
-            onPress={() => updateStatus(item._id, "Delivered")}
-          >
-            <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
-            <Text style={styles.actionBtnText}>Mark as Delivered</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+{/* 3. DELIVERY PARTNER ACCEPTED -> FOOD HANDED OVER */}
+{item.status === "Accepted by Delivery" && item.deliveryPartnerId && (
+  <TouchableOpacity
+    style={[
+      styles.actionBtn,
+      styles.deliveryBtn,
+      { width: "100%" },
+    ]}
+    onPress={() => updateStatus(item._id, "Out for Delivery")}
+  >
+    <Ionicons name="hand-left" size={20} color="#FFF" />
+    <Text style={styles.actionBtnText}>
+      Food Handed Over
+    </Text>
+  </TouchableOpacity>
+)}
+ </View>
     );
   };
 
@@ -189,7 +219,7 @@ export default function ManageOrders() {
         {/* --- HEADER --- */}
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.back()}
+           onPress={() => router.replace("/restaurant/dashboard")}
             style={styles.backButton}
           >
             <Ionicons name="arrow-back" size={24} color="#0A1628" />

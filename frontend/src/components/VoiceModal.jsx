@@ -1,11 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import {
-  AudioModule,
-  RecordingPresets,
-  useAudioRecorder,
-} from "expo-audio";
-import * as Speech from "expo-speech";
-import { useState } from "react";
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from "expo-speech-recognition";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Modal,
@@ -20,24 +18,114 @@ export default function VoiceModal({
   onClose,
   onOrderFound,
 }) {
-  const recorder = useAudioRecorder(
-    RecordingPresets.HIGH_QUALITY
-  );
-
   const [isRecording, setIsRecording] = useState(false);
   const [transcribedText, setTranscribedText] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // =====================================================
-  // START RECORDING
+  // SPEECH RECOGNITION RESULT
+  // =====================================================
+
+ useSpeechRecognitionEvent("result", (event) => {
+  const transcript =
+    event.results?.[0]?.transcript || "";
+
+  console.log("🎤 Transcript:", transcript);
+  console.log("🎤 Is final:", event.isFinal);
+
+  if (event.isFinal && transcript.trim()) {
+  const query = transcript
+    .trim()
+    .replace(/[.,!?;:]+/g, "")
+    .trim();
+
+  console.log("🎤 FINAL VOICE SEARCH:", query);
+
+  setTranscribedText(query);
+  setIsRecording(false);
+  setIsProcessing(false);
+
+  if (onOrderFound) {
+    onOrderFound(query);
+  }
+}
+});
+
+  // =====================================================
+  // SPEECH RECOGNITION END
+  // =====================================================
+
+  useSpeechRecognitionEvent("end", () => {
+    console.log("🎤 Speech recognition ended");
+
+    setIsRecording(false);
+  });
+
+  // =====================================================
+  // SPEECH RECOGNITION ERROR
+  // =====================================================
+
+  useSpeechRecognitionEvent("error", (event) => {
+    console.error(
+      "Speech recognition error:",
+      event.error,
+      event.message
+    );useSpeechRecognitionEvent("error", (event) => {
+  if (event.error === "aborted") {
+    console.log("🎤 Speech recognition stopped.");
+    setIsRecording(false);
+    return;
+  }
+
+  console.error(
+    "Speech recognition error:",
+    event.error,
+    event.message
+  );
+
+  setIsRecording(false);
+
+  Alert.alert(
+    "Voice Recognition Error",
+    event.message ||
+      "Unable to recognize your voice."
+  );
+});
+
+    setIsRecording(false);
+
+    if (event.error !== "aborted") {
+      Alert.alert(
+        "Voice Recognition Error",
+        event.message ||
+          "Unable to recognize your voice."
+      );
+    }
+  });
+
+  // =====================================================
+  // CLEANUP
+  // =====================================================
+
+  useEffect(() => {
+    return () => {
+      ExpoSpeechRecognitionModule.abort();
+    };
+  }, []);
+
+  // =====================================================
+  // START LISTENING
   // =====================================================
 
   const startRecording = async () => {
     try {
-      // Request microphone permission
-      const { granted } =
-        await AudioModule.requestRecordingPermissionsAsync();
+      setTranscribedText("");
 
-      if (!granted) {
+      // Request microphone permission
+      const microphonePermission =
+        await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+
+      if (!microphonePermission.granted) {
         Alert.alert(
           "Microphone Permission",
           "Please allow microphone access to use voice ordering."
@@ -45,111 +133,68 @@ export default function VoiceModal({
         return;
       }
 
-      // Configure audio
-      await AudioModule.setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
-
-      // Prepare recorder
-      await recorder.prepareToRecordAsync();
-
-      // Start recording
-      recorder.record();
+      // Start speech recognition
+      ExpoSpeechRecognitionModule.start({
+  lang: "en-IN",
+  interimResults: true,
+  continuous: false,
+  maxAlternatives: 1,
+});
 
       setIsRecording(true);
-      setTranscribedText("");
 
-      Speech.speak(
-        "Listening for your order. Please speak now."
-      );
+      // Speech.speak(
+      //   "Listening. Please tell me what you would like to order."
+      // );
     } catch (error) {
       console.error(
-        "Failed to start recording:",
-        error
-      );
-
-      Alert.alert(
-        "Recording Error",
-        "Unable to start voice recording."
-      );
-    }
-  };
-
-  // =====================================================
-  // STOP RECORDING
-  // =====================================================
-
-  const stopRecording = async () => {
-    try {
-      setIsRecording(false);
-
-      // Stop recording
-      await recorder.stop();
-
-      const uri = recorder.uri;
-
-      console.log(
-        "Recording stopped. URI:",
-        uri
-      );
-
-      // =================================================
-      // TEMPORARY VOICE RECOGNITION
-      // =================================================
-      //
-      // expo-audio records the audio but does NOT
-      // automatically convert speech into text.
-      //
-      // For now we simulate the recognized order.
-      //
-
-      const mockOrder =
-        "I want to order a pizza";
-
-      setTranscribedText(mockOrder);
-
-      // Send result to parent
-      if (onOrderFound) {
-        onOrderFound(mockOrder);
-      }
-
-      Speech.speak(
-        "Your voice order has been received."
-      );
-
-      Alert.alert(
-        "Voice Order Received",
-        `We heard: "${mockOrder}"`
-      );
-
-      // Close after 1.5 seconds
-      setTimeout(() => {
-        onClose();
-      }, 1500);
-    } catch (error) {
-      console.error(
-        "Failed to stop recording:",
+        "Failed to start voice recognition:",
         error
       );
 
       setIsRecording(false);
 
       Alert.alert(
-        "Recording Error",
-        "Unable to stop the recording."
+        "Voice Recognition Error",
+        "Unable to start voice recognition."
       );
     }
   };
 
+  // =====================================================
+  // STOP LISTENING
+  // =====================================================
+
+  const stopRecording = () => {
+  try {
+    setIsRecording(false);
+
+    ExpoSpeechRecognitionModule.stop();
+
+    console.log("🛑 Stopping speech recognition...");
+  } catch (error) {
+    console.error(
+      "Failed to stop voice recognition:",
+      error
+    );
+
+    setIsRecording(false);
+    setIsProcessing(false);
+
+    Alert.alert(
+      "Voice Recognition Error",
+      "Unable to stop voice recognition."
+    );
+  }
+};
   // =====================================================
   // CLOSE MODAL
   // =====================================================
 
   const handleClose = () => {
     if (isRecording) {
-      stopRecording();
-      return;
+      ExpoSpeechRecognitionModule.abort();
+      setIsRecording(false);
     }
 
     setTranscribedText("");
@@ -170,8 +215,6 @@ export default function VoiceModal({
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
 
-          {/* TITLE */}
-
           <View style={styles.titleIcon}>
             <Ionicons
               name="mic"
@@ -188,7 +231,7 @@ export default function VoiceModal({
             Tap the mic and speak your order naturally.
           </Text>
 
-          {/* MICROPHONE BUTTON */}
+          {/* MICROPHONE */}
 
           <View style={styles.micContainer}>
 
@@ -226,15 +269,19 @@ export default function VoiceModal({
 
           </View>
 
-          {/* RECORDING STATUS */}
+          {/* STATUS */}
 
-          <Text style={styles.statusText}>
-            {isRecording
-              ? "Listening..."
-              : "Tap to speak"}
-          </Text>
+         <Text style={styles.statusText}>
+  {isRecording
+    ? "Listening..."
+    : isProcessing
+    ? "Processing your order..."
+    : transcribedText
+    ? "Order captured"
+    : "Tap to speak"}
+</Text>
 
-          {/* TRANSCRIBED TEXT */}
+          {/* TRANSCRIPTION */}
 
           {transcribedText ? (
             <View style={styles.transcriptionBox}>
@@ -244,15 +291,13 @@ export default function VoiceModal({
                 color="#F5B82E"
               />
 
-              <Text
-                style={styles.transcribedText}
-              >
+              <Text style={styles.transcribedText}>
                 "{transcribedText}"
               </Text>
             </View>
           ) : null}
 
-          {/* CLOSE BUTTON */}
+          {/* CLOSE */}
 
           <TouchableOpacity
             style={styles.closeButton}
@@ -292,10 +337,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  // ===================================================
-  // TITLE
-  // ===================================================
-
   titleIcon: {
     width: 48,
     height: 48,
@@ -318,123 +359,90 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 6,
     marginBottom: 30,
-    lineHeight: 19,
   },
-
-  // ===================================================
-  // MICROPHONE
-  // ===================================================
 
   micContainer: {
-    width: 140,
-    height: 140,
+    width: 160,
+    height: 160,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 20,
   },
-
-  micButton: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    backgroundColor: "#F5B82E",
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 8,
-  },
-
-  micButtonRecording: {
-    backgroundColor: "#FF5252",
-  },
-
-  // ===================================================
-  // PULSE
-  // ===================================================
 
   pulseRingOuter: {
     position: "absolute",
-    width: 132,
-    height: 132,
-    borderRadius: 66,
-    borderWidth: 2,
-    borderColor: "#FF5252",
-    opacity: 0.25,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: "rgba(245,184,46,0.15)",
     alignItems: "center",
     justifyContent: "center",
   },
 
   pulseRingMiddle: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    borderWidth: 2,
-    borderColor: "#FF5252",
-    opacity: 0.45,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(245,184,46,0.25)",
     alignItems: "center",
     justifyContent: "center",
   },
 
   pulseRingInner: {
-    width: 94,
-    height: 94,
-    borderRadius: 47,
-    borderWidth: 2,
-    borderColor: "#FF5252",
-    opacity: 0.7,
+    width: 95,
+    height: 95,
+    borderRadius: 48,
+    backgroundColor: "rgba(245,184,46,0.35)",
   },
 
-  // ===================================================
-  // STATUS
-  // ===================================================
+  micButton: {
+    width: 85,
+    height: 85,
+    borderRadius: 43,
+    backgroundColor: "#F5B82E",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 5,
+  },
+
+  micButtonRecording: {
+    backgroundColor: "#E53935",
+  },
 
   statusText: {
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "600",
     color: "#64748B",
-    marginTop: 4,
-    marginBottom: 15,
+    marginBottom: 16,
   },
-
-  // ===================================================
-  // TRANSCRIPTION
-  // ===================================================
 
   transcriptionBox: {
     width: "100%",
-    backgroundColor: "#FFFCF5",
-    borderWidth: 1,
-    borderColor: "#F5B82E",
-    borderRadius: 12,
-    padding: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 15,
+    backgroundColor: "#FFF8E1",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 18,
   },
 
   transcribedText: {
     flex: 1,
     fontSize: 14,
-    fontWeight: "600",
-    color: "#0B0F14",
-    fontStyle: "italic",
+    color: "#374151",
+    fontWeight: "500",
   },
 
-  // ===================================================
-  // CLOSE
-  // ===================================================
-
   closeButton: {
-    width: "100%",
-    height: 44,
-    backgroundColor: "#F5F7FA",
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    backgroundColor: "#081A33",
   },
 
   closeButtonText: {
-    color: "#64748B",
+    color: "#FFFFFF",
     fontWeight: "700",
     fontSize: 14,
   },

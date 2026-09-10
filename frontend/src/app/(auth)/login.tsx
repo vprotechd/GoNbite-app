@@ -174,6 +174,7 @@ export default function LoginScreen() {
                     autoCorrect={false}
                     editable={!loading}
                     returnKeyType="next"
+                     showSoftInputOnFocus={true}
                   />
                 </View>
               </View>
@@ -328,6 +329,64 @@ export default function LoginScreen() {
               </View>
             </View>
           </View>
+
+
+          {/* PARTNER LOGIN */}
+<View style={styles.partnerSection}>
+  <View style={styles.partnerDivider}>
+    <View style={styles.dividerLine} />
+    <Text style={styles.partnerDividerText}>ARE YOU A PARTNER?</Text>
+    <View style={styles.dividerLine} />
+  </View>
+
+  {/* RESTAURANT LOGIN */}
+  <TouchableOpacity
+    style={styles.partnerButton}
+    activeOpacity={0.8}
+    onPress={() => router.push("/restaurant/login")}
+  >
+    <View style={styles.partnerIconContainer}>
+      <Ionicons name="restaurant-outline" size={22} color="#F5B82E" />
+    </View>
+
+    <View style={styles.partnerTextContainer}>
+      <Text style={styles.partnerTitle}>Restaurant Partner</Text>
+      <Text style={styles.partnerSubtitle}>
+        Manage your restaurant and orders
+      </Text>
+    </View>
+
+    <Ionicons
+      name="chevron-forward"
+      size={20}
+      color="#64748B"
+    />
+  </TouchableOpacity>
+
+  {/* DELIVERY LOGIN */}
+  <TouchableOpacity
+    style={styles.partnerButton}
+    activeOpacity={0.8}
+    onPress={() => router.push("/delivery/login")}
+  >
+    <View style={styles.partnerIconContainer}>
+      <Ionicons name="bicycle-outline" size={22} color="#F5B82E" />
+    </View>
+
+    <View style={styles.partnerTextContainer}>
+      <Text style={styles.partnerTitle}>Delivery Partner</Text>
+      <Text style={styles.partnerSubtitle}>
+        Sign in and start delivering orders
+      </Text>
+    </View>
+
+    <Ionicons
+      name="chevron-forward"
+      size={20}
+      color="#64748B"
+    />
+  </TouchableOpacity>
+</View>
 
           {/* FOOTER */}
           <View style={styles.footer}>
@@ -600,6 +659,67 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
   },
+
+
+
+  // ==========================================
+// PARTNER LOGIN
+// ==========================================
+
+partnerSection: {
+  marginTop: 24,
+},
+
+partnerDivider: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 14,
+},
+
+partnerDividerText: {
+  paddingHorizontal: 10,
+  fontSize: 10,
+  fontWeight: "800",
+  color: "#94A3B8",
+  letterSpacing: 0.8,
+},
+
+partnerButton: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#F8FAFC",
+  borderWidth: 1,
+  borderColor: "#E2E6EB",
+  borderRadius: 14,
+  padding: 12,
+  marginBottom: 10,
+},
+
+partnerIconContainer: {
+  width: 42,
+  height: 42,
+  borderRadius: 12,
+  backgroundColor: "#081A33",
+  justifyContent: "center",
+  alignItems: "center",
+  marginRight: 12,
+},
+
+partnerTextContainer: {
+  flex: 1,
+},
+
+partnerTitle: {
+  fontSize: 14,
+  fontWeight: "800",
+  color: "#0B0F14",
+},
+
+partnerSubtitle: {
+  fontSize: 11,
+  color: "#64748B",
+  marginTop: 3,
+},
 
   // ==========================================
   // FOOTER

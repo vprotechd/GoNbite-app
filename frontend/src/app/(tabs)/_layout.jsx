@@ -103,9 +103,28 @@ export default function TabsLayout() {
             ),
           }}
         />
+
+        <Tabs.Screen
+  name="notifications"
+  options={{
+    title: "Alerts",
+    tabBarIcon: ({ color, size, focused }) => (
+      <Ionicons
+        name={
+          focused
+            ? "notifications"
+            : "notifications-outline"
+        }
+        size={size}
+        color={color}
+      />
+    ),
+  }}
+/>
         
         {/* Hides the admin-dashboard tab for customers */}
-        <Tabs.Screen name="admin-dashboard" options={{ href: null }} />
+        {/* <Tabs.Screen name="admin-dashboard" options={{ href: null }} /> */}
+        <Tabs.Screen name="active-order" options={{ href: null }} />
          <Tabs.Screen name="review-order" options={{ href: null }} />
         <Tabs.Screen name="checkout" options={{ href: null }} />
         <Tabs.Screen name="payment" options={{ href: null }} />
@@ -125,7 +144,7 @@ export default function TabsLayout() {
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: "#F5B82E", // Golden Yellow
-          tabBarInactiveTintColor: "#64748B", // Muted Text
+          tabBarInactiveTintColor: "#FFF9F5", // Muted Text
           tabBarStyle: {
             backgroundColor: "#081A33", // Midnight Navy
             borderTopWidth: 1,

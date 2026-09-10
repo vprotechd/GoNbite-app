@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -19,6 +21,27 @@ import api from "../../services/api";
 export default function AdminRestaurants() {
   const [restaurants, setRestaurants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // =========================================================
+  // GET ADMIN TOKEN
+  // =========================================================
+
+  const getAdminToken = async () => {
+    const token =
+      await AsyncStorage.getItem("adminToken");
+
+    if (!token) {
+      router.replace("/admin/login");
+      return null;
+    }
+
+    return token;
+  };
+
+  // =========================================================
+  // FETCH ALL RESTAURANTS
+  // =========================================================
 
   useEffect(() => {
     fetchAllRestaurants();
@@ -28,83 +51,408 @@ export default function AdminRestaurants() {
     try {
       setIsLoading(true);
 
-      const res = await api.get("/admin/all-restaurants");
+      const token = await getAdminToken();
 
-      setRestaurants(res.data);
-    } catch (error) {
-      console.error(
-        "Fetch restaurants error:",
-        error?.response?.data || error?.message,
+      if (!token) {
+        return;
+      }
+
+      console.log(
+        "📡 Fetching all restaurants..."
       );
 
-      Alert.alert("Error", "Failed to load restaurants.");
+      const res = await api.get(
+        "/admin/all-restaurants",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      console.log(
+        "✅ Restaurants received:",
+        res.data?.length
+      );
+
+      setRestaurants(
+        Array.isArray(res.data)
+          ? res.data
+          : []
+      );
+
+    } catch (error) {
+      console.error(
+        "❌ Fetch restaurants error:",
+        error?.response?.data ||
+        error?.message
+      );
+
+      if (
+        error?.response?.status === 401 ||
+        error?.response?.status === 403
+      ) {
+        await AsyncStorage.removeItem(
+          "adminToken"
+        );
+
+        router.replace("/admin/login");
+
+        return;
+      }
+
+      Alert.alert(
+        "Error",
+        "Failed to load restaurants."
+      );
+
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   };
 
-  // -----------------------------------------
+  // =========================================================
+  // REFRESH
+  // =========================================================
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+
+    await fetchAllRestaurants();
+  };
+
+  // =========================================================
   // APPROVE RESTAURANT
-  // -----------------------------------------
+  // =========================================================
+
   const approveRestaurant = async (id) => {
     try {
-      await api.put(`/admin/approve-restaurant/${id}`);
+      const token = await getAdminToken();
 
-      Alert.alert("Success", "Restaurant approved successfully.");
+      if (!token) {
+        return;
+      }
 
-      fetchAllRestaurants();
+      console.log(
+        "✅ Approving restaurant:",
+        id
+      );
+
+      await api.put(
+        `/admin/approve-restaurant/${id}`,
+        {},
+        {
+          headers: {
+            Authorization:
+              `Bearer ${token}`,
+          },
+        }
+      );
+
+      Alert.alert(
+        "Success",
+        "Restaurant approved successfully."
+      );
+
+      await fetchAllRestaurants();
+
     } catch (error) {
-      console.error("Approve error:", error);
+      console.error(
+        "❌ Approve restaurant error:",
+        error?.response?.data ||
+        error?.message
+      );
 
-      Alert.alert("Error", "Failed to approve restaurant.");
+      if (
+        error?.response?.status === 401 ||
+        error?.response?.status === 403
+      ) {
+        await AsyncStorage.removeItem(
+          "adminToken"
+        );
+
+        router.replace("/admin/login");
+
+        return;
+      }
+
+      Alert.alert(
+        "Error",
+        error?.response?.data?.error ||
+          "Failed to approve restaurant."
+      );
     }
   };
 
-  // -----------------------------------------
-  // REJECT / REMOVE RESTAURANT
-  // -----------------------------------------
+  // =========================================================
+  // REJECT RESTAURANT
+  //
+  // IMPORTANT:
+  // Backend route is PUT, NOT DELETE.
+  // =========================================================
+
   const rejectRestaurant = async (id) => {
     Alert.alert(
-      "Remove Restaurant",
-      "Are you sure you want to remove this restaurant?",
+      "Reject Restaurant",
+      "Are you sure you want to reject this restaurant?",
       [
         {
           text: "Cancel",
           style: "cancel",
         },
+
         {
-          text: "Remove",
+          text: "Reject",
           style: "destructive",
+
           onPress: async () => {
             try {
-              await api.delete(`/admin/reject-restaurant/${id}`);
+              const token =
+                await getAdminToken();
 
-              Alert.alert(
-                "Removed",
-                "Restaurant removed from the system.",
+              if (!token) {
+                return;
+              }
+
+              console.log(
+                "❌ Rejecting restaurant:",
+                id
               );
 
-              fetchAllRestaurants();
-            } catch (error) {
-              console.error("Remove error:", error);
+              await api.put(
+                `/admin/reject-restaurant/${id}`,
+                {},
+                {
+                  headers: {
+                    Authorization:
+                      `Bearer ${token}`,
+                  },
+                }
+              );
 
-              Alert.alert("Error", "Failed to remove restaurant.");
+              Alert.alert(
+                "Rejected",
+                "Restaurant has been rejected."
+              );
+
+              await fetchAllRestaurants();
+
+            } catch (error) {
+              console.error(
+                "❌ Reject restaurant error:",
+                error?.response?.data ||
+                error?.message
+              );
+
+              if (
+                error?.response?.status ===
+                  401 ||
+                error?.response?.status ===
+                  403
+              ) {
+                await AsyncStorage.removeItem(
+                  "adminToken"
+                );
+
+                router.replace(
+                  "/admin/login"
+                );
+
+                return;
+              }
+
+              Alert.alert(
+                "Error",
+                error?.response?.data?.error ||
+                  "Failed to reject restaurant."
+              );
             }
           },
         },
-      ],
+      ]
     );
   };
 
-  // -----------------------------------------
-  // STATUS
-  // -----------------------------------------
-  const getStatusColor = (isVerified) => {
-    return isVerified ? "#10B981" : "#F59E0B";
+  // =========================================================
+  // TOGGLE RESTAURANT ACTIVE / INACTIVE
+  // =========================================================
+
+  const toggleRestaurant = async (
+    restaurant
+  ) => {
+    try {
+      const token =
+        await getAdminToken();
+
+      if (!token) {
+        return;
+      }
+
+      console.log(
+        "🔄 Toggling restaurant:",
+        restaurant._id
+      );
+
+      await api.put(
+        `/admin/toggle-restaurant/${restaurant._id}`,
+        {},
+        {
+          headers: {
+            Authorization:
+              `Bearer ${token}`,
+          },
+        }
+      );
+
+      Alert.alert(
+        "Updated",
+        `Restaurant ${
+          restaurant.isAvailable
+            ? "deactivated"
+            : "activated"
+        } successfully.`
+      );
+
+      await fetchAllRestaurants();
+
+    } catch (error) {
+      console.error(
+        "❌ Toggle restaurant error:",
+        error?.response?.data ||
+        error?.message
+      );
+
+      if (
+        error?.response?.status === 401 ||
+        error?.response?.status === 403
+      ) {
+        await AsyncStorage.removeItem(
+          "adminToken"
+        );
+
+        router.replace("/admin/login");
+
+        return;
+      }
+
+      Alert.alert(
+        "Error",
+        error?.response?.data?.error ||
+          "Failed to update restaurant status."
+      );
+    }
   };
 
+  // =========================================================
+  // RESTAURANT STATUS
+  // =========================================================
+
+  const getStatusInfo = (
+    restaurant
+  ) => {
+    if (!restaurant.isVerified) {
+      return {
+        text: "Pending",
+        color: "#F59E0B",
+      };
+    }
+
+    if (
+      restaurant.isVerified &&
+      restaurant.isAvailable
+    ) {
+      return {
+        text: "Active",
+        color: "#10B981",
+      };
+    }
+
+    return {
+      text: "Inactive",
+      color: "#EF4444",
+    };
+  };
+
+  // =========================================================
+  // IMAGE URL
+  // =========================================================
+
+  const getImageUrl = (
+    imageUrl
+  ) => {
+    if (!imageUrl) {
+      return null;
+    }
+
+    if (
+      imageUrl.startsWith("http://") ||
+      imageUrl.startsWith("https://")
+    ) {
+      return `${imageUrl}?t=${Date.now()}`;
+    }
+
+    /*
+      IMPORTANT:
+      Your api.js has the backend base URL.
+      If imageUrl is relative, use the same backend
+      host instead of hardcoding localhost.
+    */
+
+    const apiBaseUrl =
+      api.defaults?.baseURL || "";
+
+    const backendUrl =
+      apiBaseUrl.replace(
+        /\/api\/?$/,
+        ""
+      );
+
+    return `${backendUrl}${imageUrl}?t=${Date.now()}`;
+  };
+
+  // =========================================================
+  // LOADING SCREEN
+  // =========================================================
+
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={styles.safeArea}
+      >
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="#081A33"
+        />
+
+        <View
+          style={
+            styles.loadingContainer
+          }
+        >
+          <ActivityIndicator
+            size="large"
+            color="#F5B82E"
+          />
+
+          <Text
+            style={styles.loadingText}
+          >
+            Loading restaurants...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // =========================================================
+  // MAIN
+  // =========================================================
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView
+      style={styles.safeArea}
+    >
       <StatusBar
         barStyle="light-content"
         backgroundColor="#081A33"
@@ -112,14 +460,17 @@ export default function AdminRestaurants() {
 
       <View style={styles.container}>
 
-        {/* =====================================
+        {/* =================================================
             HEADER
-        ====================================== */}
+        ================================================= */}
+
         <View style={styles.header}>
 
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.replace("/admin")}
+            onPress={() =>
+              router.replace("/admin")
+            }
             activeOpacity={0.7}
           >
             <Ionicons
@@ -129,12 +480,18 @@ export default function AdminRestaurants() {
             />
           </TouchableOpacity>
 
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>
+          <View
+            style={styles.headerCenter}
+          >
+            <Text
+              style={styles.headerTitle}
+            >
               Restaurants
             </Text>
 
-            <Text style={styles.headerSubtitle}>
+            <Text
+              style={styles.headerSubtitle}
+            >
               Manage restaurant registrations
             </Text>
           </View>
@@ -153,25 +510,18 @@ export default function AdminRestaurants() {
 
         </View>
 
-        {/* =====================================
-            CONTENT
-        ====================================== */}
 
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator
-              size="large"
-              color="#F5B82E"
-            />
+        {/* =================================================
+            EMPTY STATE
+        ================================================= */}
 
-            <Text style={styles.loadingText}>
-              Loading restaurants...
-            </Text>
-          </View>
-        ) : restaurants.length === 0 ? (
+        {restaurants.length === 0 ? (
+
           <View style={styles.emptyState}>
 
-            <View style={styles.emptyIcon}>
+            <View
+              style={styles.emptyIcon}
+            >
               <Ionicons
                 name="storefront-outline"
                 size={55}
@@ -179,292 +529,554 @@ export default function AdminRestaurants() {
               />
             </View>
 
-            <Text style={styles.emptyTitle}>
+            <Text
+              style={styles.emptyTitle}
+            >
               No Restaurants Found
             </Text>
 
-            <Text style={styles.emptySubtitle}>
+            <Text
+              style={styles.emptySubtitle}
+            >
               No restaurants have registered yet.
             </Text>
 
+            <TouchableOpacity
+              style={styles.emptyRefreshButton}
+              onPress={fetchAllRestaurants}
+            >
+              <Ionicons
+                name="refresh"
+                size={18}
+                color="#0B0F14"
+              />
+
+              <Text
+                style={
+                  styles.emptyRefreshText
+                }
+              >
+                Refresh
+              </Text>
+            </TouchableOpacity>
+
           </View>
+
         ) : (
+
           <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={
+              false
+            }
+            contentContainerStyle={
+              styles.listContent
+            }
+
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+              />
+            }
           >
 
-            {/* RESTAURANT COUNT */}
+            {/* =================================================
+                RESTAURANT COUNT
+            ================================================= */}
 
-            <View style={styles.countRow}>
-              <Text style={styles.countTitle}>
+            <View
+              style={styles.countRow}
+            >
+              <Text
+                style={styles.countTitle}
+              >
                 All Restaurants
               </Text>
 
-              <View style={styles.countBadge}>
-                <Text style={styles.countText}>
+              <View
+                style={styles.countBadge}
+              >
+                <Text
+                  style={styles.countText}
+                >
                   {restaurants.length}
                 </Text>
               </View>
             </View>
 
-            {restaurants.map((restaurant) => (
 
-              <View
-                key={restaurant._id}
-                style={styles.card}
-              >
+            {/* =================================================
+                RESTAURANTS
+            ================================================= */}
 
-                {/* =================================
-                    FULL RESTAURANT IMAGE
-                ================================== */}
+            {restaurants.map(
+              (restaurant) => {
 
-                <View style={styles.imageContainer}>
+                const status =
+                  getStatusInfo(
+                    restaurant
+                  );
 
-                  {restaurant.imageUrl ? (
-                    <Image
-                      source={{
-                        uri: restaurant.imageUrl.startsWith("http")
-                          ? `${restaurant.imageUrl}?t=${Date.now()}`
-                          : `http://localhost:5000${restaurant.imageUrl}?t=${Date.now()}`,
-                      }}
-                      style={styles.restaurantImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.noImage}>
+                const imageUrl =
+                  getImageUrl(
+                    restaurant.imageUrl
+                  );
 
-                      <Ionicons
-                        name="image-outline"
-                        size={55}
-                        color="#CBD5E1"
-                      />
-
-                      <Text style={styles.noImageText}>
-                        No restaurant image
-                      </Text>
-
-                    </View>
-                  )}
-
-                  {/* STATUS ON IMAGE */}
+                return (
 
                   <View
-                    style={[
-                      styles.statusBadge,
-                      {
-                        backgroundColor: getStatusColor(
-                          restaurant.isVerified,
-                        ),
-                      },
-                    ]}
+                    key={restaurant._id}
+                    style={styles.card}
                   >
-                    <View style={styles.statusDot} />
 
-                    <Text style={styles.statusText}>
-                      {restaurant.isVerified
-                        ? "Approved"
-                        : "Pending"}
-                    </Text>
-                  </View>
+                    {/* =========================================
+                        RESTAURANT IMAGE
+                    ========================================= */}
 
-                </View>
-
-                {/* =================================
-                    RESTAURANT DETAILS
-                ================================== */}
-
-                <View style={styles.detailsContainer}>
-
-                  <View style={styles.titleRow}>
-
-                    <Text
-                      style={styles.restaurantName}
-                      numberOfLines={2}
-                    >
-                      {restaurant.restaurantName ||
-                        "Unnamed Restaurant"}
-                    </Text>
-
-                  </View>
-
-                  {/* OWNER */}
-
-                  <View style={styles.infoRow}>
-
-                    <Ionicons
-                      name="person-outline"
-                      size={17}
-                      color="#64748B"
-                    />
-
-                    <View style={styles.infoContent}>
-                      <Text style={styles.infoLabel}>
-                        Owner
-                      </Text>
-
-                      <Text
-                        style={styles.infoText}
-                        numberOfLines={1}
-                      >
-                        {restaurant.ownerName || "Not provided"}
-                      </Text>
-                    </View>
-
-                  </View>
-
-                  {/* EMAIL */}
-
-                  <View style={styles.infoRow}>
-
-                    <Ionicons
-                      name="mail-outline"
-                      size={17}
-                      color="#64748B"
-                    />
-
-                    <View style={styles.infoContent}>
-                      <Text style={styles.infoLabel}>
-                        Email
-                      </Text>
-
-                      <Text
-                        style={styles.infoText}
-                        numberOfLines={1}
-                      >
-                        {restaurant.email || "Not provided"}
-                      </Text>
-                    </View>
-
-                  </View>
-
-                  {/* PHONE */}
-
-                  <View style={styles.infoRow}>
-
-                    <Ionicons
-                      name="call-outline"
-                      size={17}
-                      color="#64748B"
-                    />
-
-                    <View style={styles.infoContent}>
-                      <Text style={styles.infoLabel}>
-                        Phone
-                      </Text>
-
-                      <Text
-                        style={styles.infoText}
-                        numberOfLines={1}
-                      >
-                        {restaurant.phone || "Not provided"}
-                      </Text>
-                    </View>
-
-                  </View>
-
-                  {/* ADDRESS */}
-
-                  <View style={styles.infoRow}>
-
-                    <Ionicons
-                      name="location-outline"
-                      size={17}
-                      color="#64748B"
-                    />
-
-                    <View style={styles.infoContent}>
-                      <Text style={styles.infoLabel}>
-                        Address
-                      </Text>
-
-                      <Text
-                        style={styles.infoText}
-                        numberOfLines={2}
-                      >
-                        {restaurant.address || "Not provided"}
-                      </Text>
-                    </View>
-
-                  </View>
-
-                </View>
-
-                {/* =================================
-                    SMALL ACTION BUTTONS
-                ================================== */}
-
-                <View style={styles.actionContainer}>
-
-                  {!restaurant.isVerified ? (
-                    <>
-                      {/* APPROVE */}
-
-                      <TouchableOpacity
-                        style={styles.smallApproveButton}
-                        onPress={() =>
-                          approveRestaurant(restaurant._id)
-                        }
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons
-                          name="checkmark"
-                          size={16}
-                          color="#FFFFFF"
-                        />
-
-                        <Text style={styles.smallButtonText}>
-                          Approve
-                        </Text>
-                      </TouchableOpacity>
-
-                      {/* REJECT */}
-
-                      <TouchableOpacity
-                        style={styles.smallRejectButton}
-                        onPress={() =>
-                          rejectRestaurant(restaurant._id)
-                        }
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons
-                          name="close"
-                          size={16}
-                          color="#FFFFFF"
-                        />
-
-                        <Text style={styles.smallButtonText}>
-                          Reject
-                        </Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : (
-                    /* REMOVE */
-
-                    <TouchableOpacity
-                      style={styles.smallRemoveButton}
-                      onPress={() =>
-                        rejectRestaurant(restaurant._id)
+                    <View
+                      style={
+                        styles.imageContainer
                       }
-                      activeOpacity={0.8}
                     >
-                      <Ionicons
-                        name="trash-outline"
-                        size={16}
-                        color="#FFFFFF"
-                      />
 
-                      <Text style={styles.smallButtonText}>
-                        Remove
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                      {imageUrl ? (
 
-                </View>
+                        <Image
+                          source={{
+                            uri: imageUrl,
+                          }}
+                          style={
+                            styles.restaurantImage
+                          }
+                          resizeMode="cover"
+                        />
 
-              </View>
+                      ) : (
 
-            ))}
+                        <View
+                          style={
+                            styles.noImage
+                          }
+                        >
+
+                          <Ionicons
+                            name="image-outline"
+                            size={55}
+                            color="#CBD5E1"
+                          />
+
+                          <Text
+                            style={
+                              styles.noImageText
+                            }
+                          >
+                            No restaurant image
+                          </Text>
+
+                        </View>
+                      )}
+
+
+                      {/* =======================================
+                          STATUS
+                      ======================================= */}
+
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          {
+                            backgroundColor:
+                              status.color,
+                          },
+                        ]}
+                      >
+
+                        <View
+                          style={
+                            styles.statusDot
+                          }
+                        />
+
+                        <Text
+                          style={
+                            styles.statusText
+                          }
+                        >
+                          {status.text}
+                        </Text>
+
+                      </View>
+
+                    </View>
+
+
+                    {/* =========================================
+                        DETAILS
+                    ========================================= */}
+
+                    <View
+                      style={
+                        styles.detailsContainer
+                      }
+                    >
+
+                      <View
+                        style={styles.titleRow}
+                      >
+
+                        <Text
+                          style={
+                            styles.restaurantName
+                          }
+                          numberOfLines={2}
+                        >
+                          {restaurant.restaurantName ||
+                            "Unnamed Restaurant"}
+                        </Text>
+
+                      </View>
+
+
+                      {/* OWNER */}
+
+                      <View
+                        style={styles.infoRow}
+                      >
+
+                        <Ionicons
+                          name="person-outline"
+                          size={17}
+                          color="#64748B"
+                        />
+
+                        <View
+                          style={
+                            styles.infoContent
+                          }
+                        >
+
+                          <Text
+                            style={
+                              styles.infoLabel
+                            }
+                          >
+                            Owner
+                          </Text>
+
+                          <Text
+                            style={
+                              styles.infoText
+                            }
+                            numberOfLines={1}
+                          >
+                            {restaurant.ownerName ||
+                              "Not provided"}
+                          </Text>
+
+                        </View>
+
+                      </View>
+
+
+                      {/* EMAIL */}
+
+                      <View
+                        style={styles.infoRow}
+                      >
+
+                        <Ionicons
+                          name="mail-outline"
+                          size={17}
+                          color="#64748B"
+                        />
+
+                        <View
+                          style={
+                            styles.infoContent
+                          }
+                        >
+
+                          <Text
+                            style={
+                              styles.infoLabel
+                            }
+                          >
+                            Email
+                          </Text>
+
+                          <Text
+                            style={
+                              styles.infoText
+                            }
+                            numberOfLines={1}
+                          >
+                            {restaurant.email ||
+                              "Not provided"}
+                          </Text>
+
+                        </View>
+
+                      </View>
+
+
+                      {/* PHONE */}
+
+                      <View
+                        style={styles.infoRow}
+                      >
+
+                        <Ionicons
+                          name="call-outline"
+                          size={17}
+                          color="#64748B"
+                        />
+
+                        <View
+                          style={
+                            styles.infoContent
+                          }
+                        >
+
+                          <Text
+                            style={
+                              styles.infoLabel
+                            }
+                          >
+                            Phone
+                          </Text>
+
+                          <Text
+                            style={
+                              styles.infoText
+                            }
+                            numberOfLines={1}
+                          >
+                            {restaurant.phone ||
+                              "Not provided"}
+                          </Text>
+
+                        </View>
+
+                      </View>
+
+
+                      {/* ADDRESS */}
+
+                      <View
+                        style={styles.infoRow}
+                      >
+
+                        <Ionicons
+                          name="location-outline"
+                          size={17}
+                          color="#64748B"
+                        />
+
+                        <View
+                          style={
+                            styles.infoContent
+                          }
+                        >
+
+                          <Text
+                            style={
+                              styles.infoLabel
+                            }
+                          >
+                            Address
+                          </Text>
+
+                          <Text
+                            style={
+                              styles.infoText
+                            }
+                            numberOfLines={2}
+                          >
+                            {restaurant.address ||
+                              "Not provided"}
+                          </Text>
+
+                        </View>
+
+                      </View>
+
+
+                      {/* =======================================
+                          VERIFICATION
+                      ======================================= */}
+
+                      <View
+                        style={
+                          styles.verificationRow
+                        }
+                      >
+
+                        <Ionicons
+                          name={
+                            restaurant.isVerified
+                              ? "shield-checkmark"
+                              : "shield-outline"
+                          }
+                          size={17}
+                          color={
+                            restaurant.isVerified
+                              ? "#10B981"
+                              : "#F59E0B"
+                          }
+                        />
+
+                        <Text
+                          style={[
+                            styles.verificationText,
+                            {
+                              color:
+                                restaurant.isVerified
+                                  ? "#10B981"
+                                  : "#F59E0B",
+                            },
+                          ]}
+                        >
+                          {restaurant.isVerified
+                            ? "Verified Restaurant"
+                            : "Verification Pending"}
+                        </Text>
+
+                      </View>
+
+                    </View>
+
+
+                    {/* =========================================
+                        ACTION BUTTONS
+                    ========================================= */}
+
+                    <View
+                      style={
+                        styles.actionContainer
+                      }
+                    >
+
+                      {/* =====================================
+                          PENDING
+                      ===================================== */}
+
+                      {!restaurant.isVerified ? (
+
+                        <>
+
+                          <TouchableOpacity
+                            style={
+                              styles.smallApproveButton
+                            }
+                            onPress={() =>
+                              approveRestaurant(
+                                restaurant._id
+                              )
+                            }
+                            activeOpacity={0.8}
+                          >
+
+                            <Ionicons
+                              name="checkmark"
+                              size={16}
+                              color="#FFFFFF"
+                            />
+
+                            <Text
+                              style={
+                                styles.smallButtonText
+                              }
+                            >
+                              Approve
+                            </Text>
+
+                          </TouchableOpacity>
+
+
+                          <TouchableOpacity
+                            style={
+                              styles.smallRejectButton
+                            }
+                            onPress={() =>
+                              rejectRestaurant(
+                                restaurant._id
+                              )
+                            }
+                            activeOpacity={0.8}
+                          >
+
+                            <Ionicons
+                              name="close"
+                              size={16}
+                              color="#FFFFFF"
+                            />
+
+                            <Text
+                              style={
+                                styles.smallButtonText
+                              }
+                            >
+                              Reject
+                            </Text>
+
+                          </TouchableOpacity>
+
+                        </>
+
+                      ) : (
+
+                        /* =====================================
+                           APPROVED
+                        ===================================== */
+
+                        <TouchableOpacity
+                          style={[
+                            styles.smallToggleButton,
+                            {
+                              backgroundColor:
+                                restaurant.isAvailable
+                                  ? "#EF4444"
+                                  : "#10B981",
+                            },
+                          ]}
+                          onPress={() =>
+                            toggleRestaurant(
+                              restaurant
+                            )
+                          }
+                          activeOpacity={0.8}
+                        >
+
+                          <Ionicons
+                            name={
+                              restaurant.isAvailable
+                                ? "pause-circle-outline"
+                                : "play-circle-outline"
+                            }
+                            size={16}
+                            color="#FFFFFF"
+                          />
+
+                          <Text
+                            style={
+                              styles.smallButtonText
+                            }
+                          >
+                            {restaurant.isAvailable
+                              ? "Deactivate"
+                              : "Activate"}
+                          </Text>
+
+                        </TouchableOpacity>
+
+                      )}
+
+                    </View>
+
+                  </View>
+                );
+              }
+            )}
 
           </ScrollView>
         )}
@@ -474,11 +1086,12 @@ export default function AdminRestaurants() {
   );
 }
 
-const styles = StyleSheet.create({
 
-  // =========================================
-  // MAIN
-  // =========================================
+// ==================================================
+// STYLES
+// ==================================================
+
+const styles = StyleSheet.create({
 
   safeArea: {
     flex: 1,
@@ -490,9 +1103,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F7FA",
   },
 
-  // =========================================
+  // ==================================================
   // HEADER
-  // =========================================
+  // ==================================================
 
   header: {
     height: 75,
@@ -540,14 +1153,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  // =========================================
+  // ==================================================
   // LOADING
-  // =========================================
+  // ==================================================
 
   loadingContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#F5F7FA",
   },
 
   loadingText: {
@@ -556,15 +1170,16 @@ const styles = StyleSheet.create({
     color: "#64748B",
   },
 
-  // =========================================
+  // ==================================================
   // EMPTY
-  // =========================================
+  // ==================================================
 
   emptyState: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 30,
+    backgroundColor: "#F5F7FA",
   },
 
   emptyIcon: {
@@ -590,9 +1205,26 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  // =========================================
+  emptyRefreshButton: {
+    marginTop: 20,
+    backgroundColor: "#F5B82E",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  emptyRefreshText: {
+    color: "#0B0F14",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  // ==================================================
   // LIST
-  // =========================================
+  // ==================================================
 
   listContent: {
     padding: 16,
@@ -628,9 +1260,9 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  // =========================================
+  // ==================================================
   // CARD
-  // =========================================
+  // ==================================================
 
   card: {
     backgroundColor: "#FFFFFF",
@@ -651,9 +1283,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
-  // =========================================
-  // FULL IMAGE
-  // =========================================
+  // ==================================================
+  // IMAGE
+  // ==================================================
 
   imageContainer: {
     width: "100%",
@@ -679,9 +1311,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  // =========================================
+  // ==================================================
   // STATUS
-  // =========================================
+  // ==================================================
 
   statusBadge: {
     position: "absolute",
@@ -711,9 +1343,9 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  // =========================================
+  // ==================================================
   // DETAILS
-  // =========================================
+  // ==================================================
 
   detailsContainer: {
     padding: 16,
@@ -755,9 +1387,28 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // =========================================
-  // SMALL BUTTONS
-  // =========================================
+  // ==================================================
+  // VERIFICATION
+  // ==================================================
+
+  verificationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#E2E8F0",
+  },
+
+  verificationText: {
+    marginLeft: 8,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  // ==================================================
+  // ACTIONS
+  // ==================================================
 
   actionContainer: {
     flexDirection: "row",
@@ -797,12 +1448,10 @@ const styles = StyleSheet.create({
     gap: 5,
   },
 
-  smallRemoveButton: {
+  smallToggleButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-
-    backgroundColor: "#EF4444",
 
     paddingHorizontal: 14,
     paddingVertical: 8,

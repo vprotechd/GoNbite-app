@@ -3,7 +3,7 @@ import Coupon from '../models/Coupon.js';
 
 const router = express.Router();
 
-// ✅ Verify a coupon code (Debug enabled)
+// Verify a coupon code (Debug enabled)
 router.post('/verify', async (req, res) => {
   try {
     const { code, totalAmount } = req.body;
@@ -23,11 +23,11 @@ router.post('/verify', async (req, res) => {
 
     // 3. Check if coupon exists
     if (!coupon) {
-      console.log("❌ Coupon not found in DB for code:", code.toUpperCase());
+      console.log(" Coupon not found in DB for code:", code.toUpperCase());
       return res.status(400).json({ valid: false, message: `Coupon "${code}" does not exist.` });
     }
 
-    console.log("✅ Found coupon in DB:", coupon);
+    console.log("Found coupon in DB:", coupon);
 
     // 4. Check if coupon has expired
     if (coupon.expiresAt && new Date() > new Date(coupon.expiresAt)) {
@@ -51,7 +51,7 @@ router.post('/verify', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("🔥 Backend Coupon Error:", error);
+    console.error("Backend Coupon Error:", error);
     res.status(500).json({ error: "Server error processing coupon." });
   }
 });

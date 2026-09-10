@@ -8,17 +8,55 @@ import Restaurant from "../models/Restaurant.js";
 
 // --- AUTH CONTROLLERS ---
 // 1. Register Restaurant (Handles the uploaded image)
+// --- AUTH CONTROLLERS ---
+
+// 1. Register Restaurant
 export const registerRestaurant = async (req, res) => {
   try {
-    console.log("📦 REQ BODY:", req.body); 
-    console.log("📁 REQ FILE:", req.file); // Keep debugging logs
+    console.log("📦 REQ BODY:", req.body);
+    console.log("📷 REQ FILE:", req.file);
 
-    const { restaurantName, ownerName, email, password, phone, address } = req.body;
+    const {
+      restaurantName,
+      ownerName,
+      email,
+      password,
+      phone,
+      address,
+    } = req.body;
 
-    // ✅ FIXED: Uncommented the correct logic and removed hardcoded empty string
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : "";
+    // Validate required fields
+    if (
+      !restaurantName ||
+      !ownerName ||
+      !email ||
+      !password ||
+      !phone ||
+      !address
+    ) {
+      return res.status(400).json({
+        error: "Please fill in all required fields.",
+      });
+    }
 
+    // Check if restaurant already exists
+    const existingRestaurant = await Restaurant.findOne({ email });
+
+    if (existingRestaurant) {
+      return res.status(409).json({
+        error: "A restaurant with this email already exists.",
+      });
+    }
+
+    // Upload image path
+    const imageUrl = req.file
+      ? `/uploads/${req.file.filename}`
+      : "";
+
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create restaurant
     const restaurant = new Restaurant({
       restaurantName,
       ownerName,
@@ -26,16 +64,47 @@ export const registerRestaurant = async (req, res) => {
       password: hashedPassword,
       phone,
       address,
-      imageUrl, // 👈 Now uses the real image URL
+      imageUrl,
+
+      // Explicitly pending admin approval
+      isVerified: false,
+      isAvailable: false,
     });
+
     await restaurant.save();
-    res.status(201).json({ message: "Restaurant registered successfully" });
+
+    console.log(
+      "✅ RESTAURANT REGISTERED:",
+      restaurant.restaurantName,
+      "| Verified:",
+      restaurant.isVerified
+    );
+
+    return res.status(201).json({
+      message:
+        "Restaurant registered successfully. Please wait for Admin approval.",
+      restaurant: {
+        id: restaurant._id,
+        restaurantName: restaurant.restaurantName,
+        email: restaurant.email,
+        isVerified: restaurant.isVerified,
+      },
+    });
   } catch (error) {
-    console.error("❌ ERROR:", error); 
-    res.status(500).json({ error: error.message });
+    console.error("❌ RESTAURANT REGISTRATION ERROR:", error);
+
+    // Duplicate email protection
+    if (error.code === 11000) {
+      return res.status(409).json({
+        error: "A restaurant with this email already exists.",
+      });
+    }
+
+    return res.status(500).json({
+      error: error.message || "Restaurant registration failed.",
+    });
   }
 };
-
 
 // 2. Login Restaurant (Blocks unverified users)
 export const loginRestaurant = async (req, res) => {
@@ -168,15 +237,114 @@ export const getOrders = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const order = await Order.findOneAndUpdate(
-      { _id: req.params.id, restaurantId: req.restaurant.id },
-      { status },
-      { new: true },
-    );
-    if (!order) return res.status(404).json({ error: "Order not found" });
-    res.json(order);
+
+    const order = await Order.findOne({
+      _id: req.params.id,
+      restaurantId: req.restaurant.id,
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        error: "Order not found.",
+      });
+    }
+
+    // ==========================================
+    // 1. RESTAURANT ACCEPTS ORDER
+    // Pending → Accepted
+    // ==========================================
+    if (status === "Accepted") {
+      if (order.status !== "Pending") {
+        return res.status(400).json({
+          error: "Only pending orders can be accepted.",
+        });
+      }
+
+      order.status = "Accepted";
+
+      await order.save();
+
+      return res.json(order);
+    }
+
+    // ==========================================
+    // 2. RESTAURANT REJECTS ORDER
+    // Pending → Cancelled
+    // ==========================================
+    if (status === "Cancelled") {
+      if (order.status !== "Pending") {
+        return res.status(400).json({
+          error: "Only pending orders can be rejected.",
+        });
+      }
+
+      order.status = "Cancelled";
+
+      await order.save();
+
+      return res.json(order);
+    }
+
+    // ==========================================
+    // 3. RESTAURANT STARTS PREPARING
+    // Accepted → Preparing
+    // ==========================================
+    if (status === "Preparing") {
+      if (order.status !== "Accepted") {
+        return res.status(400).json({
+          error: "Order must be accepted before preparation starts.",
+        });
+      }
+
+      // Delivery partner can now see this order
+      order.status = "Preparing";
+
+      await order.save();
+
+      return res.json(order);
+    }
+
+// ==========================================
+// 4. RESTAURANT CONFIRMS FOOD PICKUP
+// Accepted by Delivery → Out for Delivery
+// ==========================================
+if (status === "Out for Delivery") {
+  // Delivery partner must have accepted first
+  if (order.status !== "Accepted by Delivery") {
+    return res.status(400).json({
+      error:
+        "Delivery partner must accept the order before food can be picked up.",
+    });
+  }
+
+  // A delivery partner must be assigned
+  if (!order.deliveryPartnerId) {
+    return res.status(400).json({
+      error: "No delivery partner is assigned to this order.",
+    });
+  }
+
+  // Restaurant confirms that food has physically
+  // been handed over to the delivery partner
+  order.status = "Out for Delivery";
+
+  await order.save();
+
+  return res.json(order);
+}
+    // ==========================================
+    // INVALID RESTAURANT STATUS
+    // ==========================================
+    return res.status(400).json({
+      error: "Invalid restaurant status update.",
+    });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("UPDATE RESTAURANT ORDER STATUS ERROR:", error);
+
+    return res.status(500).json({
+      error: error.message,
+    });
   }
 };
 

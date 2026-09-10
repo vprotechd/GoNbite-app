@@ -18,7 +18,8 @@ import {
 import api from "../../services/api";
 
 import ScanModal from "../../components/ScanModal";
-//import VoiceModal from "../../components/VoiceModal";
+import FoodScanModal from "../../components/FoodScanModal";
+import VoiceModal from "../../components/VoiceModal";
 
 // ======================================================
 // CATEGORIES
@@ -107,6 +108,7 @@ const [isOffersLoading, setIsOffersLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState(null);
 
   const [scanModalVisible, setScanModalVisible] = useState(false);
+  const [foodScanModalVisible, setFoodScanModalVisible] = useState(false);
   const [voiceModalVisible, setVoiceModalVisible] = useState(false);
 
   const [showAllRestaurants, setShowAllRestaurants] = useState(false);
@@ -114,16 +116,46 @@ const [isOffersLoading, setIsOffersLoading] = useState(true);
   // ======================================================
   // ORDER FOUND
   // ======================================================
+const handleFoodCaptured = (data) => {
+  console.log("🍔 FOOD SCAN RESULT:", data);
 
-  const handleOrderFound = (data) => {
-    console.log("📦 Order found via voice/scan:", data);
+  const foodName = data?.detectedFood?.foodName;
 
-    setSearchQuery(data);
+  if (!foodName || foodName.toLowerCase() === "unknown") {
+    Alert.alert(
+      "Food Not Found",
+      "We couldn't identify a specific food. Please try another photo."
+    );
+    return;
+  }
 
-    setScanModalVisible(false);
-    setVoiceModalVisible(false);
-  };
+  console.log("🔎 DIRECTLY SEARCHING FOR:", foodName);
 
+  // Put detected food in search bar
+  setSearchQuery(foodName);
+
+  // Close scan modal
+  setFoodScanModalVisible(false);
+  setScanModalVisible(false);
+  setVoiceModalVisible(false);
+
+  // Open the search/results screen
+
+};
+ const handleOrderFound = (data) => {
+  const query = data.trim();
+
+  console.log("🎤 VOICE SEARCH:", query);
+
+  if (!query) return;
+
+
+  setSearchQuery(query);
+
+  setScanModalVisible(false);
+  setFoodScanModalVisible(false);
+  setVoiceModalVisible(false);
+};
   // ======================================================
   // GREETING
   // ======================================================
@@ -387,131 +419,177 @@ const handleOfferPress = (offer) => {
 
           {/* ==================================================
               SMART ORDER BUTTONS
-          ================================================== */}
+{/* ==================================================
+    SMART ORDER
+================================================== */}
+<View style={styles.smartOrderRow}>
 
-          <View style={styles.smartOrderRow}>
-            <TouchableOpacity
-              style={styles.smartButton}
-              onPress={() => setScanModalVisible(true)}
-            >
-              <Ionicons name="scan-outline" size={14} color="#F5B82E" />
+  {/* QR / BARCODE SCAN */}
+  <TouchableOpacity
+    style={styles.smartButton}
+    onPress={() => setScanModalVisible(true)}
+  >
+    <Ionicons
+      name="scan-outline"
+      size={14}
+      color="#EF2C1E"
+    />
 
-              <Text style={styles.smartButtonText}>Scan</Text>
-            </TouchableOpacity>
+    <Text style={styles.smartButtonText}>
+      Scan
+    </Text>
+  </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.smartButton}
-              onPress={() => setVoiceModalVisible(true)}
-            >
-              <Ionicons name="mic" size={14} color="#F5B82E" />
+  {/* FOOD IMAGE SCAN */}
+  <TouchableOpacity
+    style={styles.smartButton}
+    onPress={() => setFoodScanModalVisible(true)}
+  >
+    <Ionicons
+      name="camera-outline"
+      size={14}
+      color="#EF2C1E"
+    />
 
-              <Text style={styles.smartButtonText}>Voice</Text>
-            </TouchableOpacity>
-          </View>
+    <Text style={styles.smartButtonText}>
+      Food
+    </Text>
+  </TouchableOpacity>
 
-          {/* ==================================================
-              SEARCH
-          ================================================== */}
+  {/* VOICE */}
+  <TouchableOpacity
+    style={styles.smartButton}
+    onPress={() => setVoiceModalVisible(true)}
+  >
+    <Ionicons
+      name="mic"
+      size={14}
+      color="#EF2C1E"
+    />
 
-          <View style={styles.searchContainer}>
-            {/* LOCATION */}
+    <Text style={styles.smartButtonText}>
+      Voice
+    </Text>
+  </TouchableOpacity>
 
-            <View style={styles.inputBox}>
-              <Ionicons
-                name="location"
-                size={16}
-                color="#F5B82E"
-                style={styles.inputPrefix}
-              />
+</View>
 
-              <TextInput
-                placeholder="Delivery location"
-                placeholderTextColor="#64748B"
-                style={styles.textInput}
-                value={locationQuery}
-                onChangeText={setLocationQuery}
-              />
+{/* ==================================================
+    SEARCH
+================================================== */}
 
-              <TouchableOpacity
-                onPress={getCurrentLocation}
-                style={styles.gpsBtn}
-                disabled={isGettingLocation}
-              >
-                <Ionicons name="locate" size={18} color="#F5B82E" />
+<View style={styles.searchContainer}>
 
-                {isGettingLocation && (
-                  <ActivityIndicator
-                    size="small"
-                    color="#F5B82E"
-                    style={{ marginLeft: 3 }}
-                  />
-                )}
-              </TouchableOpacity>
+  {/* LOCATION */}
 
-              {locationQuery.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => setLocationQuery("")}
-                  style={styles.clearBtn}
-                >
-                  <Ionicons name="close-circle" size={17} color="#64748B" />
-                </TouchableOpacity>
-              )}
-            </View>
+  <View style={styles.inputBox}>
+    <Ionicons
+      name="location"
+      size={16}
+      color="#EF2C1E"
+      style={styles.inputPrefix}
+    />
 
-            {/* SEARCH */}
+    <TextInput
+      placeholder="Delivery location"
+      placeholderTextColor="#64748B"
+      style={styles.textInput}
+      value={locationQuery}
+      onChangeText={setLocationQuery}
+    />
 
-            <View style={styles.inputBox}>
-              <Ionicons
-                name="search-outline"
-                size={16}
-                color="#F5B82E"
-                style={styles.inputPrefix}
-              />
+    <TouchableOpacity
+      onPress={getCurrentLocation}
+      style={styles.gpsBtn}
+      disabled={isGettingLocation}
+    >
+      <Ionicons
+        name="locate"
+        size={18}
+        color="#EF2C1E"
+      />
 
-              <TextInput
-                placeholder="Search for food or restaurants"
-                placeholderTextColor="#64748B"
-                style={styles.textInput}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
+      {isGettingLocation && (
+        <ActivityIndicator
+          size="small"
+          color="#EF2C1E"
+          style={{ marginLeft: 3 }}
+        />
+      )}
+    </TouchableOpacity>
 
-              {searchQuery.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => setSearchQuery("")}
-                  style={styles.clearBtn}
-                >
-                  <Ionicons name="close-circle" size={17} color="#64748B" />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
+    {locationQuery.length > 0 && (
+      <TouchableOpacity
+        onPress={() => setLocationQuery("")}
+        style={styles.clearBtn}
+      >
+        <Ionicons
+          name="close-circle"
+          size={17}
+          color="#64748B"
+        />
+      </TouchableOpacity>
+    )}
+  </View>
 
-          {/* ==================================================
-              PROMOTION
-          ================================================== */}
+  {/* SEARCH */}
 
+  <View style={styles.inputBox}>
+    <Ionicons
+      name="search-outline"
+      size={16}
+      color="#EF2C1E"
+      style={styles.inputPrefix}
+    />
 
-          {/* ==================================================
+    <TextInput
+      placeholder="Search for food or restaurants"
+      placeholderTextColor="#64748B"
+      style={styles.textInput}
+      value={searchQuery}
+      onChangeText={setSearchQuery}
+    />
+
+    {searchQuery.length > 0 && (
+      <TouchableOpacity
+        onPress={() => setSearchQuery("")}
+        style={styles.clearBtn}
+      >
+        <Ionicons
+          name="close-circle"
+          size={17}
+          color="#64748B"
+        />
+      </TouchableOpacity>
+    )}
+  </View>
+
+</View>
+
+{/* ==================================================
     FESTIVAL OFFERS
 ================================================== */}
 
 {(isOffersLoading || offers.length > 0) && (
   <>
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>Festival Offers</Text>
+      <Text style={styles.sectionTitle}>
+        Festival Offers
+      </Text>
 
       <TouchableOpacity
         onPress={() => router.push("/offer")}
       >
-        <Text style={styles.seeAll}>See all</Text>
+        <Text style={styles.seeAll}>
+          See all
+        </Text>
       </TouchableOpacity>
     </View>
 
     {isOffersLoading ? (
       <ActivityIndicator
         size="small"
-        color="#F5B82E"
+        color="#EF2C1E"
         style={{ marginVertical: 15 }}
       />
     ) : (
@@ -533,12 +611,14 @@ const handleOfferPress = (offer) => {
               activeOpacity={0.9}
               onPress={() => handleOfferPress(offer)}
             >
+
               <View style={styles.offerTopRow}>
+
                 <View style={styles.offerIcon}>
                   <Ionicons
                     name="pricetag"
                     size={17}
-                    color="#F5B82E"
+                    color="#EF2C1E"
                   />
                 </View>
 
@@ -547,6 +627,7 @@ const handleOfferPress = (offer) => {
                     {discountText}
                   </Text>
                 </View>
+
               </View>
 
               <Text
@@ -588,29 +669,30 @@ const handleOfferPress = (offer) => {
                 </Text>
               )}
 
-             <TouchableOpacity
-  style={styles.offerButton}
-  activeOpacity={0.8}
-  onPress={() =>
-    router.push({
-      pathname: "/(tabs)/limited-offer",
-      params: {
-        offerId: offer._id,
-        code: offer.code,
-      },
-    })
-  }
->
-  <Text style={styles.offerButtonText}>
-    View Offer
-  </Text>
+              <TouchableOpacity
+                style={styles.offerButton}
+                activeOpacity={0.8}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/limited-offer",
+                    params: {
+                      offerId: offer._id,
+                      code: offer.code,
+                    },
+                  })
+                }
+              >
+                <Text style={styles.offerButtonText}>
+                  View Offer
+                </Text>
 
-  <Ionicons
-    name="arrow-forward"
-    size={12}
-    color="#081A33"
-  />
-</TouchableOpacity>
+                <Ionicons
+                  name="arrow-forward"
+                  size={12}
+                  color="#171717"
+                />
+              </TouchableOpacity>
+
             </TouchableOpacity>
           );
         })}
@@ -876,13 +958,17 @@ const handleOfferPress = (offer) => {
           onOrderFound={handleOrderFound}
         />
 
-        {/* <VoiceModal
-          visible={voiceModalVisible}
-          onClose={() =>
-            setVoiceModalVisible(false)
-          }
-          onOrderFound={handleOrderFound}
-        /> */}
+        <FoodScanModal
+  visible={foodScanModalVisible}
+  onClose={() => setFoodScanModalVisible(false)}
+  onFoodCaptured={handleFoodCaptured}
+/>
+
+         <VoiceModal
+  visible={voiceModalVisible}
+  onClose={() => setVoiceModalVisible(false)}
+  onOrderFound={handleOrderFound}
+/>
       </View>
     </SafeAreaView>
   );
@@ -899,12 +985,12 @@ const styles = StyleSheet.create({
 
   safeArea: {
     flex: 1,
-    backgroundColor: "#081A33",
+    backgroundColor: "#171717",
   },
 
   container: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: "#FFF9F5",
   },
 
   // ====================================================
@@ -912,7 +998,7 @@ const styles = StyleSheet.create({
   // ====================================================
 
   topHeader: {
-    backgroundColor: "#081A33",
+    backgroundColor: "#081A33",           
 
     paddingHorizontal: 10,
     paddingTop: 5,
@@ -948,13 +1034,13 @@ const styles = StyleSheet.create({
 
     borderRadius: 16,
 
-    backgroundColor: "#0D2A4A",
+    backgroundColor: "#171717",
 
     alignItems: "center",
     justifyContent: "center",
 
     borderWidth: 1,
-    borderColor: "#F5B82E",
+    borderColor: "#EF2C1E",
   },
 
   // ====================================================
@@ -979,7 +1065,7 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#0B0F14",
+    color: "#171717",
   },
 
   question: {
@@ -1013,13 +1099,13 @@ const styles = StyleSheet.create({
     borderRadius: 13,
 
     borderWidth: 1,
-    borderColor: "#F5B82E",
+    borderColor: "#EF2C1E",
 
     gap: 4,
   },
 
   smartButtonText: {
-    color: "#0B0F14",
+    color: "#171717",
     fontWeight: "600",
     fontSize: 11,
   },
@@ -1047,7 +1133,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
 
     borderWidth: 1,
-    borderColor: "#E2E6EB",
+    borderColor: "#E8E8E8",
   },
 
   inputPrefix: {
@@ -1059,7 +1145,7 @@ const styles = StyleSheet.create({
 
     fontSize: 12,
 
-    color: "#0B0F14",
+    color: "#171717",
   },
 
   clearBtn: {
@@ -1079,7 +1165,7 @@ const styles = StyleSheet.create({
   banner: {
     height: 96,
 
-    backgroundColor: "#081A33",
+    backgroundColor: "#171717",
 
     borderRadius: 14,
 
@@ -1094,7 +1180,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
 
     borderWidth: 1,
-    borderColor: "#F5B82E",
+    borderColor: "#EF2C1E",
   },
 
   bannerContent: {
@@ -1102,7 +1188,7 @@ const styles = StyleSheet.create({
   },
 
   bannerSmall: {
-    color: "#F5B82E",
+    color: "#EF2C1E",
 
     fontSize: 8,
 
@@ -1112,7 +1198,7 @@ const styles = StyleSheet.create({
   },
 
   bannerTitle: {
-    color: "#F5B82E",
+    color: "#EF2C1E",
 
     fontSize: 19,
 
@@ -1130,7 +1216,7 @@ const styles = StyleSheet.create({
   },
 
   bannerButton: {
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#EF2C1E",
 
     paddingHorizontal: 10,
 
@@ -1148,7 +1234,7 @@ const styles = StyleSheet.create({
   },
 
   bannerButtonText: {
-    color: "#0B0F14",
+    color: "#FFFFFF",
 
     fontWeight: "700",
 
@@ -1163,7 +1249,7 @@ const styles = StyleSheet.create({
 
     borderRadius: 24,
 
-    backgroundColor: "rgba(245, 184, 46, 0.1)",
+    backgroundColor: "rgba(239, 44, 30, 0.1)",
 
     justifyContent: "center",
 
@@ -1193,7 +1279,7 @@ const styles = StyleSheet.create({
 
     fontWeight: "800",
 
-    color: "#0B0F14",
+    color: "#171717",
   },
 
   seeAll: {
@@ -1201,7 +1287,7 @@ const styles = StyleSheet.create({
 
     fontWeight: "700",
 
-    color: "#F5B82E",
+    color: "#EF2C1E",
   },
 
   // ====================================================
@@ -1240,11 +1326,11 @@ const styles = StyleSheet.create({
 
     borderWidth: 2,
 
-    borderColor: "#E2E6EB",
+    borderColor: "#E8E8E8",
   },
 
   categoryImageContainerSelected: {
-    borderColor: "#F5B82E",
+    borderColor: "#EF2C1E",
 
     borderWidth: 3,
   },
@@ -1267,7 +1353,7 @@ const styles = StyleSheet.create({
   },
 
   categoryNameSelected: {
-    color: "#0B0F14",
+    color: "#171717",
 
     fontWeight: "800",
   },
@@ -1287,7 +1373,7 @@ const styles = StyleSheet.create({
 
     borderWidth: 1,
 
-    borderColor: "#E2E6EB",
+    borderColor: "#E8E8E8",
 
     boxShadow: "0px 2px 4px rgba(0,0,0,0.04)",
 
@@ -1298,16 +1384,12 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
 
-  // IMPORTANT:
-  // contain = complete image visible
-  // instead of cropping with cover.
-
   restaurantImage: {
     width: "100%",
 
     aspectRatio: 16 / 9,
 
-    backgroundColor: "#EEF2F6",
+    backgroundColor: "#F1F1F1",
 
     resizeMode: "contain",
   },
@@ -1328,7 +1410,7 @@ const styles = StyleSheet.create({
 
     borderRadius: 14,
 
-    backgroundColor: "rgba(8, 26, 51, 0.7)",
+    backgroundColor: "rgba(23, 23, 23, 0.7)",
 
     alignItems: "center",
 
@@ -1336,7 +1418,7 @@ const styles = StyleSheet.create({
 
     borderWidth: 1,
 
-    borderColor: "#F5B82E",
+    borderColor: "#EF2C1E",
   },
 
   // ====================================================
@@ -1352,7 +1434,7 @@ const styles = StyleSheet.create({
 
     fontWeight: "800",
 
-    color: "#0B0F14",
+    color: "#171717",
   },
 
   cuisine: {
@@ -1390,7 +1472,7 @@ const styles = StyleSheet.create({
 
     borderTopWidth: 1,
 
-    borderTopColor: "#E2E6EB",
+    borderTopColor: "#E8E8E8",
 
     paddingTop: 6,
   },
@@ -1406,7 +1488,7 @@ const styles = StyleSheet.create({
   foodPreviewText: {
     fontSize: 10,
 
-    color: "#0B0F14",
+    color: "#171717",
 
     marginLeft: 4,
 
@@ -1418,7 +1500,7 @@ const styles = StyleSheet.create({
   moreItemsText: {
     fontSize: 10,
 
-    color: "#F5B82E",
+    color: "#EF2C1E",
 
     fontWeight: "600",
 
@@ -1458,7 +1540,7 @@ const styles = StyleSheet.create({
 
     alignItems: "center",
 
-    backgroundColor: "#081A33",
+    backgroundColor: "#EF2C1E",
 
     paddingVertical: 8,
 
@@ -1466,7 +1548,7 @@ const styles = StyleSheet.create({
 
     borderTopWidth: 1,
 
-    borderTopColor: "#F5B82E",
+    borderTopColor: "#C91F15",
 
     boxShadow: "0px -2px 10px rgba(0,0,0,0.1)",
   },
@@ -1487,182 +1569,187 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-
   // ====================================================
-// FESTIVAL OFFERS
-// ====================================================
+  // FESTIVAL OFFERS
+  // ====================================================
 
-offerContainer: {
-  paddingRight: 8,
-  paddingBottom: 2,
-},
+  offerContainer: {
+    paddingRight: 8,
+    paddingBottom: 2,
+  },
 
-offerCard: {
-  width: 235,
-  minHeight: 145,
+  offerCard: {
+    width: 235,
 
-  backgroundColor: "#081A33",
+    minHeight: 145,
 
-  borderRadius: 13,
+    backgroundColor: "#171717",
 
-  marginRight: 9,
+    borderRadius: 13,
 
-  padding: 11,
+    marginRight: 9,
 
-  borderWidth: 1,
-  borderColor: "#F5B82E",
+    padding: 11,
 
-  overflow: "hidden",
-},
+    borderWidth: 1,
 
-offerTopRow: {
-  flexDirection: "row",
+    borderColor: "#EF2C1E",
 
-  alignItems: "center",
+    overflow: "hidden",
+  },
 
-  justifyContent: "space-between",
+  offerTopRow: {
+    flexDirection: "row",
 
-  marginBottom: 7,
-},
+    alignItems: "center",
 
-offerIcon: {
-  width: 31,
-  height: 31,
+    justifyContent: "space-between",
 
-  borderRadius: 16,
+    marginBottom: 7,
+  },
 
-  backgroundColor: "rgba(245, 184, 46, 0.12)",
+  offerIcon: {
+    width: 31,
+    height: 31,
 
-  alignItems: "center",
-  justifyContent: "center",
+    borderRadius: 16,
 
-  borderWidth: 1,
-  borderColor: "#F5B82E",
-},
+    backgroundColor: "rgba(239, 44, 30, 0.12)",
 
-offerDiscountBox: {
-  backgroundColor: "#F5B82E",
+    alignItems: "center",
 
-  paddingHorizontal: 8,
-  paddingVertical: 4,
+    justifyContent: "center",
 
-  borderRadius: 6,
-},
+    borderWidth: 1,
 
-offerDiscount: {
-  color: "#081A33",
+    borderColor: "#EF2C1E",
+  },
 
-  fontSize: 11,
+  offerDiscountBox: {
+    backgroundColor: "#EF2C1E",
 
-  fontWeight: "900",
-},
+    paddingHorizontal: 8,
 
-offerName: {
-  color: "#FFFFFF",
+    paddingVertical: 4,
 
-  fontSize: 13,
+    borderRadius: 6,
+  },
 
-  fontWeight: "800",
+  offerDiscount: {
+    color: "#FFFFFF",
 
-  marginTop: 2,
-},
+    fontSize: 11,
 
-offerFestival: {
-  color: "#F5B82E",
+    fontWeight: "900",
+  },
 
-  fontSize: 10,
+  offerName: {
+    color: "#FFFFFF",
 
-  fontWeight: "700",
+    fontSize: 13,
 
-  marginTop: 2,
-},
+    fontWeight: "800",
 
-offerDescription: {
-  color: "#CBD5E1",
+    marginTop: 2,
+  },
 
-  fontSize: 9,
+  offerFestival: {
+    color: "#EF2C1E",
 
-  lineHeight: 13,
+    fontSize: 10,
 
-  marginTop: 4,
-},
+    fontWeight: "700",
 
-offerCodeContainer: {
-  flexDirection: "row",
+    marginTop: 2,
+  },
 
-  alignItems: "center",
+  offerDescription: {
+    color: "#CBD5E1",
 
-  alignSelf: "flex-start",
+    fontSize: 9,
 
-  marginTop: 7,
+    lineHeight: 13,
 
-  paddingHorizontal: 7,
-  paddingVertical: 3,
+    marginTop: 4,
+  },
 
-  borderRadius: 5,
+  offerCodeContainer: {
+    flexDirection: "row",
 
-  borderWidth: 1,
+    alignItems: "center",
 
-  borderColor: "#64748B",
+    alignSelf: "flex-start",
 
-  backgroundColor: "#0D2A4A",
-},
+    marginTop: 7,
 
-offerCodeLabel: {
-  color: "#94A3B8",
+    paddingHorizontal: 7,
 
-  fontSize: 8,
+    paddingVertical: 3,
 
-  fontWeight: "700",
+    borderRadius: 5,
 
-  marginRight: 5,
-},
+    borderWidth: 1,
 
-offerCode: {
-  color: "#FFFFFF",
+    borderColor: "#64748B",
 
-  fontSize: 9,
+    backgroundColor: "#2A2A2A",
+  },
 
-  fontWeight: "900",
+  offerCodeLabel: {
+    color: "#94A3B8",
 
-  letterSpacing: 0.5,
-},
+    fontSize: 8,
 
-offerMinimum: {
-  color: "#94A3B8",
+    fontWeight: "700",
 
-  fontSize: 8,
+    marginRight: 5,
+  },
 
-  marginTop: 4,
-},
+  offerCode: {
+    color: "#FFFFFF",
 
-offerButton: {
-  position: "absolute",
+    fontSize: 9,
 
-  bottom: 9,
+    fontWeight: "900",
 
-  right: 10,
+    letterSpacing: 0.5,
+  },
 
-  flexDirection: "row",
+  offerMinimum: {
+    color: "#94A3B8",
 
-  alignItems: "center",
+    fontSize: 8,
 
-  backgroundColor: "#F5B82E",
+    marginTop: 4,
+  },
 
-  paddingHorizontal: 8,
+  offerButton: {
+    position: "absolute",
 
-  paddingVertical: 5,
+    bottom: 9,
 
-  borderRadius: 6,
-},
+    right: 10,
 
-offerButtonText: {
-  color: "#081A33",
+    flexDirection: "row",
 
-  fontSize: 9,
+    alignItems: "center",
 
-  fontWeight: "800",
+    backgroundColor: "#EF2C1E",
 
-  marginRight: 3,
-},
+    paddingHorizontal: 8,
+
+    paddingVertical: 5,
+
+    borderRadius: 6,
+  },
+
+  offerButtonText: {
+    color: "#FFFFFF",
+
+    fontSize: 9,
+
+    fontWeight: "800",
+
+    marginRight: 3,
+  },
 });

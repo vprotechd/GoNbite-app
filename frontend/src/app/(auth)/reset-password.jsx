@@ -199,18 +199,19 @@ setTimeout(() => {
                   style={styles.inputIcon}
                 />
 
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter new password"
-                  placeholderTextColor="#94A3B8"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!loading}
-                />
-
+              <TextInput
+  style={styles.input}
+  placeholder="Enter new password"
+  placeholderTextColor="#94A3B8"
+  value={password}
+  onChangeText={setPassword}
+  secureTextEntry={!showPassword}
+  autoCapitalize="none"
+  autoCorrect={false}
+  autoComplete="new-password"
+  textContentType="newPassword"
+  editable={!loading}
+/>
                 <TouchableOpacity
                   style={styles.eyeButton}
                   onPress={() =>
@@ -248,23 +249,21 @@ setTimeout(() => {
                   style={styles.inputIcon}
                 />
 
-                <TextInput
-                  style={styles.input}
-                  placeholder="Confirm new password"
-                  placeholderTextColor="#94A3B8"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={
-                    !showConfirmPassword
-                  }
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!loading}
-                  returnKeyType="done"
-                  onSubmitEditing={
-                    handleResetPassword
-                  }
-                />
+               <TextInput
+  style={styles.input}
+  placeholder="Confirm new password"
+  placeholderTextColor="#94A3B8"
+  value={confirmPassword}
+  onChangeText={setConfirmPassword}
+  secureTextEntry={!showConfirmPassword}
+  autoCapitalize="none"
+  autoCorrect={false}
+  autoComplete="new-password"
+  textContentType="newPassword"
+  editable={!loading}
+  returnKeyType="done"
+  onSubmitEditing={handleResetPassword}
+/>
 
                 <TouchableOpacity
                   style={styles.eyeButton}

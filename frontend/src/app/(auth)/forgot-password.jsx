@@ -57,12 +57,24 @@ export default function ForgotPasswordScreen() {
         cleanEmail
       );
 
-      const response = await api.post(
-        "/auth/forgot-password",
-        {
-          email: cleanEmail,
-        }
-      );
+     const response = await api.post(
+  "/auth/forgot-password",
+  {
+    email: cleanEmail,
+  }
+);
+
+console.log(
+  "FORGOT PASSWORD RESPONSE:",
+  response.data
+);
+
+router.push({
+  pathname: "/verify-otp",
+  params: {
+    email: cleanEmail,
+  },
+});
 
       console.log(
         "Forgot password response:",

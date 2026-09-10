@@ -251,74 +251,26 @@ export default function SettingsScreen() {
   // ============================================================
   // LOGOUT
   // ============================================================
-const handleLogout = () => {
-  Alert.alert(
-    t.logoutTitle,
-    t.logoutMessage,
-    [
-      {
-        text: t.cancel,
-        style: "cancel",
-      },
-      {
-        text: t.logout,
-        style: "destructive",
-        onPress: async () => {
-          try {
-            console.log("========== LOGOUT START ==========");
 
-            // Remove all authentication/session data
-            const keysToRemove = [
-              "token",
-              "user",
-              "userToken",
-              "authToken",
-              "adminToken",
-            ];
 
-            await AsyncStorage.multiRemove(keysToRemove);
+const handleLogout = async () => {
+  try {
+    await AsyncStorage.removeItem("token");
+    await AsyncStorage.removeItem("user");
 
-            // Verify
-            const remainingToken = await AsyncStorage.getItem("token");
-            const remainingUser = await AsyncStorage.getItem("user");
-            const remainingUserToken = await AsyncStorage.getItem("userToken");
-            const remainingAuthToken = await AsyncStorage.getItem("authToken");
+    console.log("TOKEN AFTER LOGOUT:",
+      await AsyncStorage.getItem("token")
+    );
 
-            console.log("TOKEN:", remainingToken);
-            console.log("USER:", remainingUser);
-            console.log("USER TOKEN:", remainingUserToken);
-            console.log("AUTH TOKEN:", remainingAuthToken);
+    console.log("USER AFTER LOGOUT:",
+      await AsyncStorage.getItem("user")
+    );
 
-            if (
-              remainingToken ||
-              remainingUser ||
-              remainingUserToken ||
-              remainingAuthToken
-            ) {
-              Alert.alert(
-                "Logout Failed",
-                "Login data could not be completely cleared."
-              );
-              return;
-            }
+    router.replace("/(auth)/login");
 
-            console.log("========== STORAGE CLEARED ==========");
-
-            // Navigate to auth login screen
-            router.replace("/(auth)/login");
-
-          } catch (error) {
-            console.error("LOGOUT ERROR:", error);
-
-            Alert.alert(
-              "Logout Failed",
-              "Unable to logout. Please try again."
-            );
-          }
-        },
-      },
-    ]
-  );
+  } catch (error) {
+    console.error("LOGOUT ERROR:", error);
+  }
 };
 
   // ============================================================
