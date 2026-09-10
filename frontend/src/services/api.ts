@@ -54,12 +54,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { Platform } from "react-native";
 
-let API_URL = "http://localhost:5000/api";
+let API_URL = "https://gonbite-app.onrender.com/api";
 
 if (Platform.OS === "web") {
-  API_URL = "http://localhost:5000/api";
+  API_URL = "https://gonbite-app.onrender.com/api";
 } else if (Platform.OS === "android") {
-  API_URL = "http://localhost:5000/api";
+  API_URL = "https://gonbite-app.onrender.com/api";
 }
 
 // =================================================

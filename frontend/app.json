@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Snaxx",
+    "name": "GoNbite",
     "slug": "snaxx",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -46,7 +46,6 @@
         }
       ],
       "expo-web-browser",
-      "expo-barcode-scanner",
       "expo-audio",
       "expo-image",
       [
@@ -61,7 +60,8 @@
         {
           "androidGoogleMapsApiKey": "AIzaSyB_07WVBVy5bVdb9H7R2IbDnLnRBzZnklA"
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
