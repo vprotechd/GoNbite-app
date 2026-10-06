@@ -20,7 +20,7 @@ import { io, Socket } from "socket.io-client";
 import api from "../../../src/services/api";
 import PlatformMap from "../../components/PlatformMap";
 
-const SOCKET_URL = "http://192.168.1.20:5000";
+const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL;
 
 interface LocationCoords {
   latitude: number;

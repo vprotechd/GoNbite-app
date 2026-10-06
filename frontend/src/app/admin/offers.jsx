@@ -29,7 +29,7 @@ import { useFocusEffect, router } from "expo-router";
 //
 // Therefore DO NOT use /api/api/admin/offers
 
-const API_URL = "http://localhost:5000/api/admin/offers";
+const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/admin/offers`;
 
 // ======================================================
 // EMPTY FORM

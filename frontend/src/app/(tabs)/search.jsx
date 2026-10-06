@@ -260,7 +260,7 @@ export default function SearchScreen() {
                             <Image
                               source={{
                                 uri: item.imageUrl
-                                  ? `http://localhost:5000${item.imageUrl}`
+                                  ? `${process.env.EXPO_PUBLIC_API_URL?.replace("/api", "")}${item.imageUrl}`
                                   : "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500",
                               }}
                               style={styles.dishImage}

@@ -988,7 +988,7 @@ const handleOfferPress = (offer) => {
                 <Image
                   source={{
                     uri: restaurant.imageUrl
-                      ? `http://localhost:5000${restaurant.imageUrl}`
+                      ?`${process.env.EXPO_PUBLIC_API_URL?.replace("/api", "")}${restaurant.imageUrl}`
                       : "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=900",
                   }}
                   style={styles.restaurantImage}
