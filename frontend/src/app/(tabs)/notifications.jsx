@@ -2,12 +2,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import api from "../../services/api";
@@ -26,7 +26,7 @@ export default function NotificationsScreen() {
     } catch (error) {
       console.error(
         "FETCH NOTIFICATIONS ERROR:",
-        error?.response?.data || error.message
+        error?.response?.data || error.message,
       );
     } finally {
       setLoading(false);
@@ -36,7 +36,7 @@ export default function NotificationsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadNotifications();
-    }, [])
+    }, []),
   );
 
   const markAsRead = async (id) => {
@@ -47,8 +47,8 @@ export default function NotificationsScreen() {
         previous.map((notification) =>
           notification._id === id
             ? { ...notification, isRead: true }
-            : notification
-        )
+            : notification,
+        ),
       );
     } catch (error) {
       console.error("MARK READ ERROR:", error);
@@ -63,7 +63,7 @@ export default function NotificationsScreen() {
         previous.map((notification) => ({
           ...notification,
           isRead: true,
-        }))
+        })),
       );
     } catch (error) {
       console.error("MARK ALL READ ERROR:", error);
@@ -80,10 +80,7 @@ export default function NotificationsScreen() {
   const renderNotification = ({ item }) => {
     return (
       <TouchableOpacity
-        style={[
-          styles.notificationCard,
-          !item.isRead && styles.unreadCard,
-        ]}
+        style={[styles.notificationCard, !item.isRead && styles.unreadCard]}
         onPress={() => {
           if (!item.isRead) {
             markAsRead(item._id);
@@ -91,27 +88,17 @@ export default function NotificationsScreen() {
         }}
       >
         <View style={styles.iconCircle}>
-          <Ionicons
-            name={getIcon(item.type)}
-            size={24}
-            color="#F5B82E"
-          />
+          <Ionicons name={getIcon(item.type)} size={24} color="#FF8500" />
         </View>
 
         <View style={styles.content}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>
-              {item.title}
-            </Text>
+            <Text style={styles.title}>{item.title}</Text>
 
-            {!item.isRead && (
-              <View style={styles.unreadDot} />
-            )}
+            {!item.isRead && <View style={styles.unreadDot} />}
           </View>
 
-          <Text style={styles.message}>
-            {item.message}
-          </Text>
+          <Text style={styles.message}>{item.message}</Text>
 
           <Text style={styles.date}>
             {new Date(item.createdAt).toLocaleString()}
@@ -121,9 +108,7 @@ export default function NotificationsScreen() {
     );
   };
 
-  const unreadCount = notifications.filter(
-    (item) => !item.isRead
-  ).length;
+  const unreadCount = notifications.filter((item) => !item.isRead).length;
 
   return (
     <View style={styles.container}>
@@ -131,24 +116,16 @@ export default function NotificationsScreen() {
 
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>
-            Notifications
-          </Text>
+          <Text style={styles.headerTitle}>Notifications</Text>
 
           {unreadCount > 0 && (
-            <Text style={styles.unreadText}>
-              {unreadCount} unread
-            </Text>
+            <Text style={styles.unreadText}>{unreadCount} unread</Text>
           )}
         </View>
 
         {unreadCount > 0 && (
-          <TouchableOpacity
-            onPress={markAllAsRead}
-          >
-            <Text style={styles.markAll}>
-              Mark all read
-            </Text>
+          <TouchableOpacity onPress={markAllAsRead}>
+            <Text style={styles.markAll}>Mark all read</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -157,10 +134,7 @@ export default function NotificationsScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator
-            size="large"
-            color="#F5B82E"
-          />
+          <ActivityIndicator size="large" color="#FF8500" />
         </View>
       ) : notifications.length === 0 ? (
         <View style={styles.center}>
@@ -170,9 +144,7 @@ export default function NotificationsScreen() {
             color="#94A3B8"
           />
 
-          <Text style={styles.emptyTitle}>
-            No Notifications
-          </Text>
+          <Text style={styles.emptyTitle}>No Notifications</Text>
 
           <Text style={styles.emptyText}>
             You don't have any notifications yet.
@@ -220,7 +192,7 @@ const styles = StyleSheet.create({
   },
 
   markAll: {
-    color: "#F5B82E",
+    color: "#FF8500",
     fontSize: 13,
     fontWeight: "600",
   },
@@ -240,7 +212,7 @@ const styles = StyleSheet.create({
   },
 
   unreadCard: {
-    borderColor: "#F5B82E",
+    borderColor: "#FF8500",
     backgroundColor: "#FFFBEB",
   },
 
@@ -274,7 +246,7 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 5,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     marginLeft: 8,
   },
 

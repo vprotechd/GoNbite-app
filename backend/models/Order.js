@@ -40,6 +40,22 @@ const OrderSchema = new mongoose.Schema(
   },
 },
 
+
+customerLocation: {
+  latitude: {
+    type: Number,
+    default: null,
+  },
+  longitude: {
+    type: Number,
+    default: null,
+  },
+  updatedAt: {
+    type: Date,
+    default: null,
+  },
+},
+
     items: [
       {
         foodItemId: mongoose.Schema.Types.ObjectId,

@@ -1,45 +1,44 @@
 import {
   loginUser,
   registerUser,
-
   forgotPassword,
   verifyResetOTP,
   resetPassword,
   changePassword,
+  googleOAuthLogin,
+  facebookOAuthLogin,
 } from "../controllers/authController.js";
-
 
 import authMiddleware from "../middleware/authMiddleware.js";
 import User from "../models/User.js";
 import express from "express";
-
-
+import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
 // =====================================================
-// PUBLIC ROUTES
+// PUBLIC AUTH ROUTES
 // =====================================================
 
 // REGISTER
 router.post("/register", registerUser);
 
-
 // LOGIN
 router.post("/login", loginUser);
 
-// =====================================================
-// FORGOT / RESET PASSWORD
-// These MUST be public because the user is not logged in.
-// =====================================================
-
-// Forgot password
+// FORGOT PASSWORD
 router.post("/forgot-password", forgotPassword);
 
+// VERIFY RESET OTP
 router.post("/verify-reset-otp", verifyResetOTP);
 
-// Reset password
+// RESET PASSWORD
 router.post("/reset-password", resetPassword);
+
+// =====================================================
+// CHANGE PASSWORD
+// USER MUST ALREADY BE LOGGED IN
+// =====================================================
 
 router.post(
   "/change-password",
@@ -48,14 +47,39 @@ router.post(
 );
 
 // =====================================================
-// PROTECTED ROUTES
-// Everything below this line requires authentication.
+// GOOGLE OAUTH
+// PUBLIC ROUTE
+// IMPORTANT: MUST BE BEFORE router.use(authMiddleware)
+// =====================================================
+// =====================================================
+// GOOGLE OAUTH
+// PUBLIC
+// =====================================================
+
+router.post(
+  "/oauth/google",
+  googleOAuthLogin
+);
+
+
+// =====================================================
+// FACEBOOK OAUTH
+// PUBLIC
+// =====================================================
+
+router.post(
+  "/oauth/facebook",
+  facebookOAuthLogin
+);
+
+// =====================================================
+// EVERYTHING BELOW THIS POINT IS PROTECTED
 // =====================================================
 
 router.use(authMiddleware);
 
 // =====================================================
-// GET USER PROFILE
+// GET PROFILE
 // =====================================================
 
 router.get("/profile", async (req, res) => {
@@ -68,202 +92,84 @@ router.get("/profile", async (req, res) => {
       });
     }
 
-    res.json(user);
+    return res.json({
+      user,
+    });
   } catch (error) {
-    console.error("Profile GET Error:", error);
+    console.error("Get profile error:", error);
 
-    res.status(500).json({
-      error: "Failed to fetch profile",
+    return res.status(500).json({
+      error: "Failed to get profile",
     });
   }
 });
 
 // =====================================================
-// UPDATE USER PROFILE
+// UPDATE PROFILE
 // =====================================================
 
 router.put("/profile", async (req, res) => {
   try {
-    const { name, phone, address } = req.body;
+    const {
+      name,
+      phone,
+      address,
+      latitude,
+      longitude,
+    } = req.body;
 
-    const updatedUser = await User.findByIdAndUpdate(
-      req.user.id,
-      {
-        name,
-        phone,
-        address,
-      },
-      {
-        new: true,
-      }
-    ).select("-password");
+    const user = await User.findById(req.user.id);
 
-    if (!updatedUser) {
+    if (!user) {
       return res.status(404).json({
         error: "User not found",
       });
     }
 
-    res.json(updatedUser);
-  } catch (error) {
-    console.error("Profile PUT Error:", error);
+    // Update only provided fields
+    if (name !== undefined) {
+      user.name = name;
+    }
 
-    res.status(500).json({
+    if (phone !== undefined) {
+      user.phone = phone;
+    }
+
+    if (address !== undefined) {
+      user.address = address;
+    }
+
+    if (latitude !== undefined) {
+      user.latitude = latitude;
+    }
+
+    if (longitude !== undefined) {
+      user.longitude = longitude;
+    }
+
+    await user.save();
+
+    return res.json({
+      message: "Profile updated successfully",
+
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        address: user.address,
+        latitude: user.latitude,
+        longitude: user.longitude,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+
+    return res.status(500).json({
       error: "Failed to update profile",
     });
   }
 });
-
-// =====================================================
-// GOOGLE OAUTH
-// =====================================================
-
-router.post("/oauth/google", async (req, res) => {
-  try {
-    const {
-      email,
-      name,
-      providerId,
-    } = req.body;
-
-    if (!email || !name || !providerId) {
-      return res.status(400).json({
-        error: "Email, name and providerId are required",
-      });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-
-    let user = await User.findOne({
-      email: cleanEmail,
-    });
-
-    if (!user) {
-      user = new User({
-        name,
-        email: cleanEmail,
-
-        // Temporary OAuth password
-        password: providerId,
-
-        role: "customer",
-        phone: "",
-        address: "",
-      });
-
-      await user.save();
-    }
-
-    const token = jwt.sign(
-      {
-        id: user._id,
-        name: user.name,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
-
-    res.json({
-      message: "Google login successful",
-
-      token,
-
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        address: user.address,
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    console.error("Google OAuth Error:", error);
-
-    res.status(500).json({
-      error: "Google login failed",
-    });
-  }
-});
-
-// =====================================================
-// FACEBOOK OAUTH
-// =====================================================
-
-router.post("/oauth/facebook", async (req, res) => {
-  try {
-    const {
-      email,
-      name,
-      providerId,
-    } = req.body;
-
-    if (!email || !name || !providerId) {
-      return res.status(400).json({
-        error: "Email, name and providerId are required",
-      });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-
-    let user = await User.findOne({
-      email: cleanEmail,
-    });
-
-    if (!user) {
-      user = new User({
-        name,
-        email: cleanEmail,
-
-        // Temporary OAuth password
-        password: providerId,
-
-        role: "customer",
-        phone: "",
-        address: "",
-      });
-
-      await user.save();
-    }
-
-    const token = jwt.sign(
-      {
-        id: user._id,
-        name: user.name,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
-
-    res.json({
-      message: "Facebook login successful",
-
-      token,
-
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        address: user.address,
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    console.error("Facebook OAuth Error:", error);
-
-    res.status(500).json({
-      error: "Facebook login failed",
-    });
-  }
-});
-
-// =====================================================
 
 export default router;

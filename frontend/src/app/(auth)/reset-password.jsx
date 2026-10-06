@@ -2,18 +2,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import api from "../../services/api";
@@ -21,19 +21,14 @@ import api from "../../services/api";
 export default function ResetPasswordScreen() {
   const params = useLocalSearchParams();
 
-  const token = Array.isArray(params.token)
-    ? params.token[0]
-    : params.token;
+  const token = Array.isArray(params.token) ? params.token[0] : params.token;
 
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] =
-    useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const [showPassword, setShowPassword] =
-    useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const [showConfirmPassword, setShowConfirmPassword] =
-    useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
@@ -45,43 +40,36 @@ export default function ResetPasswordScreen() {
         [
           {
             text: "OK",
-            onPress: () =>
-              router.replace("/(auth)/forgot-password"),
+            onPress: () => router.replace("/(auth)/forgot-password"),
           },
-        ]
+        ],
       );
 
       return;
     }
 
     if (!password) {
-      Alert.alert(
-        "Required",
-        "Please enter your new password."
-      );
+      Alert.alert("Required", "Please enter your new password.");
       return;
     }
 
     if (password.length < 6) {
       Alert.alert(
         "Invalid Password",
-        "Password must be at least 6 characters long."
+        "Password must be at least 6 characters long.",
       );
       return;
     }
 
     if (!confirmPassword) {
-      Alert.alert(
-        "Required",
-        "Please confirm your new password."
-      );
+      Alert.alert("Required", "Please confirm your new password.");
       return;
     }
 
     if (password !== confirmPassword) {
       Alert.alert(
         "Passwords Don't Match",
-        "Password and confirm password must be the same."
+        "Password and confirm password must be the same.",
       );
       return;
     }
@@ -89,40 +77,32 @@ export default function ResetPasswordScreen() {
     try {
       setLoading(true);
 
-      const response = await api.post(
-        "/auth/reset-password",
-        {
-          token: String(token),
-          password,
-          confirmPassword,
-        }
+      const response = await api.post("/auth/reset-password", {
+        token: String(token),
+        password,
+        confirmPassword,
+      });
+
+      console.log("Reset password response:", response.data);
+
+      Alert.alert(
+        "Password Reset Successful",
+        "Your password has been changed successfully. Please login with your new password.",
       );
 
-      console.log(
-        "Reset password response:",
-        response.data
-      );
-
-     Alert.alert(
-  "Password Reset Successful",
-  "Your password has been changed successfully. Please login with your new password.",
-);
-
-setTimeout(() => {
-  router.replace("/(auth)/login");
-}, 1500);
+      setTimeout(() => {
+        router.replace("/(auth)/login");
+      }, 1500);
     } catch (error) {
       console.log(
         "Reset password error:",
-        error?.response?.data ||
-          error?.message ||
-          error
+        error?.response?.data || error?.message || error,
       );
 
       Alert.alert(
         "Reset Failed",
         error?.response?.data?.message ||
-          "Unable to reset your password. Please try again."
+          "Unable to reset your password. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -131,18 +111,11 @@ setTimeout(() => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={
-          Platform.OS === "ios"
-            ? "padding"
-            : undefined
-        }
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -157,24 +130,14 @@ setTimeout(() => {
               onPress={() => router.back()}
               disabled={loading}
             >
-              <Ionicons
-                name="arrow-back"
-                size={22}
-                color="#FFFFFF"
-              />
+              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
             </TouchableOpacity>
 
             <View style={styles.iconCircle}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={34}
-                color="#F5B82E"
-              />
+              <Ionicons name="lock-closed-outline" size={34} color="#FF6B35" />
             </View>
 
-            <Text style={styles.title}>
-              Reset Password
-            </Text>
+            <Text style={styles.title}>Reset Password</Text>
 
             <Text style={styles.subtitle}>
               Create a new password for your Snax account.
@@ -187,9 +150,7 @@ setTimeout(() => {
             {/* NEW PASSWORD */}
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>
-                New Password
-              </Text>
+              <Text style={styles.label}>New Password</Text>
 
               <View style={styles.inputWrapper}>
                 <Ionicons
@@ -199,34 +160,26 @@ setTimeout(() => {
                   style={styles.inputIcon}
                 />
 
-              <TextInput
-  style={styles.input}
-  placeholder="Enter new password"
-  placeholderTextColor="#94A3B8"
-  value={password}
-  onChangeText={setPassword}
-  secureTextEntry={!showPassword}
-  autoCapitalize="none"
-  autoCorrect={false}
-  autoComplete="new-password"
-  textContentType="newPassword"
-  editable={!loading}
-/>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter new password"
+                  placeholderTextColor="#94A3B8"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  editable={!loading}
+                />
                 <TouchableOpacity
                   style={styles.eyeButton}
-                  onPress={() =>
-                    setShowPassword(
-                      (previous) => !previous
-                    )
-                  }
+                  onPress={() => setShowPassword((previous) => !previous)}
                   disabled={loading}
                 >
                   <Ionicons
-                    name={
-                      showPassword
-                        ? "eye-outline"
-                        : "eye-off-outline"
-                    }
+                    name={showPassword ? "eye-outline" : "eye-off-outline"}
                     size={19}
                     color="#64748B"
                   />
@@ -237,9 +190,7 @@ setTimeout(() => {
             {/* CONFIRM PASSWORD */}
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>
-                Confirm Password
-              </Text>
+              <Text style={styles.label}>Confirm Password</Text>
 
               <View style={styles.inputWrapper}>
                 <Ionicons
@@ -249,36 +200,32 @@ setTimeout(() => {
                   style={styles.inputIcon}
                 />
 
-               <TextInput
-  style={styles.input}
-  placeholder="Confirm new password"
-  placeholderTextColor="#94A3B8"
-  value={confirmPassword}
-  onChangeText={setConfirmPassword}
-  secureTextEntry={!showConfirmPassword}
-  autoCapitalize="none"
-  autoCorrect={false}
-  autoComplete="new-password"
-  textContentType="newPassword"
-  editable={!loading}
-  returnKeyType="done"
-  onSubmitEditing={handleResetPassword}
-/>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm new password"
+                  placeholderTextColor="#94A3B8"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  editable={!loading}
+                  returnKeyType="done"
+                  onSubmitEditing={handleResetPassword}
+                />
 
                 <TouchableOpacity
                   style={styles.eyeButton}
                   onPress={() =>
-                    setShowConfirmPassword(
-                      (previous) => !previous
-                    )
+                    setShowConfirmPassword((previous) => !previous)
                   }
                   disabled={loading}
                 >
                   <Ionicons
                     name={
-                      showConfirmPassword
-                        ? "eye-outline"
-                        : "eye-off-outline"
+                      showConfirmPassword ? "eye-outline" : "eye-off-outline"
                     }
                     size={19}
                     color="#64748B"
@@ -304,24 +251,16 @@ setTimeout(() => {
             {/* RESET BUTTON */}
 
             <TouchableOpacity
-              style={[
-                styles.resetButton,
-                loading && styles.disabledButton,
-              ]}
+              style={[styles.resetButton, loading && styles.disabledButton]}
               onPress={handleResetPassword}
               disabled={loading}
               activeOpacity={0.85}
             >
               {loading ? (
                 <View style={styles.loadingContent}>
-                  <ActivityIndicator
-                    size="small"
-                    color="#0B0F14"
-                  />
+                  <ActivityIndicator size="small" color="#0B0F14" />
 
-                  <Text style={styles.resetButtonText}>
-                    Resetting...
-                  </Text>
+                  <Text style={styles.resetButtonText}>Resetting...</Text>
                 </View>
               ) : (
                 <>
@@ -331,9 +270,7 @@ setTimeout(() => {
                     color="#0B0F14"
                   />
 
-                  <Text style={styles.resetButtonText}>
-                    Reset Password
-                  </Text>
+                  <Text style={styles.resetButtonText}>Reset Password</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -342,20 +279,12 @@ setTimeout(() => {
 
             <TouchableOpacity
               style={styles.loginButton}
-              onPress={() =>
-                router.replace("/(auth)/login")
-              }
+              onPress={() => router.replace("/(auth)/login")}
               disabled={loading}
             >
-              <Ionicons
-                name="arrow-back-outline"
-                size={17}
-                color="#F5B82E"
-              />
+              <Ionicons name="arrow-back-outline" size={17} color="#FF6B35" />
 
-              <Text style={styles.loginText}>
-                Back to Login
-              </Text>
+              <Text style={styles.loginText}>Back to Login</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -488,7 +417,7 @@ const styles = StyleSheet.create({
 
   resetButton: {
     height: 52,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
     borderRadius: 13,
     flexDirection: "row",
     alignItems: "center",
@@ -523,7 +452,7 @@ const styles = StyleSheet.create({
   },
 
   loginText: {
-    color: "#F5B82E",
+    color: "#FF6B35",
     fontSize: 14,
     fontWeight: "700",
   },

@@ -2,14 +2,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-  Alert,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import api from "../services/api";
 
@@ -23,138 +23,103 @@ export default function ChangePasswordScreen() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-const handleChangePassword = async () => {
-  if (!currentPassword || !newPassword || !confirmPassword) {
-    Alert.alert(
-      "Missing Information",
-      "Please fill in all password fields."
-    );
-    return;
-  }
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert("Missing Information", "Please fill in all password fields.");
+      return;
+    }
 
-  if (newPassword.length < 6) {
-    Alert.alert(
-      "Invalid Password",
-      "New password must contain at least 6 characters."
-    );
-    return;
-  }
+    if (newPassword.length < 6) {
+      Alert.alert(
+        "Invalid Password",
+        "New password must contain at least 6 characters.",
+      );
+      return;
+    }
 
-  if (newPassword !== confirmPassword) {
-    Alert.alert(
-      "Password Mismatch",
-      "New password and confirm password do not match."
-    );
-    return;
-  }
+    if (newPassword !== confirmPassword) {
+      Alert.alert(
+        "Password Mismatch",
+        "New password and confirm password do not match.",
+      );
+      return;
+    }
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const response = await api.post(
-      "/auth/change-password",
-      {
+      const response = await api.post("/auth/change-password", {
         currentPassword,
         newPassword,
         confirmPassword,
-      }
-    );
+      });
 
-    Alert.alert(
-      "Password Updated",
-      response.data.message ||
-        "Your password has been changed successfully.",
-      [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]
-    );
+      Alert.alert(
+        "Password Updated",
+        response.data.message || "Your password has been changed successfully.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.back(),
+          },
+        ],
+      );
 
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      console.error("CHANGE PASSWORD ERROR:", error?.response?.data || error);
 
-  } catch (error) {
-    console.error(
-      "CHANGE PASSWORD ERROR:",
-      error?.response?.data || error
-    );
-
-    Alert.alert(
-      "Password Change Failed",
-      error?.response?.data?.message ||
-        "Unable to change your password."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+      Alert.alert(
+        "Password Change Failed",
+        error?.response?.data?.message || "Unable to change your password.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
       <View style={styles.container}>
-
         {/* HEADER */}
 
         <View style={styles.header}>
-
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Ionicons
-              name="arrow-back"
-              size={20}
-              color="#081A33"
-            />
+            <Ionicons name="arrow-back" size={20} color="#081A33" />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>
-            Change Password
-          </Text>
+          <Text style={styles.headerTitle}>Change Password</Text>
 
           <View style={styles.headerSpacer} />
-
         </View>
 
         {/* CONTENT */}
 
         <View style={styles.content}>
-
           <View style={styles.infoBox}>
-
             <View style={styles.infoIcon}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={21}
-                color="#F5B82E"
-              />
+              <Ionicons name="lock-closed-outline" size={21} color="" />
             </View>
 
             <View style={styles.infoText}>
-              <Text style={styles.infoTitle}>
-                Keep your account secure
-              </Text>
+              <Text style={styles.infoTitle}>Keep your account secure</Text>
 
               <Text style={styles.infoSubtitle}>
                 Use a strong password that you don't use elsewhere.
               </Text>
             </View>
-
           </View>
 
           {/* CURRENT PASSWORD */}
 
-          <Text style={styles.label}>
-            Current Password
-          </Text>
+          <Text style={styles.label}>Current Password</Text>
 
           <PasswordInput
             value={currentPassword}
@@ -166,9 +131,7 @@ const handleChangePassword = async () => {
 
           {/* NEW PASSWORD */}
 
-          <Text style={styles.label}>
-            New Password
-          </Text>
+          <Text style={styles.label}>New Password</Text>
 
           <PasswordInput
             value={newPassword}
@@ -180,9 +143,7 @@ const handleChangePassword = async () => {
 
           {/* CONFIRM PASSWORD */}
 
-          <Text style={styles.label}>
-            Confirm New Password
-          </Text>
+          <Text style={styles.label}>Confirm New Password</Text>
 
           <PasswordInput
             value={confirmPassword}
@@ -203,11 +164,8 @@ const handleChangePassword = async () => {
             onPress={handleChangePassword}
             activeOpacity={0.8}
           >
-            <Text style={styles.buttonText}>
-              Change Password
-            </Text>
+            <Text style={styles.buttonText}>Change Password</Text>
           </TouchableOpacity>
-
         </View>
       </View>
     </SafeAreaView>
@@ -223,12 +181,7 @@ function PasswordInput({
 }) {
   return (
     <View style={styles.inputContainer}>
-
-      <Ionicons
-        name="lock-closed-outline"
-        size={18}
-        color="#64748B"
-      />
+      <Ionicons name="lock-closed-outline" size={18} color="#64748B" />
 
       <TextInput
         style={styles.input}
@@ -240,16 +193,13 @@ function PasswordInput({
         autoCapitalize="none"
       />
 
-      <TouchableOpacity
-        onPress={() => setVisible(!visible)}
-      >
+      <TouchableOpacity onPress={() => setVisible(!visible)}>
         <Ionicons
           name={visible ? "eye-off-outline" : "eye-outline"}
           size={19}
           color="#64748B"
         />
       </TouchableOpacity>
-
     </View>
   );
 }

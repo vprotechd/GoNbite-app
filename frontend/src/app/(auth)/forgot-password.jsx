@@ -2,18 +2,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import api from "../../services/api";
@@ -32,57 +32,38 @@ export default function ForgotPasswordScreen() {
     // ==========================================
 
     if (!cleanEmail) {
-      Alert.alert(
-        "Required",
-        "Please enter your email address."
-      );
+      Alert.alert("Required", "Please enter your email address.");
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(cleanEmail)) {
-      Alert.alert(
-        "Invalid Email",
-        "Please enter a valid email address."
-      );
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
       return;
     }
 
     try {
       setLoading(true);
 
-      console.log(
-        "Requesting password reset for:",
-        cleanEmail
-      );
+      console.log("Requesting password reset for:", cleanEmail);
 
-     const response = await api.post(
-  "/auth/forgot-password",
-  {
-    email: cleanEmail,
-  }
-);
+      const response = await api.post("/auth/forgot-password", {
+        email: cleanEmail,
+      });
 
-console.log(
-  "FORGOT PASSWORD RESPONSE:",
-  response.data
-);
+      console.log("FORGOT PASSWORD RESPONSE:", response.data);
 
-router.push({
-  pathname: "/verify-otp",
-  params: {
-    email: cleanEmail,
-  },
-});
+      router.push({
+        pathname: "/verify-otp",
+        params: {
+          email: cleanEmail,
+        },
+      });
 
-      console.log(
-        "Forgot password response:",
-        response?.data
-      );
+      console.log("Forgot password response:", response?.data);
 
-      const resetToken =
-        response?.data?.resetToken;
+      const resetToken = response?.data?.resetToken;
 
       // ==========================================
       // DEVELOPMENT FLOW
@@ -90,10 +71,7 @@ router.push({
       // ==========================================
 
       if (resetToken) {
-        console.log(
-          "Reset token received:",
-          resetToken
-        );
+        console.log("Reset token received:", resetToken);
 
         setLoading(false);
 
@@ -123,14 +101,12 @@ router.push({
               router.replace("/(auth)/login");
             },
           },
-        ]
+        ],
       );
     } catch (error) {
       console.log(
         "Forgot password error:",
-        error?.response?.data ||
-          error?.message ||
-          error
+        error?.response?.data || error?.message || error,
       );
 
       setLoading(false);
@@ -140,32 +116,20 @@ router.push({
         error?.response?.data?.error ||
         "Unable to process your request. Please try again.";
 
-      Alert.alert(
-        "Unable to Reset Password",
-        message
-      );
+      Alert.alert("Unable to Reset Password", message);
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={
-          Platform.OS === "ios"
-            ? "padding"
-            : undefined
-        }
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          contentContainerStyle={
-            styles.scrollContent
-          }
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -180,28 +144,17 @@ router.push({
               disabled={loading}
               activeOpacity={0.8}
             >
-              <Ionicons
-                name="arrow-back"
-                size={22}
-                color="#FFFFFF"
-              />
+              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
             </TouchableOpacity>
 
             <View style={styles.iconCircle}>
-              <Ionicons
-                name="lock-open-outline"
-                size={34}
-                color="#F5B82E"
-              />
+              <Ionicons name="lock-open-outline" size={34} color="#FF8500" />
             </View>
 
-            <Text style={styles.title}>
-              Forgot Password?
-            </Text>
+            <Text style={styles.title}>Forgot Password?</Text>
 
             <Text style={styles.subtitle}>
-              Enter your registered email address to
-              reset your password.
+              Enter your registered email address to reset your password.
             </Text>
           </View>
 
@@ -210,9 +163,7 @@ router.push({
           ====================================== */}
 
           <View style={styles.form}>
-            <Text style={styles.label}>
-              Email Address
-            </Text>
+            <Text style={styles.label}>Email Address</Text>
 
             <View style={styles.inputWrapper}>
               <Ionicons
@@ -233,9 +184,7 @@ router.push({
                 autoCorrect={false}
                 editable={!loading}
                 returnKeyType="done"
-                onSubmitEditing={
-                  handleForgotPassword
-                }
+                onSubmitEditing={handleForgotPassword}
               />
             </View>
 
@@ -244,43 +193,22 @@ router.push({
             ================================== */}
 
             <TouchableOpacity
-              style={[
-                styles.submitButton,
-                loading &&
-                  styles.disabledButton,
-              ]}
+              style={[styles.submitButton, loading && styles.disabledButton]}
               onPress={handleForgotPassword}
               disabled={loading}
               activeOpacity={0.85}
             >
               {loading ? (
-                <View
-                  style={styles.loadingContent}
-                >
-                  <ActivityIndicator
-                    size="small"
-                    color="#0B0F14"
-                  />
+                <View style={styles.loadingContent}>
+                  <ActivityIndicator size="small" color="#0B0F14" />
 
-                  <Text
-                    style={styles.submitText}
-                  >
-                    Processing...
-                  </Text>
+                  <Text style={styles.submitText}>Processing...</Text>
                 </View>
               ) : (
                 <>
-                  <Text
-                    style={styles.submitText}
-                  >
-                    Continue
-                  </Text>
+                  <Text style={styles.submitText}>Continue</Text>
 
-                  <Ionicons
-                    name="arrow-forward"
-                    size={19}
-                    color="#0B0F14"
-                  />
+                  <Ionicons name="arrow-forward" size={19} color="#0B0F14" />
                 </>
               )}
             </TouchableOpacity>
@@ -291,23 +219,13 @@ router.push({
 
             <TouchableOpacity
               style={styles.loginButton}
-              onPress={() =>
-                router.replace(
-                  "/(auth)/login"
-                )
-              }
+              onPress={() => router.replace("/(auth)/login")}
               disabled={loading}
               activeOpacity={0.7}
             >
-              <Ionicons
-                name="arrow-back-outline"
-                size={17}
-                color="#F5B82E"
-              />
+              <Ionicons name="arrow-back-outline" size={17} color="#FF8500" />
 
-              <Text style={styles.loginText}>
-                Back to Login
-              </Text>
+              <Text style={styles.loginText}>Back to Login</Text>
             </TouchableOpacity>
           </View>
 
@@ -316,8 +234,7 @@ router.push({
           ====================================== */}
 
           <Text style={styles.note}>
-            Enter the email address associated with
-            your Snax account.
+            Enter the email address associated with your Snax account.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -431,7 +348,7 @@ const styles = StyleSheet.create({
 
   submitButton: {
     height: 52,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     borderRadius: 13,
     flexDirection: "row",
     alignItems: "center",
@@ -466,7 +383,7 @@ const styles = StyleSheet.create({
   },
 
   loginText: {
-    color: "#F5B82E",
+    color: "#FF8500",
     fontSize: 14,
     fontWeight: "700",
   },

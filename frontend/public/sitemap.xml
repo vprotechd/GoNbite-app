@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+    <!-- GoNbite Home -->
+    <url>
+        <loc>https://gonbite-app-1.onrender.com/</loc>
+        <changefreq>daily</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <!-- Restaurant Menu -->
+    <url>
+        <loc>https://gonbite-app-1.onrender.com/restaurant-menu</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <!-- Location -->
+    <url>
+        <loc>https://gonbite-app-1.onrender.com/location</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <!-- Limited Offers -->
+    <url>
+        <loc>https://gonbite-app-1.onrender.com/limited-offer</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <!-- Search -->
+    <url>
+        <loc>https://gonbite-app-1.onrender.com/search</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <!-- Help & Support -->
+    <url>
+        <loc>https://gonbite-app-1.onrender.com/help-support</loc>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <!-- Privacy Policy -->
+    <url>
+        <loc>https://gonbite-app-1.onrender.com/privacy-policy</loc>
+        <changefreq>yearly</changefreq>
+        <priority>0.3</priority>
+    </url>
+
+    <!-- Terms & Conditions -->
+    <url>
+        <loc>https://gonbite-app-1.onrender.com/terms-conditions</loc>
+        <changefreq>yearly</changefreq>
+        <priority>0.3</priority>
+    </url>
+
+</urlset>

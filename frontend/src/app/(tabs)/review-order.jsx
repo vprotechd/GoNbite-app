@@ -3,19 +3,19 @@ import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import api from "../../services/api";
@@ -65,14 +65,9 @@ export default function ReviewOrderScreen() {
 
       console.log("Checking existing review:", orderId);
 
-      const response = await api.get(
-        `/reviews/order/${orderId}`
-      );
+      const response = await api.get(`/reviews/order/${orderId}`);
 
-      console.log(
-        "Review check response:",
-        response?.data
-      );
+      console.log("Review check response:", response?.data);
 
       if (response?.data?.reviewed === true) {
         console.log("User already reviewed this order.");
@@ -92,7 +87,7 @@ export default function ReviewOrderScreen() {
           ],
           {
             cancelable: false,
-          }
+          },
         );
       } else {
         setAlreadyReviewed(false);
@@ -100,9 +95,7 @@ export default function ReviewOrderScreen() {
     } catch (error) {
       console.error(
         "Check existing review error:",
-        error?.response?.data ||
-          error?.message ||
-          error
+        error?.response?.data || error?.message || error,
       );
 
       /*
@@ -131,32 +124,25 @@ export default function ReviewOrderScreen() {
       if (!permission.granted) {
         Alert.alert(
           "Permission Required",
-          "Please allow photo library access to upload a picture."
+          "Please allow photo library access to upload a picture.",
         );
         return;
       }
 
-      const result =
-        await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ["images"],
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 0.8,
-        });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
 
-      if (
-        !result.canceled &&
-        result.assets?.length > 0
-      ) {
+      if (!result.canceled && result.assets?.length > 0) {
         setImage(result.assets[0].uri);
       }
     } catch (error) {
       console.error("Image picker error:", error);
 
-      Alert.alert(
-        "Error",
-        "Unable to select the picture. Please try again."
-      );
+      Alert.alert("Error", "Unable to select the picture. Please try again.");
     }
   };
 
@@ -175,11 +161,7 @@ export default function ReviewOrderScreen() {
   // =====================================================
 
   const getMimeType = (uri) => {
-    const extension = uri
-      .split("?")[0]
-      .split(".")
-      .pop()
-      ?.toLowerCase();
+    const extension = uri.split("?")[0].split(".").pop()?.toLowerCase();
 
     switch (extension) {
       case "png":
@@ -204,10 +186,7 @@ export default function ReviewOrderScreen() {
 
     const fileName = cleanUri.split("/").pop();
 
-    if (
-      fileName &&
-      fileName.includes(".")
-    ) {
+    if (fileName && fileName.includes(".")) {
       return fileName;
     }
 
@@ -223,18 +202,14 @@ export default function ReviewOrderScreen() {
 
     // IMPORTANT
     if (alreadyReviewed) {
-      Alert.alert(
-        "Already Reviewed",
-        "You have already reviewed this order.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              router.back();
-            },
+      Alert.alert("Already Reviewed", "You have already reviewed this order.", [
+        {
+          text: "OK",
+          onPress: () => {
+            router.back();
           },
-        ]
-      );
+        },
+      ]);
 
       return;
     }
@@ -246,7 +221,7 @@ export default function ReviewOrderScreen() {
     if (!orderId) {
       Alert.alert(
         "Error",
-        "Order information is missing. Please open the review from your order history."
+        "Order information is missing. Please open the review from your order history.",
       );
       return;
     }
@@ -254,7 +229,7 @@ export default function ReviewOrderScreen() {
     if (rating < 1 || rating > 5) {
       Alert.alert(
         "Rating Required",
-        "Please select a rating from 1 to 5 stars."
+        "Please select a rating from 1 to 5 stars.",
       );
       return;
     }
@@ -264,26 +239,14 @@ export default function ReviewOrderScreen() {
 
       const formData = new FormData();
 
-      formData.append(
-        "orderId",
-        String(orderId)
-      );
+      formData.append("orderId", String(orderId));
 
-      formData.append(
-        "rating",
-        String(rating)
-      );
+      formData.append("rating", String(rating));
 
-      formData.append(
-        "comment",
-        comment.trim()
-      );
+      formData.append("comment", comment.trim());
 
       if (restaurantId) {
-        formData.append(
-          "restaurantId",
-          String(restaurantId)
-        );
+        formData.append("restaurantId", String(restaurantId));
       }
 
       // =================================================
@@ -301,28 +264,17 @@ export default function ReviewOrderScreen() {
         });
       }
 
-      console.log(
-        "Submitting review:",
-        {
-          orderId: String(orderId),
-          restaurantId: restaurantId
-            ? String(restaurantId)
-            : null,
-          rating,
-          comment: comment.trim(),
-          hasImage: !!image,
-        }
-      );
+      console.log("Submitting review:", {
+        orderId: String(orderId),
+        restaurantId: restaurantId ? String(restaurantId) : null,
+        rating,
+        comment: comment.trim(),
+        hasImage: !!image,
+      });
 
-      const response = await api.post(
-        "/reviews/create",
-        formData
-      );
+      const response = await api.post("/reviews/create", formData);
 
-      console.log(
-        "Review response:",
-        response?.data
-      );
+      console.log("Review response:", response?.data);
 
       Alert.alert(
         "Review Submitted",
@@ -337,30 +289,22 @@ export default function ReviewOrderScreen() {
         ],
         {
           cancelable: false,
-        }
+        },
       );
     } catch (error) {
       console.error(
         "Submit review error:",
-        error?.response?.data ||
-          error?.message ||
-          error
+        error?.response?.data || error?.message || error,
       );
 
       const serverError =
-        error?.response?.data?.error ||
-        error?.response?.data?.message ||
-        "";
+        error?.response?.data?.error || error?.response?.data?.message || "";
 
       // =================================================
       // ALREADY REVIEWED
       // =================================================
 
-      if (
-        serverError
-          .toLowerCase()
-          .includes("already reviewed")
-      ) {
+      if (serverError.toLowerCase().includes("already reviewed")) {
         setAlreadyReviewed(true);
 
         Alert.alert(
@@ -376,7 +320,7 @@ export default function ReviewOrderScreen() {
           ],
           {
             cancelable: false,
-          }
+          },
         );
 
         return;
@@ -386,14 +330,10 @@ export default function ReviewOrderScreen() {
       // ORDER NOT DELIVERED
       // =================================================
 
-      if (
-        serverError
-          .toLowerCase()
-          .includes("delivered")
-      ) {
+      if (serverError.toLowerCase().includes("delivered")) {
         Alert.alert(
           "Review Not Available",
-          "You can review this order only after it has been delivered."
+          "You can review this order only after it has been delivered.",
         );
 
         return;
@@ -405,8 +345,7 @@ export default function ReviewOrderScreen() {
 
       Alert.alert(
         "Unable to Submit",
-        serverError ||
-          "Failed to submit your review. Please try again."
+        serverError || "Failed to submit your review. Please try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -446,39 +385,25 @@ export default function ReviewOrderScreen() {
   if (checkingReview) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar
-          barStyle="light-content"
-          backgroundColor="#081A33"
-        />
+        <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Ionicons
-              name="arrow-back"
-              size={22}
-              color="#FFFFFF"
-            />
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>
-            Write a Review
-          </Text>
+          <Text style={styles.headerTitle}>Write a Review</Text>
 
           <View style={styles.headerSpacer} />
         </View>
 
         <View style={styles.checkingContainer}>
-          <ActivityIndicator
-            size="large"
-            color="#F5B82E"
-          />
+          <ActivityIndicator size="large" color="#FF8500" />
 
-          <Text style={styles.checkingText}>
-            Checking review status...
-          </Text>
+          <Text style={styles.checkingText}>Checking review status...</Text>
         </View>
       </SafeAreaView>
     );
@@ -491,42 +416,27 @@ export default function ReviewOrderScreen() {
   if (alreadyReviewed) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar
-          barStyle="light-content"
-          backgroundColor="#081A33"
-        />
+        <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Ionicons
-              name="arrow-back"
-              size={22}
-              color="#FFFFFF"
-            />
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>
-            Review
-          </Text>
+          <Text style={styles.headerTitle}>Review</Text>
 
           <View style={styles.headerSpacer} />
         </View>
 
         <View style={styles.alreadyReviewedContainer}>
           <View style={styles.reviewedIcon}>
-            <Ionicons
-              name="checkmark-circle"
-              size={70}
-              color="#22C55E"
-            />
+            <Ionicons name="checkmark-circle" size={70} color="#22C55E" />
           </View>
 
-          <Text style={styles.alreadyReviewedTitle}>
-            Already Reviewed
-          </Text>
+          <Text style={styles.alreadyReviewedTitle}>Already Reviewed</Text>
 
           <Text style={styles.alreadyReviewedMessage}>
             You have already reviewed this order.
@@ -536,9 +446,7 @@ export default function ReviewOrderScreen() {
             style={styles.goBackButton}
             onPress={() => router.back()}
           >
-            <Text style={styles.goBackButtonText}>
-              Go Back
-            </Text>
+            <Text style={styles.goBackButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -551,10 +459,7 @@ export default function ReviewOrderScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
       <View style={styles.header}>
         <TouchableOpacity
@@ -562,27 +467,17 @@ export default function ReviewOrderScreen() {
           onPress={() => router.back()}
           disabled={isSubmitting}
         >
-          <Ionicons
-            name="arrow-back"
-            size={22}
-            color="#FFFFFF"
-          />
+          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>
-          Write a Review
-        </Text>
+        <Text style={styles.headerTitle}>Write a Review</Text>
 
         <View style={styles.headerSpacer} />
       </View>
 
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={
-          Platform.OS === "ios"
-            ? "padding"
-            : undefined
-        }
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -593,11 +488,7 @@ export default function ReviewOrderScreen() {
 
           <View style={styles.restaurantCard}>
             <View style={styles.restaurantIcon}>
-              <Ionicons
-                name="restaurant-outline"
-                size={28}
-                color="#F5B82E"
-              />
+              <Ionicons name="restaurant-outline" size={28} color="#FF8500" />
             </View>
 
             <View style={styles.restaurantInfo}>
@@ -605,10 +496,7 @@ export default function ReviewOrderScreen() {
                 Reviewing your order from
               </Text>
 
-              <Text
-                style={styles.restaurantName}
-                numberOfLines={2}
-              >
+              <Text style={styles.restaurantName} numberOfLines={2}>
                 {restaurantName}
               </Text>
             </View>
@@ -617,51 +505,33 @@ export default function ReviewOrderScreen() {
           {/* RATING */}
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              How was your order?
-            </Text>
+            <Text style={styles.sectionTitle}>How was your order?</Text>
 
             <View style={styles.starsContainer}>
-              {[1, 2, 3, 4, 5].map(
-                (star) => (
-                  <TouchableOpacity
-                    key={star}
-                    onPress={() =>
-                      setRating(star)
-                    }
-                    style={styles.starButton}
-                    disabled={isSubmitting}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={
-                        star <= rating
-                          ? "star"
-                          : "star-outline"
-                      }
-                      size={42}
-                      color={
-                        star <= rating
-                          ? "#F5B82E"
-                          : "#CBD5E1"
-                      }
-                    />
-                  </TouchableOpacity>
-                )
-              )}
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setRating(star)}
+                  style={styles.starButton}
+                  disabled={isSubmitting}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={star <= rating ? "star" : "star-outline"}
+                    size={42}
+                    color={star <= rating ? "" : "#CBD5E1"}
+                  />
+                </TouchableOpacity>
+              ))}
             </View>
 
-            <Text style={styles.ratingText}>
-              {getRatingText()}
-            </Text>
+            <Text style={styles.ratingText}>{getRatingText()}</Text>
           </View>
 
           {/* COMMENT */}
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              Write your review
-            </Text>
+            <Text style={styles.sectionTitle}>Write your review</Text>
 
             <TextInput
               style={styles.commentInput}
@@ -675,17 +545,13 @@ export default function ReviewOrderScreen() {
               editable={!isSubmitting}
             />
 
-            <Text style={styles.characterCount}>
-              {comment.length}/1000
-            </Text>
+            <Text style={styles.characterCount}>{comment.length}/1000</Text>
           </View>
 
           {/* PHOTO */}
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              Add a picture
-            </Text>
+            <Text style={styles.sectionTitle}>Add a picture</Text>
 
             <Text style={styles.photoDescription}>
               Share a picture of your food or order.
@@ -699,34 +565,16 @@ export default function ReviewOrderScreen() {
                 activeOpacity={0.7}
               >
                 <View style={styles.cameraIcon}>
-                  <Ionicons
-                    name="camera-outline"
-                    size={24}
-                    color="#F5B82E"
-                  />
+                  <Ionicons name="camera-outline" size={24} color="#FF8500" />
                 </View>
 
-                <View
-                  style={
-                    styles.uploadTextContainer
-                  }
-                >
-                  <Text style={styles.uploadTitle}>
-                    Upload Picture
-                  </Text>
+                <View style={styles.uploadTextContainer}>
+                  <Text style={styles.uploadTitle}>Upload Picture</Text>
 
-                  <Text
-                    style={styles.uploadSubtitle}
-                  >
-                    JPG, PNG or WEBP
-                  </Text>
+                  <Text style={styles.uploadSubtitle}>JPG, PNG or WEBP</Text>
                 </View>
 
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color="#64748B"
-                />
+                <Ionicons name="chevron-forward" size={20} color="#64748B" />
               </TouchableOpacity>
             ) : (
               <View style={styles.imageContainer}>
@@ -737,18 +585,12 @@ export default function ReviewOrderScreen() {
                 />
 
                 <TouchableOpacity
-                  style={
-                    styles.removeImageButton
-                  }
+                  style={styles.removeImageButton}
                   onPress={removeImage}
                   disabled={isSubmitting}
                   activeOpacity={0.8}
                 >
-                  <Ionicons
-                    name="close"
-                    size={20}
-                    color="#FFFFFF"
-                  />
+                  <Ionicons name="close" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
             )}
@@ -759,31 +601,17 @@ export default function ReviewOrderScreen() {
           <TouchableOpacity
             style={[
               styles.submitButton,
-              (rating === 0 ||
-                isSubmitting) &&
-                styles.submitButtonDisabled,
+              (rating === 0 || isSubmitting) && styles.submitButtonDisabled,
             ]}
             onPress={submitReview}
-            disabled={
-              rating === 0 ||
-              isSubmitting
-            }
+            disabled={rating === 0 || isSubmitting}
             activeOpacity={0.8}
           >
             {isSubmitting ? (
               <>
-                <ActivityIndicator
-                  size="small"
-                  color="#081A33"
-                />
+                <ActivityIndicator size="small" color="#081A33" />
 
-                <Text
-                  style={
-                    styles.submitButtonText
-                  }
-                >
-                  Submitting...
-                </Text>
+                <Text style={styles.submitButtonText}>Submitting...</Text>
               </>
             ) : (
               <>
@@ -793,20 +621,13 @@ export default function ReviewOrderScreen() {
                   color="#081A33"
                 />
 
-                <Text
-                  style={
-                    styles.submitButtonText
-                  }
-                >
-                  Submit Review
-                </Text>
+                <Text style={styles.submitButtonText}>Submit Review</Text>
               </>
             )}
           </TouchableOpacity>
 
           <Text style={styles.bottomNote}>
-            You can review an order only after it has
-            been delivered.
+            You can review an order only after it has been delivered.
           </Text>
 
           <View style={{ height: 40 }} />
@@ -838,7 +659,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F5B82E",
+    borderBottomColor: "#FF8500",
   },
 
   backButton: {
@@ -918,7 +739,7 @@ const styles = StyleSheet.create({
     minWidth: 180,
     height: 50,
     borderRadius: 12,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 25,
@@ -1093,18 +914,17 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor:
-      "rgba(8, 26, 51, 0.85)",
+    backgroundColor: "rgba(8, 26, 51, 0.85)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#F5B82E",
+    borderColor: "#FF8500",
   },
 
   submitButton: {
     minHeight: 52,
     borderRadius: 14,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

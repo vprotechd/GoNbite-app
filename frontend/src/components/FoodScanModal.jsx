@@ -2,21 +2,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRef, useState } from "react";
 import {
-  Alert,
-  Image,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    Modal,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import { Platform } from "react-native";
 
-export default function FoodScanModal({
-  visible,
-  onClose,
-  onFoodCaptured,
-}) {
+export default function FoodScanModal({ visible, onClose, onFoodCaptured }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [photo, setPhoto] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -42,10 +38,7 @@ export default function FoodScanModal({
     } catch (error) {
       console.error("❌ Food photo error:", error);
 
-      Alert.alert(
-        "Error",
-        "Could not capture the food image."
-      );
+      Alert.alert("Error", "Could not capture the food image.");
     }
   };
 
@@ -88,17 +81,12 @@ export default function FoodScanModal({
 
         console.log("📦 Image blob created:", blob.size);
 
-        formData.append(
-          "image",
-          blob,
-          "food-photo.jpg"
-        );
+        formData.append("image", blob, "food-photo.jpg");
       }
 
       // ==================================================
       // ANDROID / IOS
       // ==================================================
-
       else {
         console.log("📱 Platform:", Platform.OS);
 
@@ -120,13 +108,10 @@ export default function FoodScanModal({
         {
           method: "POST",
           body: formData,
-        }
+        },
       );
 
-      console.log(
-        "📡 Backend response status:",
-        response.status
-      );
+      console.log("📡 Backend response status:", response.status);
 
       // ==================================================
       // CHECK RESPONSE
@@ -138,9 +123,7 @@ export default function FoodScanModal({
         try {
           const errorData = await response.json();
 
-          errorMessage =
-            errorData?.message ||
-            errorMessage;
+          errorMessage = errorData?.message || errorMessage;
         } catch {
           // Ignore JSON parsing error
         }
@@ -154,10 +137,7 @@ export default function FoodScanModal({
 
       const data = await response.json();
 
-      console.log(
-        "🍔 FOOD IDENTIFICATION RESULT:",
-        data
-      );
+      console.log("🍔 FOOD IDENTIFICATION RESULT:", data);
 
       // ==================================================
       // SEND RESULT TO HOME SCREEN
@@ -166,17 +146,12 @@ export default function FoodScanModal({
       if (onFoodCaptured) {
         onFoodCaptured(data);
       }
-
     } catch (error) {
-      console.error(
-        "❌ Food identification error:",
-        error
-      );
+      console.error("❌ Food identification error:", error);
 
       Alert.alert(
         "Food Scan Failed",
-        error.message ||
-          "Could not identify the food. Please try again."
+        error.message || "Could not identify the food. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -199,11 +174,7 @@ export default function FoodScanModal({
 
   if (!permission) {
     return (
-      <Modal
-        visible={visible}
-        transparent
-        animationType="slide"
-      >
+      <Modal visible={visible} transparent animationType="slide">
         <View style={styles.permissionContainer}>
           <Text style={styles.permissionText}>
             Requesting camera permission...
@@ -219,46 +190,26 @@ export default function FoodScanModal({
 
   if (!permission.granted) {
     return (
-      <Modal
-        visible={visible}
-        transparent
-        animationType="slide"
-      >
+      <Modal visible={visible} transparent animationType="slide">
         <View style={styles.permissionContainer}>
+          <Ionicons name="camera-outline" size={50} color="#FF6B35" />
 
-          <Ionicons
-            name="camera-outline"
-            size={50}
-            color="#F5B82E"
-          />
-
-          <Text style={styles.permissionTitle}>
-            Camera Permission Required
-          </Text>
+          <Text style={styles.permissionTitle}>Camera Permission Required</Text>
 
           <Text style={styles.permissionText}>
-            Snax needs camera access to identify food
-            from a photo.
+            Snax needs camera access to identify food from a photo.
           </Text>
 
           <TouchableOpacity
             onPress={requestPermission}
             style={styles.permissionBtn}
           >
-            <Text style={styles.permissionBtnText}>
-              Grant Permission
-            </Text>
+            <Text style={styles.permissionBtnText}>Grant Permission</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={handleClose}
-            style={styles.cancelBtn}
-          >
-            <Text style={styles.cancelBtnText}>
-              Cancel
-            </Text>
+          <TouchableOpacity onPress={handleClose} style={styles.cancelBtn}>
+            <Text style={styles.cancelBtnText}>Cancel</Text>
           </TouchableOpacity>
-
         </View>
       </Modal>
     );
@@ -269,35 +220,20 @@ export default function FoodScanModal({
   // ======================================================
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      onRequestClose={handleClose}
-    >
+    <Modal visible={visible} animationType="slide" onRequestClose={handleClose}>
       <View style={styles.container}>
-
         {/* ==================================================
             HEADER
         ================================================== */}
 
         <View style={styles.header}>
-
-          <TouchableOpacity
-            onPress={handleClose}
-          >
-            <Ionicons
-              name="close"
-              size={28}
-              color="#FFFFFF"
-            />
+          <TouchableOpacity onPress={handleClose}>
+            <Ionicons name="close" size={28} color="#FFFFFF" />
           </TouchableOpacity>
 
-          <Text style={styles.title}>
-            Scan Food
-          </Text>
+          <Text style={styles.title}>Scan Food</Text>
 
           <View style={{ width: 28 }} />
-
         </View>
 
         {/* ==================================================
@@ -305,22 +241,14 @@ export default function FoodScanModal({
         ================================================== */}
 
         <View style={styles.cameraContainer}>
-
           {!photo ? (
-            <CameraView
-              ref={cameraRef}
-              style={styles.camera}
-            />
+            <CameraView ref={cameraRef} style={styles.camera} />
           ) : (
-            <Image
-              source={{ uri: photo }}
-              style={styles.camera}
-            />
+            <Image source={{ uri: photo }} style={styles.camera} />
           )}
 
           {!photo && (
             <View style={styles.scanFrame}>
-
               <View style={styles.cornerTopLeft} />
               <View style={styles.cornerTopRight} />
               <View style={styles.cornerBottomLeft} />
@@ -329,10 +257,8 @@ export default function FoodScanModal({
               <Text style={styles.frameText}>
                 Place the food inside the frame
               </Text>
-
             </View>
           )}
-
         </View>
 
         {/* ==================================================
@@ -340,7 +266,6 @@ export default function FoodScanModal({
         ================================================== */}
 
         <View style={styles.bottomSection}>
-
           {!photo ? (
             <>
               <Text style={styles.instruction}>
@@ -361,7 +286,6 @@ export default function FoodScanModal({
               </Text>
 
               <View style={styles.actionRow}>
-
                 {/* RETAKE */}
 
                 <TouchableOpacity
@@ -369,15 +293,9 @@ export default function FoodScanModal({
                   onPress={retakePhoto}
                   disabled={loading}
                 >
-                  <Ionicons
-                    name="camera-outline"
-                    size={20}
-                    color="#0B0F14"
-                  />
+                  <Ionicons name="camera-outline" size={20} color="#0B0F14" />
 
-                  <Text style={styles.retakeText}>
-                    Retake
-                  </Text>
+                  <Text style={styles.retakeText}>Retake</Text>
                 </TouchableOpacity>
 
                 {/* IDENTIFY */}
@@ -388,28 +306,19 @@ export default function FoodScanModal({
                   disabled={loading}
                 >
                   <Ionicons
-                    name={
-                      loading
-                        ? "hourglass-outline"
-                        : "sparkles"
-                    }
+                    name={loading ? "hourglass-outline" : "sparkles"}
                     size={20}
                     color="#0B0F14"
                   />
 
                   <Text style={styles.identifyText}>
-                    {loading
-                      ? "Identifying..."
-                      : "Identify Food"}
+                    {loading ? "Identifying..." : "Identify Food"}
                   </Text>
                 </TouchableOpacity>
-
               </View>
             </>
           )}
-
         </View>
-
       </View>
     </Modal>
   );
@@ -469,7 +378,7 @@ const styles = StyleSheet.create({
     height: 45,
     borderTopWidth: 4,
     borderLeftWidth: 4,
-    borderColor: "#F5B82E",
+    borderColor: "#FF6B35",
   },
 
   cornerTopRight: {
@@ -480,7 +389,7 @@ const styles = StyleSheet.create({
     height: 45,
     borderTopWidth: 4,
     borderRightWidth: 4,
-    borderColor: "#F5B82E",
+    borderColor: "#FF6B35",
   },
 
   cornerBottomLeft: {
@@ -491,7 +400,7 @@ const styles = StyleSheet.create({
     height: 45,
     borderBottomWidth: 4,
     borderLeftWidth: 4,
-    borderColor: "#F5B82E",
+    borderColor: "#FF6B35",
   },
 
   cornerBottomRight: {
@@ -502,7 +411,7 @@ const styles = StyleSheet.create({
     height: 45,
     borderBottomWidth: 4,
     borderRightWidth: 4,
-    borderColor: "#F5B82E",
+    borderColor: "#FF6B35",
   },
 
   frameText: {
@@ -541,7 +450,7 @@ const styles = StyleSheet.create({
     width: 62,
     height: 62,
     borderRadius: 31,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
   },
 
   actionRow: {
@@ -570,7 +479,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     borderRadius: 14,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -606,7 +515,7 @@ const styles = StyleSheet.create({
   },
 
   permissionBtn: {
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
     paddingHorizontal: 25,
     paddingVertical: 13,
     borderRadius: 12,

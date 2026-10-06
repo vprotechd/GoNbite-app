@@ -4,16 +4,16 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import api from "../../services/api";
@@ -33,7 +33,7 @@ export default function LimitedOfferScreen() {
     useCallback(() => {
       fetchDishes();
       loadCart();
-    }, [])
+    }, []),
   );
 
   // =====================================================
@@ -80,17 +80,14 @@ export default function LimitedOfferScreen() {
     } catch (error) {
       console.log(
         "LIMITED OFFER FETCH ERROR:",
-        error?.response?.data ||
-          error?.message ||
-          error
+        error?.response?.data || error?.message || error,
       );
 
       setDishes([]);
 
       Alert.alert(
         "Unable to Load Offers",
-        error?.response?.data?.message ||
-          "Unable to load restaurant dishes."
+        error?.response?.data?.message || "Unable to load restaurant dishes.",
       );
     } finally {
       setLoading(false);
@@ -103,8 +100,7 @@ export default function LimitedOfferScreen() {
 
   const loadCart = async () => {
     try {
-      const storedCart =
-        await AsyncStorage.getItem(CART_KEY);
+      const storedCart = await AsyncStorage.getItem(CART_KEY);
 
       if (storedCart) {
         const parsedCart = JSON.parse(storedCart);
@@ -129,10 +125,7 @@ export default function LimitedOfferScreen() {
 
   const saveCart = async (cart) => {
     try {
-      await AsyncStorage.setItem(
-        CART_KEY,
-        JSON.stringify(cart)
-      );
+      await AsyncStorage.setItem(CART_KEY, JSON.stringify(cart));
 
       setCartItems(cart);
     } catch (error) {
@@ -151,7 +144,7 @@ export default function LimitedOfferScreen() {
         dish?.cost ??
         dish?.sellingPrice ??
         dish?.originalPrice ??
-        0
+        0,
     );
   };
 
@@ -225,11 +218,7 @@ export default function LimitedOfferScreen() {
     const restaurant = dish?.restaurant;
 
     if (typeof restaurant === "object") {
-      return (
-        restaurant?._id ||
-        restaurant?.id ||
-        null
-      );
+      return restaurant?._id || restaurant?.id || null;
     }
 
     return (
@@ -246,13 +235,7 @@ export default function LimitedOfferScreen() {
   // =====================================================
 
   const getDishId = (dish) => {
-    return (
-      dish?._id ||
-      dish?.id ||
-      dish?.foodId ||
-      dish?.dishId ||
-      null
-    );
+    return dish?._id || dish?.id || dish?.foodId || dish?.dishId || null;
   };
 
   // =====================================================
@@ -275,20 +258,13 @@ export default function LimitedOfferScreen() {
       return null;
     }
 
-    if (
-      image.startsWith("http://") ||
-      image.startsWith("https://")
-    ) {
+    if (image.startsWith("http://") || image.startsWith("https://")) {
       return image;
     }
 
-    const baseURL =
-      api?.defaults?.baseURL || "";
+    const baseURL = api?.defaults?.baseURL || "";
 
-    const cleanBaseURL = baseURL.replace(
-      /\/api\/?$/,
-      ""
-    );
+    const cleanBaseURL = baseURL.replace(/\/api\/?$/, "");
 
     if (image.startsWith("/")) {
       return `${cleanBaseURL}${image}`;
@@ -303,7 +279,7 @@ export default function LimitedOfferScreen() {
 
   const getCartQuantity = (dishId) => {
     const item = cartItems.find(
-      (item) => String(item.dishId) === String(dishId)
+      (item) => String(item.dishId) === String(dishId),
     );
 
     return item?.quantity || 0;
@@ -317,22 +293,16 @@ export default function LimitedOfferScreen() {
     const dishId = getDishId(dish);
 
     if (!dishId) {
-      Alert.alert(
-        "Error",
-        "Dish ID is missing."
-      );
+      Alert.alert("Error", "Dish ID is missing.");
       return;
     }
 
-    const originalPrice =
-      getOriginalPrice(dish);
+    const originalPrice = getOriginalPrice(dish);
 
-    const discountedPrice =
-      getDiscountedPrice(originalPrice);
+    const discountedPrice = getDiscountedPrice(originalPrice);
 
     const existingItem = cartItems.find(
-      (item) =>
-        String(item.dishId) === String(dishId)
+      (item) => String(item.dishId) === String(dishId),
     );
 
     let updatedCart;
@@ -344,7 +314,7 @@ export default function LimitedOfferScreen() {
               ...item,
               quantity: item.quantity + 1,
             }
-          : item
+          : item,
       );
     } else {
       const newItem = {
@@ -354,11 +324,9 @@ export default function LimitedOfferScreen() {
 
         name: getDishName(dish),
 
-        restaurantId:
-          getRestaurantId(dish),
+        restaurantId: getRestaurantId(dish),
 
-        restaurantName:
-          getRestaurantName(dish),
+        restaurantName: getRestaurantName(dish),
 
         image: getDishImage(dish),
 
@@ -373,10 +341,7 @@ export default function LimitedOfferScreen() {
         quantity: 1,
       };
 
-      updatedCart = [
-        ...cartItems,
-        newItem,
-      ];
+      updatedCart = [...cartItems, newItem];
     }
 
     await saveCart(updatedCart);
@@ -390,8 +355,7 @@ export default function LimitedOfferScreen() {
     const dishId = getDishId(dish);
 
     const existingItem = cartItems.find(
-      (item) =>
-        String(item.dishId) === String(dishId)
+      (item) => String(item.dishId) === String(dishId),
     );
 
     if (!existingItem) {
@@ -402,8 +366,7 @@ export default function LimitedOfferScreen() {
 
     if (existingItem.quantity <= 1) {
       updatedCart = cartItems.filter(
-        (item) =>
-          String(item.dishId) !== String(dishId)
+        (item) => String(item.dishId) !== String(dishId),
       );
     } else {
       updatedCart = cartItems.map((item) =>
@@ -412,7 +375,7 @@ export default function LimitedOfferScreen() {
               ...item,
               quantity: item.quantity - 1,
             }
-          : item
+          : item,
       );
     }
 
@@ -424,9 +387,8 @@ export default function LimitedOfferScreen() {
   // =====================================================
 
   const cartCount = cartItems.reduce(
-    (total, item) =>
-      total + Number(item.quantity || 0),
-    0
+    (total, item) => total + Number(item.quantity || 0),
+    0,
   );
 
   // =====================================================
@@ -435,10 +397,7 @@ export default function LimitedOfferScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
       {/* HEADER */}
 
@@ -447,17 +406,11 @@ export default function LimitedOfferScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <Ionicons
-            name="arrow-back"
-            size={22}
-            color="#FFFFFF"
-          />
+          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
         </TouchableOpacity>
 
         <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>
-            Limited Time Offer
-          </Text>
+          <Text style={styles.headerTitle}>Limited Time Offer</Text>
 
           <Text style={styles.headerSubtitle}>
             Enjoy your favorite dishes at special prices
@@ -470,17 +423,11 @@ export default function LimitedOfferScreen() {
           style={styles.headerCart}
           onPress={() => router.push("/cart")}
         >
-          <Ionicons
-            name="bag-outline"
-            size={23}
-            color="#F5B82E"
-          />
+          <Ionicons name="bag-outline" size={23} color="#FF8500" />
 
           {cartCount > 0 && (
             <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>
-                {cartCount}
-              </Text>
+              <Text style={styles.cartBadgeText}>{cartCount}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -490,13 +437,9 @@ export default function LimitedOfferScreen() {
 
       <View style={styles.offerBanner}>
         <View>
-          <Text style={styles.offerSmall}>
-            LIMITED TIME OFFER
-          </Text>
+          <Text style={styles.offerSmall}>LIMITED TIME OFFER</Text>
 
-          <Text style={styles.offerTitle}>
-            20% OFF
-          </Text>
+          <Text style={styles.offerTitle}>20% OFF</Text>
 
           <Text style={styles.offerDescription}>
             Selected dishes below ₹150
@@ -504,11 +447,7 @@ export default function LimitedOfferScreen() {
         </View>
 
         <View style={styles.offerIcon}>
-          <Ionicons
-            name="pricetag"
-            size={42}
-            color="#F5B82E"
-          />
+          <Ionicons name="pricetag" size={42} color="#FF8500" />
         </View>
       </View>
 
@@ -520,9 +459,7 @@ export default function LimitedOfferScreen() {
       >
         <View style={styles.sectionHeader}>
           <View>
-            <Text style={styles.sectionTitle}>
-              Special Offers
-            </Text>
+            <Text style={styles.sectionTitle}>Special Offers</Text>
 
             <Text style={styles.sectionSubtitle}>
               Existing dishes from our restaurants
@@ -530,9 +467,7 @@ export default function LimitedOfferScreen() {
           </View>
 
           <View style={styles.countBadge}>
-            <Text style={styles.countText}>
-              {dishes.length}
-            </Text>
+            <Text style={styles.countText}>{dishes.length}</Text>
           </View>
         </View>
 
@@ -540,200 +475,104 @@ export default function LimitedOfferScreen() {
 
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator
-              size="large"
-              color="#F5B82E"
-            />
+            <ActivityIndicator size="large" color="#FF8500" />
 
-            <Text style={styles.loadingText}>
-              Loading offers...
-            </Text>
+            <Text style={styles.loadingText}>Loading offers...</Text>
           </View>
         ) : dishes.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons
-              name="fast-food-outline"
-              size={55}
-              color="#94A3B8"
-            />
+            <Ionicons name="fast-food-outline" size={55} color="#94A3B8" />
 
-            <Text style={styles.emptyTitle}>
-              No offers available
-            </Text>
+            <Text style={styles.emptyTitle}>No offers available</Text>
 
             <Text style={styles.emptyText}>
-              No restaurant dishes below ₹150 are
-              currently available.
+              No restaurant dishes below ₹150 are currently available.
             </Text>
 
-            <TouchableOpacity
-              style={styles.retryButton}
-              onPress={fetchDishes}
-            >
-              <Ionicons
-                name="refresh"
-                size={16}
-                color="#0B0F14"
-              />
+            <TouchableOpacity style={styles.retryButton} onPress={fetchDishes}>
+              <Ionicons name="refresh" size={16} color="#0B0F14" />
 
-              <Text style={styles.retryText}>
-                Try Again
-              </Text>
+              <Text style={styles.retryText}>Try Again</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.grid}>
             {dishes.map((dish, index) => {
-              const originalPrice =
-                getOriginalPrice(dish);
+              const originalPrice = getOriginalPrice(dish);
 
-              const discountedPrice =
-                getDiscountedPrice(
-                  originalPrice
-                );
+              const discountedPrice = getDiscountedPrice(originalPrice);
 
-              const image =
-                getDishImage(dish);
+              const image = getDishImage(dish);
 
-              const dishName =
-                getDishName(dish);
+              const dishName = getDishName(dish);
 
-              const restaurantName =
-                getRestaurantName(dish);
+              const restaurantName = getRestaurantName(dish);
 
-              const dishId =
-                getDishId(dish) ||
-                `dish-${index}`;
+              const dishId = getDishId(dish) || `dish-${index}`;
 
-              const quantity =
-                getCartQuantity(dishId);
+              const quantity = getCartQuantity(dishId);
 
               return (
-                <View
-                  key={String(dishId)}
-                  style={styles.card}
-                >
+                <View key={String(dishId)} style={styles.card}>
                   {/* IMAGE */}
 
-                  <View
-                    style={
-                      styles.imageContainer
-                    }
-                  >
+                  <View style={styles.imageContainer}>
                     {image ? (
                       <Image
                         source={{
                           uri: image,
                         }}
-                        style={
-                          styles.dishImage
-                        }
+                        style={styles.dishImage}
                         resizeMode="cover"
                       />
                     ) : (
-                      <View
-                        style={
-                          styles.imagePlaceholder
-                        }
-                      >
+                      <View style={styles.imagePlaceholder}>
                         <Ionicons
                           name="restaurant-outline"
                           size={40}
                           color="#94A3B8"
                         />
 
-                        <Text
-                          style={
-                            styles.noImageText
-                          }
-                        >
-                          No Image
-                        </Text>
+                        <Text style={styles.noImageText}>No Image</Text>
                       </View>
                     )}
 
-                    <View
-                      style={
-                        styles.discountBadge
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.discountText
-                        }
-                      >
-                        50% OFF
-                      </Text>
+                    <View style={styles.discountBadge}>
+                      <Text style={styles.discountText}>50% OFF</Text>
                     </View>
                   </View>
 
                   {/* DETAILS */}
 
-                  <View
-                    style={styles.cardContent}
-                  >
-                    <Text
-                      style={styles.dishName}
-                      numberOfLines={1}
-                    >
+                  <View style={styles.cardContent}>
+                    <Text style={styles.dishName} numberOfLines={1}>
                       {dishName}
                     </Text>
 
-                    <View
-                      style={
-                        styles.restaurantRow
-                      }
-                    >
+                    <View style={styles.restaurantRow}>
                       <Ionicons
                         name="restaurant-outline"
                         size={13}
                         color="#64748B"
                       />
 
-                      <Text
-                        style={
-                          styles.restaurantName
-                        }
-                        numberOfLines={1}
-                      >
+                      <Text style={styles.restaurantName} numberOfLines={1}>
                         {restaurantName}
                       </Text>
                     </View>
 
                     {/* PRICE */}
 
-                    <View
-                      style={styles.priceRow}
-                    >
-                      <Text
-                        style={
-                          styles.discountedPrice
-                        }
-                      >
+                    <View style={styles.priceRow}>
+                      <Text style={styles.discountedPrice}>
                         ₹{discountedPrice}
                       </Text>
 
-                      <Text
-                        style={
-                          styles.originalPrice
-                        }
-                      >
-                        ₹{originalPrice}
-                      </Text>
+                      <Text style={styles.originalPrice}>₹{originalPrice}</Text>
 
-                      <View
-                        style={
-                          styles.savedBadge
-                        }
-                      >
-                        <Text
-                          style={
-                            styles.savedText
-                          }
-                        >
-                          Save ₹
-                          {originalPrice -
-                            discountedPrice}
+                      <View style={styles.savedBadge}>
+                        <Text style={styles.savedText}>
+                          Save ₹{originalPrice - discountedPrice}
                         </Text>
                       </View>
                     </View>
@@ -742,15 +581,9 @@ export default function LimitedOfferScreen() {
 
                     {quantity === 0 ? (
                       <TouchableOpacity
-                        style={
-                          styles.orderButton
-                        }
+                        style={styles.orderButton}
                         activeOpacity={0.8}
-                        onPress={() =>
-                          increaseQuantity(
-                            dish
-                          )
-                        }
+                        onPress={() => increaseQuantity(dish)}
                       >
                         <Ionicons
                           name="cart-outline"
@@ -758,60 +591,24 @@ export default function LimitedOfferScreen() {
                           color="#0B0F14"
                         />
 
-                        <Text
-                          style={
-                            styles.orderButtonText
-                          }
-                        >
-                          Add to Cart
-                        </Text>
+                        <Text style={styles.orderButtonText}>Add to Cart</Text>
                       </TouchableOpacity>
                     ) : (
-                      <View
-                        style={
-                          styles.quantityContainer
-                        }
-                      >
+                      <View style={styles.quantityContainer}>
                         <TouchableOpacity
-                          style={
-                            styles.quantityButton
-                          }
-                          onPress={() =>
-                            decreaseQuantity(
-                              dish
-                            )
-                          }
+                          style={styles.quantityButton}
+                          onPress={() => decreaseQuantity(dish)}
                         >
-                          <Ionicons
-                            name="remove"
-                            size={18}
-                            color="#0B0F14"
-                          />
+                          <Ionicons name="remove" size={18} color="#0B0F14" />
                         </TouchableOpacity>
 
-                        <Text
-                          style={
-                            styles.quantityText
-                          }
-                        >
-                          {quantity}
-                        </Text>
+                        <Text style={styles.quantityText}>{quantity}</Text>
 
                         <TouchableOpacity
-                          style={
-                            styles.quantityButton
-                          }
-                          onPress={() =>
-                            increaseQuantity(
-                              dish
-                            )
-                          }
+                          style={styles.quantityButton}
+                          onPress={() => increaseQuantity(dish)}
                         >
-                          <Ionicons
-                            name="add"
-                            size={18}
-                            color="#0B0F14"
-                          />
+                          <Ionicons name="add" size={18} color="#0B0F14" />
                         </TouchableOpacity>
                       </View>
                     )}
@@ -887,7 +684,7 @@ const styles = StyleSheet.create({
     minWidth: 19,
     height: 19,
     borderRadius: 10,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 4,
@@ -905,21 +702,21 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: "#081A33",
     borderWidth: 1,
-    borderColor: "#F5B82E",
+    borderColor: "#FF8500",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
 
   offerSmall: {
-    color: "#F5B82E",
+    color: "#FF8500",
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 0.8,
   },
 
   offerTitle: {
-    color: "#F5B82E",
+    color: "#FF8500",
     fontSize: 28,
     fontWeight: "900",
     marginTop: 2,
@@ -1022,7 +819,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 9,
     left: 9,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 7,
@@ -1095,7 +892,7 @@ const styles = StyleSheet.create({
     height: 38,
     marginTop: 10,
     borderRadius: 9,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1116,7 +913,7 @@ const styles = StyleSheet.create({
     height: 38,
     marginTop: 10,
     borderRadius: 9,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1177,7 +974,7 @@ const styles = StyleSheet.create({
     height: 42,
     paddingHorizontal: 20,
     borderRadius: 10,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

@@ -1,4 +1,4 @@
-package com.feedster.app
+package com.gonbite.app
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

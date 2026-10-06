@@ -94,7 +94,7 @@ const fileFilter = (req, file, cb) => {
       ),
       false
     );
-
+ 
   }
 
 };
@@ -727,7 +727,7 @@ router.get(
         })
         .populate(
           "restaurantId",
-          "restaurantName address"
+         "restaurantName address latitude longitude"
         )
         .sort({ createdAt: -1 });
 
@@ -1236,23 +1236,20 @@ router.get(
       }
 
 
-      const activeOrder =
-        await Order.findOne({
-          deliveryPartnerId:
-            req.user.id,
+   const activeOrder =
+  await Order.findOne({
+    deliveryPartnerId: req.user.id,
 
-          status: {
-            $in: [
-              "Accepted by Delivery",
-              "Out for Delivery",
-            ],
-          },
-
-        }).populate(
-          "restaurantId",
-          "restaurantName address"
-        );
-
+    status: {
+      $in: [
+        "Accepted by Delivery",
+        "Out for Delivery",
+      ],
+    },
+  }).populate(
+    "restaurantId",
+    "restaurantName address phone latitude longitude"
+  );
 
       return res.json({
 

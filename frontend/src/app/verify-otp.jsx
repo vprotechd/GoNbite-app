@@ -1,530 +1,557 @@
-import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { router } from "expo-router";
+import { useEffect, useRef } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
+  Animated,
+  Dimensions,
+  Image,
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 
-import api from "../services/api";
+const { width, height } = Dimensions.get("window");
 
-export default function VerifyOTP() {
-  // =====================================================
-  // GET EMAIL FROM FORGOT PASSWORD SCREEN
-  // =====================================================
+export default function Index() {
+  // ============================================================
+  // ANIMATIONS
+  // ============================================================
 
-  const params = useLocalSearchParams();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const email = Array.isArray(params.email)
-    ? params.email[0]
-    : params.email;
+  const logoScale = useRef(new Animated.Value(0.7)).current;
 
-  // =====================================================
-  // STATES
-  // =====================================================
+  const foodTranslateY = useRef(
+    new Animated.Value(height * 0.35)
+  ).current;
 
-  const [otp, setOtp] = useState("");
-  const [loading, setLoading] = useState(false);
+  const foodScale = useRef(new Animated.Value(0.75)).current;
 
-  // =====================================================
-  // VERIFY OTP
-  // =====================================================
+  const riderTranslateX = useRef(
+    new Animated.Value(width * 0.65)
+  ).current;
 
-  const handleVerifyOTP = async () => {
-     if (loading) return;
-    if (!email) {
-      Alert.alert(
-        "Invalid Request",
-        "Email address is missing. Please go back and try again."
-      );
-      return;
-    }
+  const riderRotate = useRef(
+    new Animated.Value(0)
+  ).current;
 
-    if (!otp) {
-      Alert.alert(
-        "OTP Required",
-        "Please enter the OTP sent to your email."
-      );
-      return;
-    }
+  const dotsOpacity = useRef(
+    new Animated.Value(0.3)
+  ).current;
 
-    if (otp.length !== 6) {
-      Alert.alert(
-        "Invalid OTP",
-        "Please enter the complete 6-digit OTP."
-      );
-      return;
-    }
+  useEffect(() => {
+    // ============================================================
+    // MAIN INTRO ANIMATION
+    // ============================================================
 
-    try {
-      setLoading(true);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 450,
+        useNativeDriver: true,
+      }),
 
-      console.log("========== VERIFY OTP ==========");
-      console.log("EMAIL:", email);
-      console.log("OTP LENGTH:", otp.length);
+      Animated.spring(logoScale, {
+        toValue: 1,
+        friction: 5,
+        tension: 60,
+        useNativeDriver: true,
+      }),
 
-      const response = await api.post(
-        "/auth/verify-reset-otp",
-        {
-          email: String(email),
-          otp: String(otp),
-        }
-      );
+      Animated.spring(foodTranslateY, {
+        toValue: 0,
+        friction: 7,
+        tension: 45,
+        useNativeDriver: true,
+      }),
 
-      console.log(
-        "VERIFY OTP RESPONSE:",
-        response.data
-      );
+      Animated.spring(foodScale, {
+        toValue: 1,
+        friction: 7,
+        tension: 45,
+        useNativeDriver: true,
+      }),
 
-      const resetToken =
-        response.data?.resetToken;
+      Animated.timing(riderTranslateX, {
+        toValue: 0,
+        duration: 1200,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-      if (!resetToken) {
-        Alert.alert(
-          "Verification Failed",
-          "Reset token was not received from the server."
-        );
-        return;
-      }
+    // ============================================================
+    // RIDER SMALL MOVEMENT
+    // ============================================================
 
-      router.replace({
-  pathname: "/reset-password",
-  params: {
-    token: String(resetToken),
-  },
-});
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(riderRotate, {
+          toValue: 1,
+          duration: 450,
+          useNativeDriver: true,
+        }),
 
-      
+        Animated.timing(riderRotate, {
+          toValue: -1,
+          duration: 450,
+          useNativeDriver: true,
+        }),
 
-    } catch (error) {
-      console.error(
-        "VERIFY OTP ERROR:",
-        error?.response?.data ||
-          error?.message ||
-          error
-      );
+        Animated.timing(riderRotate, {
+          toValue: 0,
+          duration: 450,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
 
-      Alert.alert(
-        "Verification Failed",
-        error?.response?.data?.message ||
-          "Invalid or expired OTP. Please try again."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    // ============================================================
+    // LOADING DOTS
+    // ============================================================
 
-  // =====================================================
-  // UI
-  // =====================================================
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(dotsOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+
+        Animated.timing(dotsOpacity, {
+          toValue: 0.3,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // ============================================================
+    // GO TO REGISTER AFTER 2 SECONDS
+    // ============================================================
+
+    const timer = setTimeout(() => {
+      router.replace("/(auth)/register");
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const riderRotation = riderRotate.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ["-3deg", "0deg", "3deg"],
+  });
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
       <StatusBar
+        translucent
+        backgroundColor="transparent"
         barStyle="light-content"
-        backgroundColor="#081A33"
       />
 
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={
-          Platform.OS === "ios"
-            ? "padding"
-            : undefined
-        }
+      {/* ============================================================
+          BACKGROUND
+      ============================================================ */}
+
+      <View style={styles.background} />
+
+      <View style={styles.orangeGlowTop} />
+      <View style={styles.orangeGlowBottom} />
+
+      {/* ============================================================
+          DECORATIVE CIRCLES
+      ============================================================ */}
+
+      <View style={styles.circleOne} />
+      <View style={styles.circleTwo} />
+      <View style={styles.circleThree} />
+
+      {/* ============================================================
+          MAIN CONTENT
+      ============================================================ */}
+
+      <Animated.View
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+          },
+        ]}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        {/* ========================================================
+            LOGO
+        ======================================================== */}
+
+        <Animated.View
+          style={[
+            styles.logoContainer,
+            {
+              transform: [{ scale: logoScale }],
+            },
+          ]}
         >
-          {/* =================================================
-              HEADER
-          ================================================= */}
+          <Image
+            source={require("../../assets/images/Logo.png")}
+            style={styles.logo}
+          />
+        </Animated.View>
 
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-              disabled={loading}
-            >
-              <Ionicons
-                name="arrow-back"
-                size={22}
-                color="#FFFFFF"
-              />
-            </TouchableOpacity>
+        {/* ========================================================
+            TAGLINE
+        ======================================================== */}
 
-            <View style={styles.headerTitleContainer}>
-              <Ionicons
-                name="shield-checkmark-outline"
-                size={20}
-                color="#F5B82E"
-              />
+        <Text style={styles.tagline}>
+          Hungry? Just Snacc.
+        </Text>
 
-              <Text style={styles.headerTitle}>
-                Verify OTP
-              </Text>
-            </View>
+        <Text style={styles.subTagline}>
+          Delicious food. Delivered fast.
+        </Text>
 
-            <View style={styles.headerSide} />
-          </View>
+        {/* ========================================================
+            FOOD AREA
+        ======================================================== */}
 
-          {/* =================================================
-              CONTENT
-          ================================================= */}
+        <Animated.View
+          style={[
+            styles.foodArea,
+            {
+              transform: [
+                { translateY: foodTranslateY },
+                { scale: foodScale },
+              ],
+            },
+          ]}
+        >
+          {/* FOOD IMAGE */}
 
-          <View style={styles.content}>
-            <View style={styles.iconContainer}>
-              <Ionicons
-                name="mail-outline"
-                size={38}
-                color="#F5B82E"
-              />
-            </View>
+          <Image
+            source={require("../../assets/images/food1.png")}
+            style={styles.foodImage}
+          />
 
-            <Text style={styles.title}>
-              Check Your Email
-            </Text>
+          {/* ======================================================
+              RIDER
+          ====================================================== */}
 
-            <Text style={styles.description}>
-              We have sent a 6-digit verification code
-              to:
-            </Text>
+          <Animated.View
+            style={[
+              styles.riderContainer,
+              {
+                transform: [
+                  { translateX: riderTranslateX },
+                  { rotate: riderRotation },
+                ],
+              },
+            ]}
+          >
+            <Image
+              source={require("../../assets/images/rider.png")}
+              style={styles.riderImage}
+            />
+          </Animated.View>
 
-            <Text style={styles.email}>
-              {email || "your email"}
-            </Text>
+          {/* ======================================================
+              SMALL FLOATING DOTS
+          ====================================================== */}
 
-            {/* =================================================
-                OTP INPUT
-            ================================================= */}
+          <Animated.View
+            style={[
+              styles.foodDot,
+              styles.dotOne,
+              {
+                opacity: dotsOpacity,
+              },
+            ]}
+          />
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>
-                Enter OTP
-              </Text>
+          <Animated.View
+            style={[
+              styles.foodDot,
+              styles.dotTwo,
+              {
+                opacity: dotsOpacity,
+              },
+            ]}
+          />
 
-              <View style={styles.inputWrapper}>
-                <Ionicons
-                  name="keypad-outline"
-                  size={20}
-                  color="#64748B"
-                  style={styles.inputIcon}
-                />
+          <Animated.View
+            style={[
+              styles.foodDot,
+              styles.dotThree,
+              {
+                opacity: dotsOpacity,
+              },
+            ]}
+          />
+        </Animated.View>
 
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter 6-digit OTP"
-                  placeholderTextColor="#94A3B8"
-                  value={otp}
-                  onChangeText={(value) => {
-                    const numbersOnly =
-                      value.replace(/[^0-9]/g, "");
+        {/* ========================================================
+            BOTTOM
+        ======================================================== */}
 
-                    setOtp(
-                      numbersOnly.slice(0, 6)
-                    );
-                  }}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!loading}
-                  returnKeyType="done"
-                  onSubmitEditing={
-                    handleVerifyOTP
-                  }
-                />
-              </View>
-            </View>
+        <View style={styles.bottomArea}>
+          <Text style={styles.deliveryText}>
+            Preparing your cravings...
+          </Text>
 
-            {/* =================================================
-                VERIFY BUTTON
-            ================================================= */}
-
-            <TouchableOpacity
+          <View style={styles.loadingDots}>
+            <Animated.View
               style={[
-                styles.button,
-                loading && styles.buttonDisabled,
+                styles.loadingDot,
+                {
+                  opacity: dotsOpacity,
+                },
               ]}
-              onPress={handleVerifyOTP}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              {loading ? (
-                <ActivityIndicator
-                  size="small"
-                  color="#081A33"
-                />
-              ) : (
-                <>
-                  <Ionicons
-                    name="checkmark-circle-outline"
-                    size={20}
-                    color="#081A33"
-                  />
+            />
 
-                  <Text style={styles.buttonText}>
-                    Verify OTP
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+            <Animated.View
+              style={[
+                styles.loadingDot,
+                styles.middleDot,
+                {
+                  opacity: dotsOpacity,
+                },
+              ]}
+            />
 
-            {/* =================================================
-                INFO
-            ================================================= */}
-
-            <View style={styles.infoBox}>
-              <Ionicons
-                name="information-circle-outline"
-                size={19}
-                color="#F5B82E"
-              />
-
-              <Text style={styles.infoText}>
-                The OTP is valid for 5 minutes.
-                Check your spam or junk folder if
-                you don't see the email.
-              </Text>
-            </View>
-
-            {/* =================================================
-                BACK TO LOGIN
-            ================================================= */}
-
-            <TouchableOpacity
-              style={styles.loginButton}
-              onPress={() =>
-                router.replace(
-                  "/(auth)/login"
-                )
-              }
-              disabled={loading}
-            >
-              <Text style={styles.loginText}>
-                Back to Login
-              </Text>
-            </TouchableOpacity>
+            <Animated.View
+              style={[
+                styles.loadingDot,
+                {
+                  opacity: dotsOpacity,
+                },
+              ]}
+            />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </View>
+      </Animated.View>
+    </View>
   );
 }
 
-// =====================================================
+// ================================================================
 // STYLES
-// =====================================================
+// ================================================================
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#081A33",
-  },
-
   container: {
     flex: 1,
+    overflow: "hidden",
+  },
+
+  // ==============================================================
+  // BACKGROUND
+  // ==============================================================
+
+  background: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "#081A33",
   },
 
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 40,
+  orangeGlowTop: {
+    position: "absolute",
+    width: width * 1.2,
+    height: width * 1.2,
+    borderRadius: width,
+    backgroundColor: "#FF8500",
+    opacity: 0.13,
+    top: -width * 0.75,
+    left: -width * 0.1,
   },
 
-  // ===================================================
-  // HEADER
-  // ===================================================
-
-  header: {
-    height: 65,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: "#163052",
+  orangeGlowBottom: {
+    position: "absolute",
+    width: width * 1.4,
+    height: width * 1.4,
+    borderRadius: width,
+    backgroundColor: "#FF8500",
+    opacity: 0.08,
+    bottom: -width * 0.95,
+    right: -width * 0.35,
   },
 
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
+  // ==============================================================
+  // DECORATIVE CIRCLES
+  // ==============================================================
+
+  circleOne: {
+    position: "absolute",
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 1,
+    borderColor: "rgba(255,133,0,0.12)",
+    top: height * 0.16,
+    left: -95,
   },
 
-  headerTitleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+  circleTwo: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    top: height * 0.25,
+    right: -65,
   },
 
-  headerTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "700",
+  circleThree: {
+    position: "absolute",
+    width: 230,
+    height: 230,
+    borderRadius: 115,
+    borderWidth: 1,
+    borderColor: "rgba(255,133,0,0.08)",
+    bottom: -110,
+    left: -100,
   },
 
-  headerSide: {
-    width: 40,
-  },
-
-  // ===================================================
+  // ==============================================================
   // CONTENT
-  // ===================================================
+  // ==============================================================
 
   content: {
-    paddingHorizontal: 24,
-    paddingTop: 45,
+    flex: 1,
+    alignItems: "center",
+    paddingTop: height * 0.12,
   },
 
-  iconContainer: {
-    width: 75,
+  // ==============================================================
+  // LOGO
+  // ==============================================================
+
+  logoContainer: {
+    width: width * 0.48,
     height: 75,
-    borderRadius: 38,
-    backgroundColor: "#13294A",
     alignItems: "center",
     justifyContent: "center",
-    alignSelf: "center",
-    marginBottom: 24,
   },
 
-  title: {
-    color: "#FFFFFF",
-    fontSize: 27,
-    fontWeight: "800",
-    textAlign: "center",
-    marginBottom: 12,
-  },
-
-  description: {
-    color: "#AAB8CA",
-    fontSize: 15,
-    lineHeight: 23,
-    textAlign: "center",
-  },
-
-  email: {
-    color: "#F5B82E",
-    fontSize: 15,
-    fontWeight: "700",
-    textAlign: "center",
-    marginTop: 5,
-    marginBottom: 35,
-  },
-
-  // ===================================================
-  // INPUT
-  // ===================================================
-
-  inputContainer: {
-    marginBottom: 22,
-  },
-
-  label: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 9,
-  },
-
-  inputWrapper: {
-    height: 55,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#D8E0EA",
-  },
-
-  inputIcon: {
-    marginLeft: 16,
-    marginRight: 10,
-  },
-
-  input: {
-    flex: 1,
+  logo: {
+    width: "100%",
     height: "100%",
-    color: "#081A33",
-    fontSize: 20,
-    fontWeight: "700",
-    letterSpacing: 5,
-    paddingHorizontal: 5,
+    resizeMode: "contain",
   },
 
-  // ===================================================
-  // BUTTON
-  // ===================================================
+  // ==============================================================
+  // TEXT
+  // ==============================================================
 
-  button: {
-    height: 55,
-    borderRadius: 12,
-    backgroundColor: "#F5B82E",
-    flexDirection: "row",
+  tagline: {
+    marginTop: 6,
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+  },
+
+  subTagline: {
+    marginTop: 5,
+    color: "#C7D1DF",
+    fontSize: 11,
+    fontWeight: "500",
+    letterSpacing: 0.4,
+  },
+
+  // ==============================================================
+  // FOOD
+  // ==============================================================
+
+  foodArea: {
+    width: width * 0.98,
+    height: height * 0.48,
+    marginTop: 20,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    marginTop: 8,
   },
 
-  buttonDisabled: {
-    opacity: 0.7,
+  foodImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "contain",
   },
 
-  buttonText: {
-    color: "#081A33",
-    fontSize: 16,
-    fontWeight: "800",
-  },
+  // ==============================================================
+  // RIDER
+  // ==============================================================
 
-  // ===================================================
-  // INFO
-  // ===================================================
-
-  infoBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: "#102443",
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 22,
-    gap: 10,
-  },
-
-  infoText: {
-    flex: 1,
-    color: "#AAB8CA",
-    fontSize: 13,
-    lineHeight: 19,
-  },
-
-  // ===================================================
-  // LOGIN
-  // ===================================================
-
-  loginButton: {
+  riderContainer: {
+    position: "absolute",
+    width: width * 0.36,
+    height: height * 0.20,
+    right: width * 0.02,
+    bottom: height * 0.015,
     alignItems: "center",
-    marginTop: 28,
-    paddingVertical: 10,
+    justifyContent: "center",
   },
 
-  loginText: {
-    color: "#F5B82E",
-    fontSize: 14,
-    fontWeight: "700",
+  riderImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "contain",
+  },
+
+  // ==============================================================
+  // FOOD DECORATION
+  // ==============================================================
+
+  foodDot: {
+    position: "absolute",
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#FF8500",
+  },
+
+  dotOne: {
+    left: width * 0.12,
+    top: height * 0.12,
+  },
+
+  dotTwo: {
+    right: width * 0.15,
+    top: height * 0.08,
+  },
+
+  dotThree: {
+    left: width * 0.2,
+    bottom: height * 0.08,
+  },
+
+  // ==============================================================
+  // BOTTOM
+  // ==============================================================
+
+  bottomArea: {
+    position: "absolute",
+    bottom: height * 0.07,
+    alignItems: "center",
+  },
+
+  deliveryText: {
+    color: "#AEBBCB",
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.4,
+  },
+
+  loadingDots: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
+  },
+
+  loadingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#FF8500",
+  },
+
+  middleDot: {
+    marginHorizontal: 5,
   },
 });

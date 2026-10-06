@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 
@@ -20,6 +21,16 @@ export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // =================================================
+  // RESPONSIVE SCREEN SIZE
+  // =================================================
+
+  const { width } = useWindowDimensions();
+
+  const isMobile = width < 600;
+  const isTablet = width >= 600 && width < 1024;
+  const isDesktop = width >= 1024;
 
   useEffect(() => {
     fetchOrders();
@@ -49,7 +60,7 @@ export default function AdminOrders() {
     } catch (error) {
       console.error(
         "❌ Fetch orders error:",
-        error?.response?.data || error?.message
+        error?.response?.data || error?.message,
       );
 
       if (error?.response?.status === 401) {
@@ -63,13 +74,10 @@ export default function AdminOrders() {
                 router.replace("/admin/login");
               },
             },
-          ]
+          ],
         );
       } else {
-        Alert.alert(
-          "Error",
-          "Failed to load orders."
-        );
+        Alert.alert("Error", "Failed to load orders.");
       }
     } finally {
       setIsLoading(false);
@@ -96,13 +104,10 @@ export default function AdminOrders() {
     } catch (error) {
       console.error(
         "❌ Refresh orders error:",
-        error?.response?.data || error?.message
+        error?.response?.data || error?.message,
       );
 
-      Alert.alert(
-        "Error",
-        "Failed to refresh orders."
-      );
+      Alert.alert("Error", "Failed to refresh orders.");
     } finally {
       setRefreshing(false);
     }
@@ -172,11 +177,7 @@ export default function AdminOrders() {
   // =================================================
 
   const getRestaurantName = (order) => {
-    return (
-      order?.restaurant?.name ||
-      order?.restaurantName ||
-      "Restaurant"
-    );
+    return order?.restaurant?.name || order?.restaurantName || "Restaurant";
   };
 
   // =================================================
@@ -184,11 +185,7 @@ export default function AdminOrders() {
   // =================================================
 
   const getTotal = (order) => {
-    const total =
-      order?.totalAmount ??
-      order?.total ??
-      order?.amount ??
-      0;
+    const total = order?.totalAmount ?? order?.total ?? order?.amount ?? 0;
 
     return Number(total).toFixed(2);
   };
@@ -203,14 +200,9 @@ export default function AdminOrders() {
         <StatusBar barStyle="dark-content" />
 
         <View style={styles.loadingContainer}>
-          <ActivityIndicator
-            size="large"
-            color="#F5B82E"
-          />
+          <ActivityIndicator size="large" color="#FF6B35" />
 
-          <Text style={styles.loadingText}>
-            Loading orders...
-          </Text>
+          <Text style={styles.loadingText}>Loading orders...</Text>
         </View>
       </SafeAreaView>
     );
@@ -226,45 +218,66 @@ export default function AdminOrders() {
 
       {/* HEADER */}
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <Ionicons
-            name="arrow-back"
-            size={25}
-            color="#222"
-          />
-        </TouchableOpacity>
+      <View
+        style={[
+          styles.header,
+          isTablet && styles.headerTablet,
+          isDesktop && styles.headerDesktop,
+        ]}
+      >
+       <TouchableOpacity
+  onPress={() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/admin");
+    }
+  }}
+  style={styles.backButton}
+  activeOpacity={0.7}
+>
+  <Ionicons name="arrow-back" size={25} color="#222" />
+</TouchableOpacity>
 
         <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>
+          <Text
+            style={[
+              styles.headerTitle,
+              isMobile && styles.headerTitleMobile,
+            ]}
+            numberOfLines={1}
+          >
             Manage Orders
           </Text>
 
-          <Text style={styles.headerSubtitle}>
+          <Text
+            style={styles.headerSubtitle}
+            numberOfLines={1}
+          >
             Monitor all customer orders
           </Text>
         </View>
 
         <View style={styles.orderCount}>
-          <Text style={styles.orderCountText}>
-            {orders.length}
-          </Text>
+          <Text style={styles.orderCountText}>{orders.length}</Text>
         </View>
       </View>
 
       {/* ORDERS */}
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          isTablet && styles.contentTablet,
+          isDesktop && styles.contentDesktop,
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
           />
         }
+        showsVerticalScrollIndicator={false}
       >
         {orders.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -274,172 +287,195 @@ export default function AdminOrders() {
               color="#BDBDBD"
             />
 
-            <Text style={styles.emptyTitle}>
-              No Orders Found
-            </Text>
+            <Text style={styles.emptyTitle}>No Orders Found</Text>
 
             <Text style={styles.emptyText}>
-              There are currently no orders
-              available.
+              There are currently no orders available.
             </Text>
           </View>
         ) : (
-          orders.map((order, index) => {
-            const status =
-              order?.status || "Pending";
+          <View
+            style={[
+              styles.ordersGrid,
+              isTablet && styles.ordersGridTablet,
+              isDesktop && styles.ordersGridDesktop,
+            ]}
+          >
+            {orders.map((order, index) => {
+              const status = order?.status || "Pending";
 
-            const items =
-              Array.isArray(order?.items)
+              const items = Array.isArray(order?.items)
                 ? order.items
                 : [];
 
-            return (
-              <View
-                key={
-                  order?._id ||
-                  order?.id ||
-                  index
-                }
-                style={styles.orderCard}
-              >
-                {/* ORDER HEADER */}
+              return (
+                <View
+                  key={order?._id || order?.id || index}
+                  style={[
+                    styles.orderCard,
+                    isTablet && styles.orderCardTablet,
+                    isDesktop && styles.orderCardDesktop,
+                  ]}
+                >
+                  {/* ORDER HEADER */}
 
-                <View style={styles.orderHeader}>
-                  <View>
-                    <Text style={styles.orderId}>
-                      Order #
-                      {String(
-                        order?._id ||
-                          order?.id ||
-                          "N/A"
-                      ).slice(-8)}
-                    </Text>
-
-                    <Text style={styles.date}>
-                      {formatDate(
-                        order?.createdAt ||
-                          order?.created_at
-                      )}
-                    </Text>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      {
-                        backgroundColor:
-                          getStatusColor(status),
-                      },
-                    ]}
-                  >
-                    <Text style={styles.statusText}>
-                      {status}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* CUSTOMER */}
-
-                <View style={styles.infoRow}>
-                  <Ionicons
-                    name="person-outline"
-                    size={20}
-                    color="#666"
-                  />
-
-                  <View style={styles.infoText}>
-                    <Text style={styles.label}>
-                      Customer
-                    </Text>
-
-                    <Text style={styles.value}>
-                      {getCustomerName(order)}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* RESTAURANT */}
-
-                <View style={styles.infoRow}>
-                  <Ionicons
-                    name="restaurant-outline"
-                    size={20}
-                    color="#666"
-                  />
-
-                  <View style={styles.infoText}>
-                    <Text style={styles.label}>
-                      Restaurant
-                    </Text>
-
-                    <Text style={styles.value}>
-                      {getRestaurantName(order)}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* ITEMS */}
-
-                <View style={styles.itemsSection}>
-                  <Text style={styles.itemsTitle}>
-                    Items
-                  </Text>
-
-                  {items.length === 0 ? (
-                    <Text style={styles.noItems}>
-                      No item information
-                    </Text>
-                  ) : (
-                    items.map((item, itemIndex) => (
-                      <View
-                        key={
-                          item?._id ||
-                          item?.foodItemId ||
-                          itemIndex
-                        }
-                        style={styles.itemRow}
+                  <View style={styles.orderHeader}>
+                    <View style={styles.orderHeaderInfo}>
+                      <Text
+                        style={styles.orderId}
+                        numberOfLines={1}
                       >
-                        <Text style={styles.itemName}>
-                          {item?.name ||
-                            item?.foodName ||
-                            "Food Item"}
-                        </Text>
+                        Order #
+                        {String(
+                          order?._id || order?.id || "N/A",
+                        ).slice(-8)}
+                      </Text>
 
-                        <Text style={styles.itemQuantity}>
-                          × {item?.quantity || 1}
-                        </Text>
-                      </View>
-                    ))
-                  )}
-                </View>
+                      <Text
+                        style={styles.date}
+                        numberOfLines={1}
+                      >
+                        {formatDate(
+                          order?.createdAt ||
+                            order?.created_at,
+                        )}
+                      </Text>
+                    </View>
 
-                {/* PAYMENT */}
-
-                <View style={styles.paymentRow}>
-                  <View>
-                    <Text style={styles.label}>
-                      Payment
-                    </Text>
-
-                    <Text style={styles.value}>
-                      {order?.paymentMethod ||
-                        "N/A"}
-                    </Text>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        {
+                          backgroundColor:
+                            getStatusColor(status),
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={styles.statusText}
+                        numberOfLines={1}
+                      >
+                        {status}
+                      </Text>
+                    </View>
                   </View>
 
-                  <View style={styles.totalContainer}>
-                    <Text style={styles.label}>
-                      Total
+                  {/* CUSTOMER */}
+
+                  <View style={styles.infoRow}>
+                    <Ionicons
+                      name="person-outline"
+                      size={20}
+                      color="#666"
+                    />
+
+                    <View style={styles.infoText}>
+                      <Text style={styles.label}>
+                        Customer
+                      </Text>
+
+                      <Text
+                        style={styles.value}
+                        numberOfLines={2}
+                      >
+                        {getCustomerName(order)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* RESTAURANT */}
+
+                  <View style={styles.infoRow}>
+                    <Ionicons
+                      name="restaurant-outline"
+                      size={20}
+                      color="#666"
+                    />
+
+                    <View style={styles.infoText}>
+                      <Text style={styles.label}>
+                        Restaurant
+                      </Text>
+
+                      <Text
+                        style={styles.value}
+                        numberOfLines={2}
+                      >
+                        {getRestaurantName(order)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* ITEMS */}
+
+                  <View style={styles.itemsSection}>
+                    <Text style={styles.itemsTitle}>
+                      Items
                     </Text>
 
-                    <Text style={styles.total}>
-                      ₹{getTotal(order)}
-                    </Text>
+                    {items.length === 0 ? (
+                      <Text style={styles.noItems}>
+                        No item information
+                      </Text>
+                    ) : (
+                      items.map((item, itemIndex) => (
+                        <View
+                          key={
+                            item?._id ||
+                            item?.foodItemId ||
+                            itemIndex
+                          }
+                          style={styles.itemRow}
+                        >
+                          <Text
+                            style={styles.itemName}
+                            numberOfLines={2}
+                          >
+                            {item?.name ||
+                              item?.foodName ||
+                              "Food Item"}
+                          </Text>
+
+                          <Text
+                            style={styles.itemQuantity}
+                          >
+                            × {item?.quantity || 1}
+                          </Text>
+                        </View>
+                      ))
+                    )}
+                  </View>
+
+                  {/* PAYMENT */}
+
+                  <View style={styles.paymentRow}>
+                    <View style={styles.paymentInfo}>
+                      <Text style={styles.label}>
+                        Payment
+                      </Text>
+
+                      <Text
+                        style={styles.value}
+                        numberOfLines={1}
+                      >
+                        {order?.paymentMethod || "N/A"}
+                      </Text>
+                    </View>
+
+                    <View style={styles.totalContainer}>
+                      <Text style={styles.label}>
+                        Total
+                      </Text>
+
+                      <Text style={styles.total}>
+                        ₹{getTotal(order)}
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            );
-          })
+              );
+            })}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -456,6 +492,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#F7F7F7",
   },
 
+  // =================================================
+  // HEADER
+  // =================================================
+
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -466,6 +506,16 @@ const styles = StyleSheet.create({
     borderBottomColor: "#E5E5E5",
   },
 
+  headerTablet: {
+    paddingHorizontal: 28,
+    paddingVertical: 18,
+  },
+
+  headerDesktop: {
+    paddingHorizontal: 40,
+    paddingVertical: 20,
+  },
+
   backButton: {
     width: 42,
     height: 42,
@@ -473,17 +523,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#F5F5F5",
+    flexShrink: 0,
   },
 
   headerTextContainer: {
     flex: 1,
     marginLeft: 12,
+    minWidth: 0,
   },
 
   headerTitle: {
     fontSize: 22,
     fontWeight: "700",
     color: "#222",
+  },
+
+  headerTitleMobile: {
+    fontSize: 19,
   },
 
   headerSubtitle: {
@@ -496,9 +552,11 @@ const styles = StyleSheet.create({
     minWidth: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
     justifyContent: "center",
     alignItems: "center",
+    marginLeft: 10,
+    flexShrink: 0,
   },
 
   orderCountText: {
@@ -507,15 +565,59 @@ const styles = StyleSheet.create({
     color: "#222",
   },
 
+  // =================================================
+  // CONTENT
+  // =================================================
+
   content: {
     padding: 15,
     paddingBottom: 40,
   },
 
+  contentTablet: {
+    paddingHorizontal: 24,
+    paddingTop: 22,
+    paddingBottom: 50,
+  },
+
+  contentDesktop: {
+    width: "100%",
+    maxWidth: 1250,
+    alignSelf: "center",
+    paddingHorizontal: 30,
+    paddingTop: 28,
+    paddingBottom: 60,
+  },
+
+  // =================================================
+  // ORDERS GRID
+  // =================================================
+
+  ordersGrid: {
+    width: "100%",
+  },
+
+  ordersGridTablet: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+
+  ordersGridDesktop: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+
+  // =================================================
+  // LOADING
+  // =================================================
+
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 20,
   },
 
   loadingText: {
@@ -524,10 +626,15 @@ const styles = StyleSheet.create({
     color: "#666",
   },
 
+  // =================================================
+  // EMPTY
+  // =================================================
+
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 100,
+    paddingHorizontal: 20,
   },
 
   emptyTitle: {
@@ -535,6 +642,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     color: "#333",
+    textAlign: "center",
   },
 
   emptyText: {
@@ -542,7 +650,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#777",
     textAlign: "center",
+    maxWidth: 400,
   },
+
+  // =================================================
+  // ORDER CARD
+  // =================================================
 
   orderCard: {
     backgroundColor: "#FFFFFF",
@@ -556,7 +669,24 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
+    shadowColor: "#000",
   },
+
+  orderCardTablet: {
+    width: "48.5%",
+    marginBottom: 20,
+    padding: 18,
+  },
+
+  orderCardDesktop: {
+    width: "48.5%",
+    marginBottom: 24,
+    padding: 20,
+  },
+
+  // =================================================
+  // ORDER HEADER
+  // =================================================
 
   orderHeader: {
     flexDirection: "row",
@@ -566,6 +696,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#EEEEEE",
+  },
+
+  orderHeaderInfo: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 10,
   },
 
   orderId: {
@@ -584,13 +720,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
+    maxWidth: "55%",
+    flexShrink: 0,
   },
 
   statusText: {
     color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "700",
+    textAlign: "center",
   },
+
+  // =================================================
+  // INFORMATION
+  // =================================================
 
   infoRow: {
     flexDirection: "row",
@@ -601,6 +744,7 @@ const styles = StyleSheet.create({
   infoText: {
     marginLeft: 10,
     flex: 1,
+    minWidth: 0,
   },
 
   label: {
@@ -614,6 +758,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#333",
   },
+
+  // =================================================
+  // ITEMS
+  // =================================================
 
   itemsSection: {
     marginTop: 4,
@@ -635,6 +783,7 @@ const styles = StyleSheet.create({
   itemRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 4,
   },
 
@@ -642,6 +791,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: "#555",
+    minWidth: 0,
+    paddingRight: 10,
   },
 
   itemQuantity: {
@@ -649,6 +800,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#555",
     marginLeft: 10,
+    flexShrink: 0,
   },
 
   noItems: {
@@ -656,14 +808,25 @@ const styles = StyleSheet.create({
     color: "#999",
   },
 
+  // =================================================
+  // PAYMENT
+  // =================================================
+
   paymentRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
   },
 
+  paymentInfo: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 10,
+  },
+
   totalContainer: {
     alignItems: "flex-end",
+    flexShrink: 0,
   },
 
   total: {

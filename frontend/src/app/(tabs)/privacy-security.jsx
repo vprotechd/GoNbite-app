@@ -33,19 +33,15 @@ export default function PrivacySecurityScreen() {
             console.log("Delete account");
           },
         },
-      ]
+      ],
     );
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
       <View style={styles.container}>
-
         {/* HEADER */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -53,16 +49,10 @@ export default function PrivacySecurityScreen() {
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
-            <Ionicons
-              name="arrow-back"
-              size={20}
-              color="#081A33"
-            />
+            <Ionicons name="arrow-back" size={20} color="#081A33" />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>
-            Privacy & Security
-          </Text>
+          <Text style={styles.headerTitle}>Privacy & Security</Text>
 
           <View style={styles.headerSpacer} />
         </View>
@@ -71,34 +61,24 @@ export default function PrivacySecurityScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
         >
-
-
-
           {/* ACCOUNT SECURITY */}
 
-          <Text style={styles.sectionTitle}>
-            ACCOUNT SECURITY
-          </Text>
+          <Text style={styles.sectionTitle}>ACCOUNT SECURITY</Text>
 
           <View style={styles.card}>
-
             <SettingItem
               icon="key-outline"
               title="Change Password"
               subtitle="Update your password"
               onPress={() => router.push("/change-password")}
             />
-
           </View>
 
           {/* PRIVACY */}
 
-          <Text style={styles.sectionTitle}>
-            PRIVACY
-          </Text>
+          <Text style={styles.sectionTitle}>PRIVACY</Text>
 
           <View style={styles.card}>
-
             <SwitchItem
               icon="notifications-outline"
               title="Login Alerts"
@@ -125,7 +105,6 @@ export default function PrivacySecurityScreen() {
               subtitle="Learn how we use your information"
               onPress={() => router.push("/privacy-policy")}
             />
-
           </View>
 
           {/* DELETE ACCOUNT */}
@@ -135,21 +114,12 @@ export default function PrivacySecurityScreen() {
             onPress={handleDeleteAccount}
             activeOpacity={0.8}
           >
-            <Ionicons
-              name="trash-outline"
-              size={17}
-              color="#D32F2F"
-            />
+            <Ionicons name="trash-outline" size={17} color="#D32F2F" />
 
-            <Text style={styles.deleteText}>
-              Delete Account
-            </Text>
+            <Text style={styles.deleteText}>Delete Account</Text>
           </TouchableOpacity>
 
-          <Text style={styles.footerText}>
-            SNAX • Version 1.0.0
-          </Text>
-
+          <Text style={styles.footerText}>SNAX • Version 1.0.0</Text>
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -160,12 +130,7 @@ export default function PrivacySecurityScreen() {
    SETTING ITEM
 ============================================================ */
 
-function SettingItem({
-  icon,
-  title,
-  subtitle,
-  onPress,
-}) {
+function SettingItem({ icon, title, subtitle, onPress }) {
   return (
     <TouchableOpacity
       style={styles.settingRow}
@@ -173,32 +138,18 @@ function SettingItem({
       activeOpacity={0.7}
     >
       <View style={styles.leftContent}>
-
         <View style={styles.iconBox}>
-          <Ionicons
-            name={icon}
-            size={18}
-            color="#F5B82E"
-          />
+          <Ionicons name={icon} size={18} color="#FF8500" />
         </View>
 
         <View style={styles.textContainer}>
-          <Text style={styles.title}>
-            {title}
-          </Text>
+          <Text style={styles.title}>{title}</Text>
 
-          <Text style={styles.subtitle}>
-            {subtitle}
-          </Text>
+          <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
-
       </View>
 
-      <Ionicons
-        name="chevron-forward"
-        size={17}
-        color="#94A3B8"
-      />
+      <Ionicons name="chevron-forward" size={17} color="#94A3B8" />
     </TouchableOpacity>
   );
 }
@@ -207,36 +158,19 @@ function SettingItem({
    SWITCH ITEM
 ============================================================ */
 
-function SwitchItem({
-  icon,
-  title,
-  subtitle,
-  value,
-  onValueChange,
-}) {
+function SwitchItem({ icon, title, subtitle, value, onValueChange }) {
   return (
     <View style={styles.settingRow}>
-
       <View style={styles.leftContent}>
-
         <View style={styles.iconBox}>
-          <Ionicons
-            name={icon}
-            size={18}
-            color="#F5B82E"
-          />
+          <Ionicons name={icon} size={18} color="#FF8500" />
         </View>
 
         <View style={styles.textContainer}>
-          <Text style={styles.title}>
-            {title}
-          </Text>
+          <Text style={styles.title}>{title}</Text>
 
-          <Text style={styles.subtitle}>
-            {subtitle}
-          </Text>
+          <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
-
       </View>
 
       <Switch
@@ -244,11 +178,10 @@ function SwitchItem({
         onValueChange={onValueChange}
         trackColor={{
           false: "#D1D5DB",
-          true: "#F5B82E",
+          true: "#FF8500",
         }}
         thumbColor="#FFFFFF"
       />
-
     </View>
   );
 }
@@ -258,7 +191,6 @@ function SwitchItem({
 ============================================================ */
 
 const styles = StyleSheet.create({
-
   safeArea: {
     flex: 1,
     backgroundColor: "#081A33",
@@ -453,5 +385,4 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
     marginTop: 14,
   },
-
 });

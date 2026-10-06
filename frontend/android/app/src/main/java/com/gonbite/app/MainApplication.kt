@@ -1,4 +1,4 @@
-package com.feedster.app
+package com.gonbite.app
 
 import android.app.Application
 import android.content.res.Configuration

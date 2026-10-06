@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -15,7 +16,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
 import api from "../../services/api";
 
 export default function DeliveryRegister() {
@@ -39,103 +39,166 @@ export default function DeliveryRegister() {
 
   const [loading, setLoading] = useState(false);
 
-  // =================================================
-  // PICK AADHAAR DOCUMENT
-  // =================================================
+  // =========================================================
+  // PICK AADHAAR
+  // =========================================================
 
   const pickAadhaar = async () => {
-    const permission =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (!permission.granted) {
+      if (!permission.granted) {
+        Alert.alert(
+          "Permission Required",
+          "Please allow gallery access to upload your Aadhaar document."
+        );
+        return;
+      }
+
+      const result =
+        await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ["images"],
+          allowsEditing: true,
+          quality: 0.8,
+        });
+
+      if (!result.canceled && result.assets?.length > 0) {
+        const asset = result.assets[0];
+
+        console.log("📄 AADHAAR SELECTED:", {
+          uri: asset.uri,
+          fileName: asset.fileName,
+          mimeType: asset.mimeType,
+          width: asset.width,
+          height: asset.height,
+        });
+
+        setAadhaarDocument(asset);
+      }
+    } catch (error) {
+      console.error("AADHAAR PICK ERROR:", error);
+
       Alert.alert(
-        "Permission Required",
-        "Please allow photo library access to upload your Aadhaar document."
+        "Error",
+        "Unable to select Aadhaar document."
       );
-      return;
-    }
-
-    const result =
-      await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        quality: 0.8,
-      });
-
-    if (!result.canceled) {
-      setAadhaarDocument(result.assets[0]);
     }
   };
 
-  // =================================================
+  // =========================================================
   // PICK DRIVING LICENCE
-  // =================================================
+  // =========================================================
 
   const pickDrivingLicense = async () => {
-    const permission =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (!permission.granted) {
-      Alert.alert(
-        "Permission Required",
-        "Please allow photo library access to upload your driving licence."
+      if (!permission.granted) {
+        Alert.alert(
+          "Permission Required",
+          "Please allow gallery access to upload your driving licence."
+        );
+        return;
+      }
+
+      const result =
+        await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ["images"],
+          allowsEditing: true,
+          quality: 0.8,
+        });
+
+      if (!result.canceled && result.assets?.length > 0) {
+        const asset = result.assets[0];
+
+        console.log("📄 DRIVING LICENCE SELECTED:", {
+          uri: asset.uri,
+          fileName: asset.fileName,
+          mimeType: asset.mimeType,
+          width: asset.width,
+          height: asset.height,
+        });
+
+        setDrivingLicenseDocument(asset);
+      }
+    } catch (error) {
+      console.error(
+        "DRIVING LICENCE PICK ERROR:",
+        error
       );
-      return;
-    }
 
-    const result =
-      await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        quality: 0.8,
-      });
-
-    if (!result.canceled) {
-      setDrivingLicenseDocument(result.assets[0]);
+      Alert.alert(
+        "Error",
+        "Unable to select driving licence."
+      );
     }
   };
 
-  // =================================================
+  // =========================================================
   // TAKE LIVE PHOTO
-  // =================================================
+  // =========================================================
 
   const takeLivePhoto = async () => {
-    const permission =
-      await ImagePicker.requestCameraPermissionsAsync();
+    try {
+      const permission =
+        await ImagePicker.requestCameraPermissionsAsync();
 
-    if (!permission.granted) {
-      Alert.alert(
-        "Camera Permission Required",
-        "Please allow camera access to take your live photo."
+      if (!permission.granted) {
+        Alert.alert(
+          "Permission Required",
+          "Please allow camera access to take your live photo."
+        );
+        return;
+      }
+
+      const result =
+        await ImagePicker.launchCameraAsync({
+          allowsEditing: true,
+          quality: 0.8,
+          cameraType: ImagePicker.CameraType.front,
+        });
+
+      if (!result.canceled && result.assets?.length > 0) {
+        const asset = result.assets[0];
+
+        console.log("📸 LIVE PHOTO CAPTURED:", {
+          uri: asset.uri,
+          fileName: asset.fileName,
+          mimeType: asset.mimeType,
+          width: asset.width,
+          height: asset.height,
+        });
+
+        setLivePhoto(asset);
+      }
+    } catch (error) {
+      console.error(
+        "LIVE PHOTO ERROR:",
+        error
       );
-      return;
-    }
 
-    const result =
-      await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        quality: 0.8,
-        cameraType: ImagePicker.CameraType.front,
-      });
-
-    if (!result.canceled) {
-      setLivePhoto(result.assets[0]);
+      Alert.alert(
+        "Error",
+        "Unable to take live photo."
+      );
     }
   };
 
-  // =================================================
+  // =========================================================
   // REGISTER
-  // =================================================
+  // =========================================================
 
   const handleRegister = async () => {
-    // -----------------------------------------------
+    // -------------------------------------------------------
     // BASIC VALIDATION
-    // -----------------------------------------------
+    // -------------------------------------------------------
 
     if (
-      !form.name ||
-      !form.email ||
-      !form.phone ||
+      !form.name.trim() ||
+      !form.email.trim() ||
+      !form.phone.trim() ||
       !form.password ||
       !form.confirmPassword
     ) {
@@ -146,10 +209,6 @@ export default function DeliveryRegister() {
       return;
     }
 
-    // -----------------------------------------------
-    // PASSWORD VALIDATION
-    // -----------------------------------------------
-
     if (form.password !== form.confirmPassword) {
       Alert.alert(
         "Error",
@@ -158,9 +217,9 @@ export default function DeliveryRegister() {
       return;
     }
 
-    // -----------------------------------------------
+    // -------------------------------------------------------
     // AADHAAR VALIDATION
-    // -----------------------------------------------
+    // -------------------------------------------------------
 
     if (!aadhaarDocument) {
       Alert.alert(
@@ -170,9 +229,9 @@ export default function DeliveryRegister() {
       return;
     }
 
-    // -----------------------------------------------
-    // BIKE / SCOOTER -> DRIVING LICENCE
-    // -----------------------------------------------
+    // -------------------------------------------------------
+    // DRIVING LICENCE VALIDATION
+    // -------------------------------------------------------
 
     if (
       (form.vehicleType === "Bike" ||
@@ -186,9 +245,9 @@ export default function DeliveryRegister() {
       return;
     }
 
-    // -----------------------------------------------
-    // BICYCLE -> LIVE PHOTO
-    // -----------------------------------------------
+    // -------------------------------------------------------
+    // LIVE PHOTO VALIDATION
+    // -------------------------------------------------------
 
     if (
       form.vehicleType === "Bicycle" &&
@@ -204,104 +263,234 @@ export default function DeliveryRegister() {
     setLoading(true);
 
     try {
-      // =================================================
-      // FORM DATA
-      // =================================================
-
       const formData = new FormData();
 
-      formData.append("name", form.name);
-      formData.append("email", form.email);
-      formData.append("phone", form.phone);
-      formData.append("password", form.password);
+      // -----------------------------------------------------
+      // TEXT FIELDS
+      // -----------------------------------------------------
+
+      formData.append(
+        "name",
+        form.name.trim()
+      );
+
+      formData.append(
+        "email",
+        form.email.trim()
+      );
+
+      formData.append(
+        "phone",
+        form.phone.trim()
+      );
+
+      formData.append(
+        "password",
+        form.password
+      );
+
       formData.append(
         "vehicleType",
         form.vehicleType
       );
 
-      // =================================================
-      // AADHAAR
-      // =================================================
+      // -----------------------------------------------------
+      // CROSS PLATFORM FILE UPLOAD HELPER
+      // -----------------------------------------------------
 
-      if (aadhaarDocument) {
-        const uri = aadhaarDocument.uri;
-
-        const fileName =
-          aadhaarDocument.fileName ||
-          `aadhaar_${Date.now()}.jpg`;
-
-        const mimeType =
-          aadhaarDocument.mimeType ||
-          "image/jpeg";
-
-        formData.append("aadhaarDocument", {
-          uri,
-          name: fileName,
-          type: mimeType,
-        } as any);
-      }
-
-      // =================================================
-      // DRIVING LICENCE
-      // =================================================
-
-      if (drivingLicenseDocument) {
-        const uri =
-          drivingLicenseDocument.uri;
+      const appendFile = async (
+        fieldName: string,
+        asset: ImagePicker.ImagePickerAsset | null,
+        defaultName: string
+      ) => {
+        if (!asset) {
+          return;
+        }
 
         const fileName =
-          drivingLicenseDocument.fileName ||
-          `driving_license_${Date.now()}.jpg`;
+          asset.fileName ||
+          `${defaultName}_${Date.now()}.jpg`;
 
         const mimeType =
-          drivingLicenseDocument.mimeType ||
+          asset.mimeType ||
           "image/jpeg";
+
+        // ===================================================
+        // WEB
+        // ===================================================
+
+        if (Platform.OS === "web") {
+          console.log(
+            `🌐 Preparing WEB file: ${fieldName}`
+          );
+
+          const response = await fetch(
+            asset.uri
+          );
+
+          if (!response.ok) {
+            throw new Error(
+              `Unable to read ${fieldName} image.`
+            );
+          }
+
+          const blob =
+            await response.blob();
+
+          const file =
+            new File(
+              [blob],
+              fileName,
+              {
+                type: mimeType,
+              }
+            );
+
+          formData.append(
+            fieldName,
+            file
+          );
+
+          console.log(
+            `✅ WEB FILE ADDED: ${fieldName}`,
+            {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+            }
+          );
+
+          return;
+        }
+
+        // ===================================================
+        // ANDROID / IOS
+        // ===================================================
+
+        console.log(
+          `📱 Preparing MOBILE file: ${fieldName}`
+        );
 
         formData.append(
-          "drivingLicenseDocument",
+          fieldName,
           {
-            uri,
+            uri: asset.uri,
             name: fileName,
             type: mimeType,
           } as any
         );
-      }
 
-      // =================================================
-      // LIVE PHOTO
-      // =================================================
+        console.log(
+          `✅ MOBILE FILE ADDED: ${fieldName}`,
+          {
+            uri: asset.uri,
+            name: fileName,
+            type: mimeType,
+          }
+        );
+      };
 
-      if (livePhoto) {
-        const uri = livePhoto.uri;
+      // -----------------------------------------------------
+      // APPEND AADHAAR
+      // -----------------------------------------------------
 
-        const fileName =
-          livePhoto.fileName ||
-          `live_photo_${Date.now()}.jpg`;
+      await appendFile(
+        "aadhaarDocument",
+        aadhaarDocument,
+        "aadhaar"
+      );
 
-        const mimeType =
-          livePhoto.mimeType ||
-          "image/jpeg";
+      // -----------------------------------------------------
+      // APPEND DRIVING LICENCE
+      // -----------------------------------------------------
 
-        formData.append("livePhoto", {
-          uri,
-          name: fileName,
-          type: mimeType,
-        } as any);
-      }
+      await appendFile(
+        "drivingLicenseDocument",
+        drivingLicenseDocument,
+        "driving_license"
+      );
 
-      // =================================================
-      // SEND TO BACKEND
-      // =================================================
+      // -----------------------------------------------------
+      // APPEND LIVE PHOTO
+      // -----------------------------------------------------
+
+      await appendFile(
+        "livePhoto",
+        livePhoto,
+        "live_photo"
+      );
+
+      // -----------------------------------------------------
+      // DEBUG LOGS
+      // -----------------------------------------------------
+
+      console.log(
+        "===================================="
+      );
+
+      console.log(
+        "🚀 DELIVERY REGISTRATION"
+      );
+
+      console.log(
+        "📱 PLATFORM:",
+        Platform.OS
+      );
+
+      console.log(
+        "👤 NAME:",
+        form.name.trim()
+      );
+
+      console.log(
+        "📧 EMAIL:",
+        form.email.trim()
+      );
+
+      console.log(
+        "📞 PHONE:",
+        form.phone.trim()
+      );
+
+      console.log(
+        "🛵 VEHICLE:",
+        form.vehicleType
+      );
+
+      console.log(
+        "📎 Aadhaar:",
+        !!aadhaarDocument
+      );
+
+      console.log(
+        "📎 Driving Licence:",
+        !!drivingLicenseDocument
+      );
+
+      console.log(
+        "📎 Live Photo:",
+        !!livePhoto
+      );
+
+      console.log(
+        "===================================="
+      );
+
+      // -----------------------------------------------------
+      // SEND REQUEST
+      // IMPORTANT:
+      // DO NOT MANUALLY SET Content-Type.
+      // Axios will create the multipart boundary.
+      // -----------------------------------------------------
 
       await api.post(
         "/delivery/register",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
+        formData
       );
+
+      // -----------------------------------------------------
+      // SUCCESS
+      // -----------------------------------------------------
 
       Alert.alert(
         "Registration Sent!",
@@ -310,19 +499,22 @@ export default function DeliveryRegister() {
           {
             text: "OK",
             onPress: () =>
-              router.replace("/delivery/login"),
+              router.replace(
+                "/delivery/login"
+              ),
           },
         ]
       );
     } catch (error: any) {
       console.error(
-        "DELIVERY REGISTRATION ERROR:",
-        error.response?.data || error
+        "❌ DELIVERY REGISTRATION ERROR:",
+        error?.response?.data || error
       );
 
       Alert.alert(
         "Registration Failed",
-        error.response?.data?.error ||
+        error?.response?.data?.error ||
+          error?.message ||
           "Something went wrong."
       );
     } finally {
@@ -330,494 +522,534 @@ export default function DeliveryRegister() {
     }
   };
 
+  // =========================================================
+  // UI
+  // =========================================================
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
+        barStyle="dark-content"
+        backgroundColor="#FFFFFF"
       />
 
       <KeyboardAvoidingView
+        style={styles.container}
         behavior={
           Platform.OS === "ios"
             ? "padding"
-            : "height"
+            : undefined
         }
-        style={styles.container}
       >
         <ScrollView
           contentContainerStyle={
             styles.scrollContent
           }
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-
-          {/* =================================================
-              HEADER
-          ================================================= */}
+          {/* HEADER */}
 
           <View style={styles.header}>
             <TouchableOpacity
-              onPress={() => router.back()}
               style={styles.backButton}
+              onPress={() => router.back()}
             >
               <Ionicons
                 name="arrow-back"
                 size={24}
-                color="#FFFFFF"
+                color="#111827"
               />
             </TouchableOpacity>
 
-            <Text style={styles.headerTitle}>
-              Partner with SNAX
-            </Text>
+            <View>
+              <Text style={styles.title}>
+                Delivery Partner
+              </Text>
 
-            <View style={{ width: 24 }} />
+              <Text style={styles.subtitle}>
+                Create your account
+              </Text>
+            </View>
           </View>
 
-          {/* =================================================
-              FORM
-          ================================================= */}
+          {/* NAME */}
 
-          <View style={styles.formContainer}>
-
-            {/* NAME */}
-
+          <View style={styles.inputContainer}>
             <Text style={styles.label}>
               Full Name
             </Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="John Doe"
-              value={form.name}
-              onChangeText={(text) =>
-                setForm({
-                  ...form,
-                  name: text,
-                })
-              }
-            />
+            <View style={styles.inputWrapper}>
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color="#6B7280"
+              />
 
-            {/* EMAIL */}
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your full name"
+                placeholderTextColor="#9CA3AF"
+                value={form.name}
+                onChangeText={(text) =>
+                  setForm({
+                    ...form,
+                    name: text,
+                  })
+                }
+                autoCapitalize="words"
+              />
+            </View>
+          </View>
 
+          {/* EMAIL */}
+
+          <View style={styles.inputContainer}>
             <Text style={styles.label}>
-              Email Address
+              Email
             </Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="partner@email.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={form.email}
-              onChangeText={(text) =>
-                setForm({
-                  ...form,
-                  email: text,
-                })
-              }
-            />
+            <View style={styles.inputWrapper}>
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color="#6B7280"
+              />
 
-            {/* PHONE */}
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email"
+                placeholderTextColor="#9CA3AF"
+                value={form.email}
+                onChangeText={(text) =>
+                  setForm({
+                    ...form,
+                    email: text,
+                  })
+                }
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+          </View>
 
+          {/* PHONE */}
+
+          <View style={styles.inputContainer}>
             <Text style={styles.label}>
               Phone Number
             </Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="+91 9876543210"
-              keyboardType="phone-pad"
-              value={form.phone}
-              onChangeText={(text) =>
-                setForm({
-                  ...form,
-                  phone: text,
-                })
-              }
-            />
+            <View style={styles.inputWrapper}>
+              <Ionicons
+                name="call-outline"
+                size={20}
+                color="#6B7280"
+              />
 
-            {/* =================================================
-                VEHICLE TYPE
-            ================================================= */}
+              <TextInput
+                style={styles.input}
+                placeholder="Enter phone number"
+                placeholderTextColor="#9CA3AF"
+                value={form.phone}
+                onChangeText={(text) =>
+                  setForm({
+                    ...form,
+                    phone: text,
+                  })
+                }
+                keyboardType="phone-pad"
+              />
+            </View>
+          </View>
 
+          {/* PASSWORD */}
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>
+              Password
+            </Text>
+
+            <View style={styles.inputWrapper}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color="#6B7280"
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder="Enter password"
+                placeholderTextColor="#9CA3AF"
+                value={form.password}
+                onChangeText={(text) =>
+                  setForm({
+                    ...form,
+                    password: text,
+                  })
+                }
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
+          {/* CONFIRM PASSWORD */}
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>
+              Confirm Password
+            </Text>
+
+            <View style={styles.inputWrapper}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color="#6B7280"
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm password"
+                placeholderTextColor="#9CA3AF"
+                value={form.confirmPassword}
+                onChangeText={(text) =>
+                  setForm({
+                    ...form,
+                    confirmPassword: text,
+                  })
+                }
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
+          {/* VEHICLE TYPE */}
+
+          <View style={styles.inputContainer}>
             <Text style={styles.label}>
               Vehicle Type
             </Text>
 
-            <View style={styles.vehicleRow}>
+            <View style={styles.vehicleContainer}>
               {[
                 "Bike",
                 "Scooter",
                 "Bicycle",
-              ].map((type) => (
+              ].map((vehicle) => (
                 <TouchableOpacity
-                  key={type}
+                  key={vehicle}
                   style={[
-                    styles.vehicleBtn,
-                    form.vehicleType === type &&
-                      styles.vehicleBtnActive,
+                    styles.vehicleButton,
+                    form.vehicleType === vehicle &&
+                      styles.vehicleButtonActive,
                   ]}
-                  onPress={() => {
+                  onPress={() =>
                     setForm({
                       ...form,
-                      vehicleType: type,
-                    });
-
-                    // Clear vehicle-specific
-                    // document when changing vehicle
-                    setDrivingLicenseDocument(
-                      null
-                    );
-                    setLivePhoto(null);
-                  }}
+                      vehicleType: vehicle,
+                    })
+                  }
                 >
                   <Ionicons
                     name={
-                      type === "Bicycle"
-                        ? "bicycle"
-                        : type === "Scooter"
-                        ? "speedometer-outline"
-                        : "bicycle-outline"
+                      vehicle === "Bicycle"
+                        ? "bicycle-outline"
+                        : "bicycle"
                     }
-                    size={20}
+                    size={22}
                     color={
-                      form.vehicleType === type
-                        ? "#0B0F14"
-                        : "#64748B"
+                      form.vehicleType === vehicle
+                        ? "#FFFFFF"
+                        : "#374151"
                     }
                   />
 
                   <Text
                     style={[
                       styles.vehicleText,
-                      form.vehicleType === type &&
+                      form.vehicleType ===
+                        vehicle &&
                         styles.vehicleTextActive,
                     ]}
                   >
-                    {type}
+                    {vehicle}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
 
-            {/* =================================================
-                DOCUMENT VERIFICATION
-            ================================================= */}
+          {/* DOCUMENTS */}
 
-            <View style={styles.verificationBox}>
+          <View style={styles.documentsSection}>
+            <Text style={styles.sectionTitle}>
+              Required Documents
+            </Text>
 
-              <View style={styles.verificationHeader}>
-                <Ionicons
-                  name="shield-checkmark-outline"
-                  size={24}
-                  color="#F5B82E"
-                />
+            {/* AADHAAR */}
 
-                <View style={styles.verificationHeaderText}>
-                  <Text style={styles.verificationTitle}>
-                    Verification Documents
+            <View style={styles.documentCard}>
+              <View style={styles.documentInfo}>
+                <View style={styles.documentIcon}>
+                  <Ionicons
+                    name="card-outline"
+                    size={25}
+                    color="#EF2C1E"
+                  />
+                </View>
+
+                <View style={styles.documentTextContainer}>
+                  <Text
+                    style={styles.documentTitle}
+                  >
+                    Aadhaar Card
                   </Text>
 
-                  <Text style={styles.verificationSubtitle}>
-                    Required for Admin approval
+                  <Text
+                    style={styles.documentSubtitle}
+                  >
+                    Required for all vehicles
                   </Text>
+
+                  {aadhaarDocument && (
+                    <Text
+                      style={styles.selectedText}
+                      numberOfLines={1}
+                    >
+                      ✓{" "}
+                      {aadhaarDocument.fileName ||
+                        "Aadhaar selected"}
+                    </Text>
+                  )}
                 </View>
               </View>
 
-              {/* =================================================
-                  AADHAAR
-              ================================================= */}
-
-              <Text style={styles.documentLabel}>
-                Aadhaar Card
-                <Text style={styles.requiredText}>
-                  {" "}*
-                </Text>
-              </Text>
-
               <TouchableOpacity
-                style={[
-                  styles.documentButton,
-                  aadhaarDocument &&
-                    styles.documentButtonSelected,
-                ]}
+                style={styles.uploadButton}
                 onPress={pickAadhaar}
               >
                 <Ionicons
                   name={
                     aadhaarDocument
-                      ? "checkmark-circle"
+                      ? "checkmark"
                       : "cloud-upload-outline"
                   }
-                  size={24}
-                  color={
-                    aadhaarDocument
-                      ? "#4CAF50"
-                      : "#64748B"
-                  }
+                  size={18}
+                  color="#FFFFFF"
                 />
 
-                <View style={styles.documentButtonContent}>
-                  <Text
-                    style={
-                      styles.documentButtonTitle
-                    }
-                  >
-                    {aadhaarDocument
-                      ? "Aadhaar Uploaded"
-                      : "Upload Aadhaar"}
-                  </Text>
-
-                  <Text
-                    style={
-                      styles.documentButtonSubtitle
-                    }
-                  >
-                    {aadhaarDocument
-                      ? "Tap to change document"
-                      : "Select a clear photo"}
-                  </Text>
-                </View>
-
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color="#94A3B8"
-                />
+                <Text
+                  style={styles.uploadButtonText}
+                >
+                  {aadhaarDocument
+                    ? "Change"
+                    : "Upload"}
+                </Text>
               </TouchableOpacity>
-
-              {/* =================================================
-                  BIKE / SCOOTER -> DRIVING LICENCE
-              ================================================= */}
-
-              {(form.vehicleType === "Bike" ||
-                form.vehicleType === "Scooter") && (
-                <>
-                  <Text style={styles.documentLabel}>
-                    Driving Licence
-                    <Text style={styles.requiredText}>
-                      {" "}*
-                    </Text>
-                  </Text>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.documentButton,
-                      drivingLicenseDocument &&
-                        styles.documentButtonSelected,
-                    ]}
-                    onPress={
-                      pickDrivingLicense
-                    }
-                  >
-                    <Ionicons
-                      name={
-                        drivingLicenseDocument
-                          ? "checkmark-circle"
-                          : "document-text-outline"
-                      }
-                      size={24}
-                      color={
-                        drivingLicenseDocument
-                          ? "#4CAF50"
-                          : "#64748B"
-                      }
-                    />
-
-                    <View
-                      style={
-                        styles.documentButtonContent
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.documentButtonTitle
-                        }
-                      >
-                        {drivingLicenseDocument
-                          ? "Driving Licence Uploaded"
-                          : "Upload Driving Licence"}
-                      </Text>
-
-                      <Text
-                        style={
-                          styles.documentButtonSubtitle
-                        }
-                      >
-                        {drivingLicenseDocument
-                          ? "Tap to change document"
-                          : "Select a clear photo"}
-                      </Text>
-                    </View>
-
-                    <Ionicons
-                      name="chevron-forward"
-                      size={20}
-                      color="#94A3B8"
-                    />
-                  </TouchableOpacity>
-                </>
-              )}
-
-              {/* =================================================
-                  BICYCLE -> LIVE PHOTO
-              ================================================= */}
-
-              {form.vehicleType ===
-                "Bicycle" && (
-                <>
-                  <Text style={styles.documentLabel}>
-                    Live Photo
-                    <Text style={styles.requiredText}>
-                      {" "}*
-                    </Text>
-                  </Text>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.documentButton,
-                      livePhoto &&
-                        styles.documentButtonSelected,
-                    ]}
-                    onPress={takeLivePhoto}
-                  >
-                    <Ionicons
-                      name={
-                        livePhoto
-                          ? "checkmark-circle"
-                          : "camera-outline"
-                      }
-                      size={24}
-                      color={
-                        livePhoto
-                          ? "#4CAF50"
-                          : "#64748B"
-                      }
-                    />
-
-                    <View
-                      style={
-                        styles.documentButtonContent
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.documentButtonTitle
-                        }
-                      >
-                        {livePhoto
-                          ? "Live Photo Captured"
-                          : "Take Live Photo"}
-                      </Text>
-
-                      <Text
-                        style={
-                          styles.documentButtonSubtitle
-                        }
-                      >
-                        {livePhoto
-                          ? "Tap to retake photo"
-                          : "Use your front camera"}
-                      </Text>
-                    </View>
-
-                    <Ionicons
-                      name="chevron-forward"
-                      size={20}
-                      color="#94A3B8"
-                    />
-                  </TouchableOpacity>
-                </>
-              )}
-
             </View>
 
-            {/* =================================================
-                PASSWORD
-            ================================================= */}
+            {/* DRIVING LICENCE */}
 
-            <Text style={styles.label}>
-              Password
-            </Text>
+            {(form.vehicleType === "Bike" ||
+              form.vehicleType === "Scooter") && (
+              <View style={styles.documentCard}>
+                <View style={styles.documentInfo}>
+                  <View style={styles.documentIcon}>
+                    <Ionicons
+                      name="document-text-outline"
+                      size={25}
+                      color="#EF2C1E"
+                    />
+                  </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Create a password"
-              secureTextEntry
-              value={form.password}
-              onChangeText={(text) =>
-                setForm({
-                  ...form,
-                  password: text,
-                })
-              }
-            />
+                  <View
+                    style={
+                      styles.documentTextContainer
+                    }
+                  >
+                    <Text
+                      style={styles.documentTitle}
+                    >
+                      Driving Licence
+                    </Text>
 
-            {/* =================================================
-                CONFIRM PASSWORD
-            ================================================= */}
+                    <Text
+                      style={styles.documentSubtitle}
+                    >
+                      Required for{" "}
+                      {form.vehicleType}
+                    </Text>
 
-            <Text style={styles.label}>
-              Confirm Password
-            </Text>
+                    {drivingLicenseDocument && (
+                      <Text
+                        style={
+                          styles.selectedText
+                        }
+                        numberOfLines={1}
+                      >
+                        ✓{" "}
+                        {drivingLicenseDocument.fileName ||
+                          "Driving licence selected"}
+                      </Text>
+                    )}
+                  </View>
+                </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm your password"
-              secureTextEntry
-              value={form.confirmPassword}
-              onChangeText={(text) =>
-                setForm({
-                  ...form,
-                  confirmPassword: text,
-                })
-              }
-            />
-
-            {/* =================================================
-                REGISTER BUTTON
-            ================================================= */}
-
-            <TouchableOpacity
-              style={[
-                styles.registerButton,
-                loading &&
-                  styles.disabledButton,
-              ]}
-              onPress={handleRegister}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator
-                  color="#0B0F14"
-                />
-              ) : (
-                <Text
-                  style={
-                    styles.registerButtonText
-                  }
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={pickDrivingLicense}
                 >
-                  Register as Delivery Partner
-                </Text>
-              )}
-            </TouchableOpacity>
+                  <Ionicons
+                    name={
+                      drivingLicenseDocument
+                        ? "checkmark"
+                        : "cloud-upload-outline"
+                    }
+                    size={18}
+                    color="#FFFFFF"
+                  />
 
-            {/* =================================================
-                LOGIN LINK
-            ================================================= */}
+                  <Text
+                    style={
+                      styles.uploadButtonText
+                    }
+                  >
+                    {drivingLicenseDocument
+                      ? "Change"
+                      : "Upload"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* LIVE PHOTO */}
+
+            {form.vehicleType === "Bicycle" && (
+              <View style={styles.documentCard}>
+                <View style={styles.documentInfo}>
+                  <View style={styles.documentIcon}>
+                    <Ionicons
+                      name="camera-outline"
+                      size={25}
+                      color="#EF2C1E"
+                    />
+                  </View>
+
+                  <View
+                    style={
+                      styles.documentTextContainer
+                    }
+                  >
+                    <Text
+                      style={styles.documentTitle}
+                    >
+                      Live Photo
+                    </Text>
+
+                    <Text
+                      style={styles.documentSubtitle}
+                    >
+                      Take a live photo using camera
+                    </Text>
+
+                    {livePhoto && (
+                      <Text
+                        style={
+                          styles.selectedText
+                        }
+                        numberOfLines={1}
+                      >
+                        ✓ Live photo captured
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={takeLivePhoto}
+                >
+                  <Ionicons
+                    name={
+                      livePhoto
+                        ? "checkmark"
+                        : "camera-outline"
+                    }
+                    size={18}
+                    color="#FFFFFF"
+                  />
+
+                  <Text
+                    style={
+                      styles.uploadButtonText
+                    }
+                  >
+                    {livePhoto
+                      ? "Retake"
+                      : "Camera"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {/* REGISTER BUTTON */}
+
+          <TouchableOpacity
+            style={[
+              styles.registerButton,
+              loading &&
+                styles.registerButtonDisabled,
+            ]}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator
+                size="small"
+                color="#FFFFFF"
+              />
+            ) : (
+              <>
+                <Text
+                  style={styles.registerButtonText}
+                >
+                  Create Account
+                </Text>
+
+                <Ionicons
+                  name="arrow-forward"
+                  size={20}
+                  color="#FFFFFF"
+                />
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* LOGIN */}
+
+          <View style={styles.loginContainer}>
+            <Text style={styles.loginText}>
+              Already have an account?
+            </Text>
 
             <TouchableOpacity
               onPress={() =>
-                router.push("/delivery/login")
+                router.push(
+                  "/delivery/login"
+                )
               }
-              style={styles.linkContainer}
             >
-              <Text style={styles.linkText}>
-                Already have an account? Sign In
+              <Text
+                style={styles.loginLink}
+              >
+                Login
               </Text>
             </TouchableOpacity>
-
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -825,224 +1057,259 @@ export default function DeliveryRegister() {
   );
 }
 
+// =============================================================
+// STYLES
+// =============================================================
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#081A33",
+    backgroundColor: "#FFFFFF",
   },
 
   container: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
   },
 
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 20,
     paddingBottom: 40,
   },
 
-  // =================================================
+  // -----------------------------------------------------------
   // HEADER
-  // =================================================
+  // -----------------------------------------------------------
 
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom: 28,
   },
 
   backButton: {
-    padding: 6,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
   },
 
-  headerTitle: {
-    fontSize: 20,
+  title: {
+    fontSize: 25,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: "#111827",
   },
 
-  // =================================================
-  // FORM
-  // =================================================
+  subtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginTop: 3,
+  },
 
-  formContainer: {
-    gap: 14,
+  // -----------------------------------------------------------
+  // INPUTS
+  // -----------------------------------------------------------
+
+  inputContainer: {
+    marginBottom: 18,
   },
 
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#0B0F14",
-    marginBottom: 4,
+    color: "#374151",
+    marginBottom: 8,
+  },
+
+  inputWrapper: {
+    height: 52,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    backgroundColor: "#FAFAFA",
   },
 
   input: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    flex: 1,
     fontSize: 15,
-    color: "#0B0F14",
-    borderWidth: 1,
-    borderColor: "#E2E6EB",
+    color: "#111827",
+    marginLeft: 10,
   },
 
-  // =================================================
+  // -----------------------------------------------------------
   // VEHICLE
-  // =================================================
+  // -----------------------------------------------------------
 
-  vehicleRow: {
+  vehicleContainer: {
     flexDirection: "row",
     gap: 10,
-    marginVertical: 6,
   },
 
-  vehicleBtn: {
+  vehicleButton: {
     flex: 1,
-    paddingVertical: 12,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
+    minHeight: 50,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#E2E6EB",
-    gap: 5,
+    flexDirection: "row",
+    paddingHorizontal: 8,
   },
 
-  vehicleBtnActive: {
-    backgroundColor: "#F5B82E",
-    borderColor: "#F5B82E",
+  vehicleButtonActive: {
+    backgroundColor: "#EF2C1E",
+    borderColor: "#EF2C1E",
   },
 
   vehicleText: {
-    color: "#64748B",
+    fontSize: 13,
     fontWeight: "600",
+    color: "#374151",
+    marginLeft: 5,
   },
 
   vehicleTextActive: {
-    color: "#0B0F14",
+    color: "#FFFFFF",
   },
 
-  // =================================================
-  // VERIFICATION BOX
-  // =================================================
+  // -----------------------------------------------------------
+  // DOCUMENTS
+  // -----------------------------------------------------------
 
-  verificationBox: {
-    backgroundColor: "#FFFFFF",
+  documentsSection: {
+    marginTop: 8,
+    marginBottom: 20,
+  },
+
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 12,
+  },
+
+  documentCard: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
     borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#E2E6EB",
-    marginTop: 4,
-    marginBottom: 4,
-  },
-
-  verificationHeader: {
+    padding: 14,
+    marginBottom: 12,
+    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    justifyContent: "space-between",
   },
 
-  verificationHeaderText: {
-    marginLeft: 10,
+  documentInfo: {
     flex: 1,
-  },
-
-  verificationTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0B0F14",
-  },
-
-  verificationSubtitle: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 2,
-  },
-
-  // =================================================
-  // DOCUMENT
-  // =================================================
-
-  documentLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#0B0F14",
-    marginBottom: 6,
-  },
-
-  requiredText: {
-    color: "#FF5252",
-  },
-
-  documentButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    marginRight: 10,
+  },
+
+  documentIcon: {
+    width: 46,
+    height: 46,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E2E6EB",
-    padding: 12,
-    marginBottom: 14,
+    backgroundColor: "#FFF1F0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
   },
 
-  documentButtonSelected: {
-    borderColor: "#4CAF50",
-    backgroundColor: "#F0FAF2",
-  },
-
-  documentButtonContent: {
+  documentTextContainer: {
     flex: 1,
-    marginLeft: 10,
   },
 
-  documentButtonTitle: {
-    fontSize: 14,
+  documentTitle: {
+    fontSize: 15,
     fontWeight: "700",
-    color: "#0B0F14",
+    color: "#111827",
   },
 
-  documentButtonSubtitle: {
-    fontSize: 11,
-    color: "#64748B",
+  documentSubtitle: {
+    fontSize: 12,
+    color: "#6B7280",
     marginTop: 3,
   },
 
-  // =================================================
+  selectedText: {
+    fontSize: 11,
+    color: "#16A34A",
+    fontWeight: "600",
+    marginTop: 4,
+  },
+
+  uploadButton: {
+    backgroundColor: "#EF2C1E",
+    borderRadius: 9,
+    minWidth: 82,
+    height: 38,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+  },
+
+  uploadButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+    marginLeft: 5,
+  },
+
+  // -----------------------------------------------------------
   // REGISTER
-  // =================================================
+  // -----------------------------------------------------------
 
   registerButton: {
-    backgroundColor: "#F5B82E",
+    height: 54,
+    backgroundColor: "#EF2C1E",
     borderRadius: 14,
-    paddingVertical: 16,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     marginTop: 8,
   },
 
-  disabledButton: {
-    opacity: 0.6,
+  registerButtonDisabled: {
+    opacity: 0.7,
   },
 
   registerButtonText: {
-    color: "#0B0F14",
+    color: "#FFFFFF",
+    fontSize: 16,
     fontWeight: "700",
-    fontSize: 17,
+    marginRight: 8,
   },
 
-  // =================================================
+  // -----------------------------------------------------------
   // LOGIN
-  // =================================================
+  // -----------------------------------------------------------
 
-  linkContainer: {
-    marginTop: 16,
+  loginContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
     alignItems: "center",
+    marginTop: 22,
   },
 
-  linkText: {
-    color: "#F5B82E",
-    fontWeight: "600",
+  loginText: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
+
+  loginLink: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#EF2C1E",
+    marginLeft: 5,
   },
 });

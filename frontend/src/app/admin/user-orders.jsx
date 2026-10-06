@@ -3,16 +3,16 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import api from "../../services/api";
@@ -143,8 +143,7 @@ export default function UserOrdersScreen() {
 
       Alert.alert(
         "Error",
-        error?.response?.data?.error ||
-          "Failed to refresh orders.",
+        error?.response?.data?.error || "Failed to refresh orders.",
       );
     } finally {
       setRefreshing(false);
@@ -158,7 +157,7 @@ export default function UserOrdersScreen() {
   const getStatusColor = (status) => {
     switch (status) {
       case "Pending":
-        return "#F5B82E";
+        return "#FF6B35";
 
       case "Accepted":
         return "#4CAF50";
@@ -167,7 +166,7 @@ export default function UserOrdersScreen() {
         return "#4CAF50";
 
       case "Preparing":
-        return "#FFA726";
+        return "#FF6B35";
 
       case "Ready for Pickup":
         return "#8B5CF6";
@@ -182,7 +181,7 @@ export default function UserOrdersScreen() {
         return "#16A34A";
 
       case "Cancelled":
-        return "#FF5252";
+        return "#FF8500";
 
       default:
         return "#64748B";
@@ -222,42 +221,29 @@ export default function UserOrdersScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
       <View style={styles.container}>
-
         {/* =====================================
             HEADER
         ====================================== */}
 
         <View style={styles.header}>
-
           <TouchableOpacity
             onPress={() => router.replace("/admin/users")}
             style={styles.backButton}
             activeOpacity={0.7}
           >
-            <Ionicons
-              name="arrow-back"
-              size={24}
-              color="#0B0F14"
-            />
+            <Ionicons name="arrow-back" size={24} color="#0B0F14" />
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
-            <Text
-              style={styles.headerTitle}
-              numberOfLines={1}
-            >
+            <Text style={styles.headerTitle} numberOfLines={1}>
               {userName || "User"}'s Orders
             </Text>
 
             <Text style={styles.headerSubtitle}>
-              {orders.length}{" "}
-              {orders.length === 1 ? "order" : "orders"}
+              {orders.length} {orders.length === 1 ? "order" : "orders"}
             </Text>
           </View>
 
@@ -266,13 +252,8 @@ export default function UserOrdersScreen() {
             style={styles.refreshButton}
             activeOpacity={0.7}
           >
-            <Ionicons
-              name="refresh"
-              size={21}
-              color="#0B0F14"
-            />
+            <Ionicons name="refresh" size={21} color="#0B0F14" />
           </TouchableOpacity>
-
         </View>
 
         {/* =====================================
@@ -281,44 +262,27 @@ export default function UserOrdersScreen() {
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FF6B35" />
 
-            <ActivityIndicator
-              size="large"
-              color="#F5B82E"
-            />
-
-            <Text style={styles.loadingText}>
-              Loading orders...
-            </Text>
-
+            <Text style={styles.loadingText}>Loading orders...</Text>
           </View>
         ) : orders.length === 0 ? (
-
           /* =====================================
               EMPTY STATE
           ====================================== */
 
           <View style={styles.emptyState}>
-
             <View style={styles.emptyIcon}>
-              <Ionicons
-                name="receipt-outline"
-                size={55}
-                color="#CBD5E1"
-              />
+              <Ionicons name="receipt-outline" size={55} color="#CBD5E1" />
             </View>
 
-            <Text style={styles.emptyTitle}>
-              No orders found
-            </Text>
+            <Text style={styles.emptyTitle}>No orders found</Text>
 
             <Text style={styles.emptySubtitle}>
               This user hasn't placed any orders yet.
             </Text>
-
           </View>
         ) : (
-
           /* =====================================
               ORDERS LIST
           ====================================== */
@@ -330,44 +294,30 @@ export default function UserOrdersScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                tintColor="#F5B82E"
+                tintColor="#FF6B35"
               />
             }
           >
-
             {/* =================================
                 SUMMARY
             ================================== */}
 
             <View style={styles.summaryCard}>
-
               <View style={styles.summaryIcon}>
-                <Ionicons
-                  name="receipt"
-                  size={22}
-                  color="#0B0F14"
-                />
+                <Ionicons name="receipt" size={22} color="#0B0F14" />
               </View>
 
               <View style={styles.summaryContent}>
-
-                <Text style={styles.summaryTitle}>
-                  Order History
-                </Text>
+                <Text style={styles.summaryTitle}>Order History</Text>
 
                 <Text style={styles.summarySubtitle}>
-                  Complete order history of{" "}
-                  {userName || "this user"}
+                  Complete order history of {userName || "this user"}
                 </Text>
-
               </View>
 
               <View style={styles.summaryCount}>
-                <Text style={styles.summaryCountText}>
-                  {orders.length}
-                </Text>
+                <Text style={styles.summaryCountText}>{orders.length}</Text>
               </View>
-
             </View>
 
             {/* =================================
@@ -375,25 +325,16 @@ export default function UserOrdersScreen() {
             ================================== */}
 
             {orders.map((order) => {
-
-              const items = Array.isArray(order?.items)
-                ? order.items
-                : [];
+              const items = Array.isArray(order?.items) ? order.items : [];
 
               return (
-                <View
-                  key={order?._id}
-                  style={styles.orderCard}
-                >
-
+                <View key={order?._id} style={styles.orderCard}>
                   {/* ==============================
                       ORDER HEADER
                   =============================== */}
 
                   <View style={styles.orderHeader}>
-
                     <View style={styles.orderHeaderLeft}>
-
                       <Text style={styles.orderId}>
                         Order #
                         {order?._id
@@ -404,15 +345,13 @@ export default function UserOrdersScreen() {
                       <Text style={styles.orderDate}>
                         {formatDate(order?.createdAt)}
                       </Text>
-
                     </View>
 
                     <View
                       style={[
                         styles.statusBadge,
                         {
-                          backgroundColor:
-                            getStatusColor(order?.status),
+                          backgroundColor: getStatusColor(order?.status),
                         },
                       ]}
                     >
@@ -420,17 +359,14 @@ export default function UserOrdersScreen() {
                         {order?.status || "Unknown"}
                       </Text>
                     </View>
-
                   </View>
 
                   {/* ==============================
                       RESTAURANT
                   =============================== */}
 
-                  {order?.restaurantId ||
-                  order?.restaurantName ? (
+                  {order?.restaurantId || order?.restaurantName ? (
                     <View style={styles.restaurantRow}>
-
                       <View style={styles.restaurantIcon}>
                         <Ionicons
                           name="restaurant-outline"
@@ -440,22 +376,14 @@ export default function UserOrdersScreen() {
                       </View>
 
                       <View style={styles.restaurantContent}>
+                        <Text style={styles.restaurantLabel}>Restaurant</Text>
 
-                        <Text style={styles.restaurantLabel}>
-                          Restaurant
-                        </Text>
-
-                        <Text
-                          style={styles.restaurantName}
-                          numberOfLines={1}
-                        >
+                        <Text style={styles.restaurantName} numberOfLines={1}>
                           {order?.restaurantId?.restaurantName ||
                             order?.restaurantName ||
                             "Restaurant"}
                         </Text>
-
                       </View>
-
                     </View>
                   ) : null}
 
@@ -464,10 +392,7 @@ export default function UserOrdersScreen() {
                   =============================== */}
 
                   <View style={styles.itemsContainer}>
-
-                    <Text style={styles.itemsTitle}>
-                      Items
-                    </Text>
+                    <Text style={styles.itemsTitle}>Items</Text>
 
                     {items.length === 0 ? (
                       <Text style={styles.noItemsText}>
@@ -479,30 +404,22 @@ export default function UserOrdersScreen() {
                           key={`${order?._id}-${idx}`}
                           style={styles.itemRow}
                         >
-
                           <View style={styles.itemLeft}>
-
                             <Text style={styles.itemQuantity}>
                               ×{item?.quantity || 0}
                             </Text>
 
-                            <Text
-                              style={styles.itemName}
-                              numberOfLines={2}
-                            >
+                            <Text style={styles.itemName} numberOfLines={2}>
                               {item?.name || "Food Item"}
                             </Text>
-
                           </View>
 
                           <Text style={styles.itemPrice}>
                             ₹{getItemTotal(item)}
                           </Text>
-
                         </View>
                       ))
                     )}
-
                   </View>
 
                   {/* ==============================
@@ -516,15 +433,11 @@ export default function UserOrdersScreen() {
                   =============================== */}
 
                   <View style={styles.totalRow}>
-
-                    <Text style={styles.totalLabel}>
-                      Total Amount
-                    </Text>
+                    <Text style={styles.totalLabel}>Total Amount</Text>
 
                     <Text style={styles.totalValue}>
                       ₹{Number(order?.totalAmount || 0)}
                     </Text>
-
                   </View>
 
                   {/* ==============================
@@ -532,33 +445,21 @@ export default function UserOrdersScreen() {
                   =============================== */}
 
                   <View style={styles.paymentRow}>
-
                     <View style={styles.paymentIcon}>
-                      <Ionicons
-                        name="card-outline"
-                        size={14}
-                        color="#64748B"
-                      />
+                      <Ionicons name="card-outline" size={14} color="#64748B" />
                     </View>
 
-                    <Text style={styles.paymentLabel}>
-                      Payment
-                    </Text>
+                    <Text style={styles.paymentLabel}>Payment</Text>
 
                     <Text style={styles.paymentText}>
-                      {order?.paymentMethod ||
-                        "Not specified"}
+                      {order?.paymentMethod || "Not specified"}
                     </Text>
-
                   </View>
-
                 </View>
               );
             })}
-
           </ScrollView>
         )}
-
       </View>
     </SafeAreaView>
   );
@@ -569,7 +470,6 @@ export default function UserOrdersScreen() {
 // =====================================================
 
 const styles = StyleSheet.create({
-
   // =========================================
   // MAIN
   // =========================================
@@ -729,7 +629,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
 
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
 
     alignItems: "center",
     justifyContent: "center",
@@ -925,7 +825,7 @@ const styles = StyleSheet.create({
   itemQuantity: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#F5B82E",
+    color: "#FF6B35",
 
     width: 28,
   },
@@ -980,7 +880,7 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#F5B82E",
+    color: "#FF6B35",
   },
 
   // =========================================
@@ -1008,6 +908,4 @@ const styles = StyleSheet.create({
     color: "#64748B",
     fontWeight: "600",
   },
-
 });
-

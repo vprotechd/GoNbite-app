@@ -14,8 +14,8 @@ export default function AdminLayout() {
 
   const checkAdminAuth = async () => {
     try {
-      const adminToken =
-        await AsyncStorage.getItem("adminToken");
+      const adminToken = await AsyncStorage.getItem("adminToken");
+      const userString = await AsyncStorage.getItem("user");
 
       console.log(
         "ADMIN AUTH CHECK:",
@@ -27,9 +27,6 @@ export default function AdminLayout() {
       =================================================
       ADMIN LOGIN PAGE
       =================================================
-
-      Login page must remain accessible without
-      an admin token.
       */
 
       if (pathname === "/admin/login") {
@@ -39,7 +36,7 @@ export default function AdminLayout() {
 
       /*
       =================================================
-      PROTECT ALL OTHER ADMIN ROUTES
+      NO ADMIN TOKEN
       =================================================
       */
 
@@ -54,12 +51,53 @@ export default function AdminLayout() {
 
       /*
       =================================================
-      ADMIN TOKEN EXISTS
+      CHECK USER ROLE
+      =================================================
+      */
+
+      let user = null;
+
+      if (userString) {
+        try {
+          user = JSON.parse(userString);
+        } catch (error) {
+          console.log("USER DATA PARSE ERROR:", error);
+        }
+      }
+
+      /*
+      =================================================
+      ONLY ADMIN CAN ACCESS ADMIN PANEL
+      =================================================
+      */
+
+      if (user && user.role && user.role !== "admin") {
+        console.log(
+          "NON-ADMIN USER → ACCESS DENIED:",
+          user.role
+        );
+
+      if (user && user.role !== "admin") {
+  console.log(
+    "NON-ADMIN USER → ACCESS DENIED:",
+    user.role
+  );
+
+  router.replace("/admin/login");
+  return;
+}
+
+        return;
+      }
+
+      /*
+      =================================================
+      ADMIN ACCESS GRANTED
       =================================================
       */
 
       console.log(
-        "ADMIN TOKEN FOUND → ACCESS GRANTED"
+        "ADMIN TOKEN + ROLE VERIFIED → ACCESS GRANTED"
       );
 
       setIsCheckingAuth(false);
@@ -76,7 +114,7 @@ export default function AdminLayout() {
 
   /*
   =================================================
-  SHOW LOADING WHILE CHECKING ADMIN AUTH
+  LOADING
   =================================================
   */
 
@@ -92,7 +130,7 @@ export default function AdminLayout() {
       >
         <ActivityIndicator
           size="large"
-          color="#F5B82E"
+          color="#FF8500"
         />
       </View>
     );
@@ -112,3 +150,4 @@ export default function AdminLayout() {
     />
   );
 }
+

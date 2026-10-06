@@ -13,29 +13,19 @@ import {
 export default function PrivacyPolicyScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
       <View style={styles.container}>
-
         {/* HEADER */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Ionicons
-              name="arrow-back"
-              size={20}
-              color="#081A33"
-            />
+            <Ionicons name="arrow-back" size={20} color="#081A33" />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>
-            Privacy Policy
-          </Text>
+          <Text style={styles.headerTitle}>Privacy Policy</Text>
 
           <View style={styles.headerSpacer} />
         </View>
@@ -44,28 +34,19 @@ export default function PrivacyPolicyScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
         >
-
           <View style={styles.introCard}>
             <View style={styles.iconBox}>
-              <Ionicons
-                name="shield-checkmark-outline"
-                size={24}
-                color="#F5B82E"
-              />
+              <Ionicons name="shield-checkmark-outline" size={24} color="#FF8500" />
             </View>
 
-            <Text style={styles.introTitle}>
-              Your privacy matters
-            </Text>
+            <Text style={styles.introTitle}>Your privacy matters</Text>
 
             <Text style={styles.introText}>
-              SNAX respects your privacy and is committed to
-              protecting your personal information.
+              SNAX respects your privacy and is committed to protecting your
+              personal information.
             </Text>
 
-            <Text style={styles.updated}>
-              Last updated: August 2026
-            </Text>
+            <Text style={styles.updated}>Last updated: August 2026</Text>
           </View>
 
           <PolicySection
@@ -118,10 +99,7 @@ export default function PrivacyPolicyScreen() {
             text="If you have questions or concerns about this Privacy Policy or how your information is handled, please contact the SNAX support team."
           />
 
-          <Text style={styles.footer}>
-            SNAX • Version 1.0.0
-          </Text>
-
+          <Text style={styles.footer}>SNAX • Version 1.0.0</Text>
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -131,13 +109,9 @@ export default function PrivacyPolicyScreen() {
 function PolicySection({ title, text }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>
-        {title}
-      </Text>
+      <Text style={styles.sectionTitle}>{title}</Text>
 
-      <Text style={styles.sectionText}>
-        {text}
-      </Text>
+      <Text style={styles.sectionText}>{text}</Text>
     </View>
   );
 }
@@ -200,7 +174,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 12,
-    backgroundColor: "#081A33",
+    backgroundColor: "#FF8500",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,

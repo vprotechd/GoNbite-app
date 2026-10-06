@@ -2,112 +2,79 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import { useCart } from "../../context/CartContext";
 import api from "../../services/api";
-
 
 // ======================================================
 // CONFIRM ORDER SCREEN
 // ======================================================
 
 export default function ConfirmOrderScreen() {
+  const { cartItems, clearCart } = useCart();
 
-  const {
-    cartItems,
-    clearCart,
-  } = useCart();
+  const [isConfirming, setIsConfirming] = useState(false);
 
-  const [isConfirming, setIsConfirming] =
-    useState(false);
-
-  const [successVisible, setSuccessVisible] =
-    useState(false);
-
+  const [successVisible, setSuccessVisible] = useState(false);
 
   // ====================================================
   // GET PARAMS
   // ====================================================
 
-  const {
-    restaurantId,
-    items,
-    total,
-    address,
-    paymentMethod,
-  } = useLocalSearchParams();
-
+  const { restaurantId, items, total, address, paymentMethod } =
+    useLocalSearchParams();
 
   // ====================================================
   // PARSE DATA
   // ====================================================
 
-  const parsedItems = items
-    ? JSON.parse(items)
-    : [];
+  const parsedItems = items ? JSON.parse(items) : [];
 
-  const parsedTotal =
-    parseFloat(String(total || "0")) || 0;
+  const parsedTotal = parseFloat(String(total || "0")) || 0;
 
-  const finalItems =
-    parsedItems.length > 0
-      ? parsedItems
-      : cartItems;
-
+  const finalItems = parsedItems.length > 0 ? parsedItems : cartItems;
 
   // ====================================================
   // PLACE ORDER
   // ====================================================
 
   const placeOrder = async () => {
-
     // --------------------------------------------------
     // EMPTY CART CHECK
     // --------------------------------------------------
 
     if (finalItems.length === 0) {
-
-      Alert.alert(
-        "Empty Cart",
-        "Your cart is empty."
-      );
+      Alert.alert("Empty Cart", "Your cart is empty.");
 
       return;
     }
 
-
     setIsConfirming(true);
 
-
     try {
-
       // ------------------------------------------------
       // VALID RESTAURANT ID
       // ------------------------------------------------
 
       const validRestaurantId =
-        restaurantId &&
-        restaurantId !== "unknown"
+        restaurantId && restaurantId !== "unknown"
           ? String(restaurantId)
-          : finalItems[0]?.restaurantId ||
-            null;
-
+          : finalItems[0]?.restaurantId || null;
 
       if (!validRestaurantId) {
-
         Alert.alert(
           "Error",
-          "Restaurant ID is missing. Please add items again."
+          "Restaurant ID is missing. Please add items again.",
         );
 
         setIsConfirming(false);
@@ -115,148 +82,85 @@ export default function ConfirmOrderScreen() {
         return;
       }
 
-
       // ------------------------------------------------
       // ORDER DATA
       // ------------------------------------------------
 
       const orderData = {
+        restaurantId: validRestaurantId,
 
-        restaurantId:
-          validRestaurantId,
+        items: finalItems.map(({ _id, name, price, quantity }) => ({
+          _id,
+          name,
+          price,
+          quantity,
+        })),
 
-        items: finalItems.map(
-          ({
-            _id,
-            name,
-            price,
-            quantity,
-          }) => ({
-            _id,
-            name,
-            price,
-            quantity,
-          })
-        ),
+        totalAmount: parsedTotal,
 
-        totalAmount:
-          parsedTotal,
+        deliveryAddress: String(address || ""),
 
-        deliveryAddress:
-          String(address || ""),
-
-        paymentMethod:
-          String(
-            paymentMethod ||
-              "Cash on Delivery"
-          ),
-
+        paymentMethod: String(paymentMethod || "Cash on Delivery"),
       };
-
 
       // ------------------------------------------------
       // CREATE ORDER
       // ------------------------------------------------
 
-      await api.post(
-        "/orders/create",
-        orderData
-      );
-
+      await api.post("/orders/create", orderData);
 
       setIsConfirming(false);
 
       setSuccessVisible(true);
-
 
       // ------------------------------------------------
       // REDIRECT AFTER SUCCESS
       // ------------------------------------------------
 
       setTimeout(() => {
-
         setSuccessVisible(false);
 
         clearCart();
 
-        router.replace(
-          "/(tabs)/orders"
-        );
-
+        router.replace("/(tabs)/orders");
       }, 4000);
-
-
     } catch (error) {
-
-      console.error(
-        "❌ Order Error:",
-        error
-      );
-
+      console.error("❌ Order Error:", error);
 
       Alert.alert(
         "Order Failed",
-        "Could not place your order. Please try again."
+        "Could not place your order. Please try again.",
       );
 
-
       setIsConfirming(false);
-
     }
-
   };
-
 
   // ====================================================
   // RENDER
   // ====================================================
 
   return (
-
     <SafeAreaView style={styles.safeArea}>
-
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
-      />
-
+      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
       <View style={styles.container}>
-
-
         {/* ==================================================
             HEADER
         ================================================== */}
 
         <View style={styles.header}>
-
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() =>
-              router.back()
-            }
+            onPress={() => router.back()}
           >
-
-            <Ionicons
-              name="arrow-back"
-              size={19}
-              color="#0B0F14"
-            />
-
+            <Ionicons name="arrow-back" size={19} color="#0B0F14" />
           </TouchableOpacity>
 
+          <Text style={styles.headerTitle}>Confirm Order</Text>
 
-          <Text style={styles.headerTitle}>
-            Confirm Order
-          </Text>
-
-
-          <View
-            style={styles.headerSpacer}
-          />
-
+          <View style={styles.headerSpacer} />
         </View>
-
 
         {/* ==================================================
             PAGE CONTENT
@@ -264,248 +168,108 @@ export default function ConfirmOrderScreen() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={
-            styles.scrollContent
-          }
+          contentContainerStyle={styles.scrollContent}
         >
-
-
           {/* ==================================================
               REVIEW HEADER
           ================================================== */}
 
-          <View
-            style={
-              styles.successIconContainer
-            }
-          >
-
-            <View
-              style={
-                styles.reviewIconCircle
-              }
-            >
-
-              <Ionicons
-                name="checkmark-circle"
-                size={38}
-                color="#4CAF50"
-              />
-
+          <View style={styles.successIconContainer}>
+            <View style={styles.reviewIconCircle}>
+              <Ionicons name="checkmark-circle" size={38} color="#4CAF50" />
             </View>
 
+            <Text style={styles.confirmTitle}>Review Your Order</Text>
 
-            <Text
-              style={styles.confirmTitle}
-            >
-              Review Your Order
+            <Text style={styles.confirmSubtitle}>
+              Please review your order details before placing it.
             </Text>
-
-
-            <Text
-              style={styles.confirmSubtitle}
-            >
-              Please review your order
-              details before placing it.
-            </Text>
-
           </View>
-
 
           {/* ==================================================
               ORDER DETAILS
           ================================================== */}
 
-          <View
-            style={styles.detailsCard}
-          >
-
-
+          <View style={styles.detailsCard}>
             {/* ADDRESS */}
 
             <View style={styles.row}>
+              <View style={styles.labelContainer}>
+                <Ionicons name="location-outline" size={14} color="#FF8500" />
 
-              <View
-                style={styles.labelContainer}
-              >
-
-                <Ionicons
-                  name="location-outline"
-                  size={14}
-                  color="#F5B82E"
-                />
-
-                <Text
-                  style={styles.label}
-                >
-                  Address
-                </Text>
-
+                <Text style={styles.label}>Address</Text>
               </View>
 
-
-              <Text
-                style={styles.value}
-                numberOfLines={3}
-              >
+              <Text style={styles.value} numberOfLines={3}>
                 {address || "Not set"}
               </Text>
-
             </View>
-
 
             {/* ITEMS */}
 
             <View style={styles.row}>
+              <View style={styles.labelContainer}>
+                <Ionicons name="restaurant-outline" size={14} color="#FF8500" />
 
-              <View
-                style={styles.labelContainer}
-              >
-
-                <Ionicons
-                  name="restaurant-outline"
-                  size={14}
-                  color="#F5B82E"
-                />
-
-                <Text
-                  style={styles.label}
-                >
-                  Items
-                </Text>
-
+                <Text style={styles.label}>Items</Text>
               </View>
 
-
-              <Text
-                style={styles.value}
-              >
-                {finalItems.length}
-              </Text>
-
+              <Text style={styles.value}>{finalItems.length}</Text>
             </View>
-
 
             {/* PAYMENT */}
 
             <View style={styles.row}>
+              <View style={styles.labelContainer}>
+                <Ionicons name="card-outline" size={14} color="#FF8500" />
 
-              <View
-                style={styles.labelContainer}
-              >
-
-                <Ionicons
-                  name="card-outline"
-                  size={14}
-                  color="#F5B82E"
-                />
-
-                <Text
-                  style={styles.label}
-                >
-                  Payment
-                </Text>
-
+                <Text style={styles.label}>Payment</Text>
               </View>
 
-
-              <Text
-                style={styles.value}
-                numberOfLines={2}
-              >
-                {
-                  paymentMethod ||
-                  "Cash on Delivery"
-                }
+              <Text style={styles.value} numberOfLines={2}>
+                {paymentMethod || "Cash on Delivery"}
               </Text>
-
             </View>
-
           </View>
-
 
           {/* ==================================================
               TOTAL
           ================================================== */}
 
-          <View
-            style={styles.totalCard}
-          >
+          <View style={styles.totalCard}>
+            <Text style={styles.totalLabel}>Total Amount</Text>
 
-            <Text
-              style={styles.totalLabel}
-            >
-              Total Amount
-            </Text>
-
-
-            <Text
-              style={styles.totalValue}
-            >
-              ₹{parsedTotal}
-            </Text>
-
+            <Text style={styles.totalValue}>₹{parsedTotal}</Text>
           </View>
-
 
           {/* ==================================================
               CONFIRM BUTTON
           ================================================== */}
 
           <TouchableOpacity
-            style={[
-              styles.confirmBtn,
-              isConfirming &&
-                styles.disabledBtn,
-            ]}
+            style={[styles.confirmBtn, isConfirming && styles.disabledBtn]}
             onPress={placeOrder}
             disabled={isConfirming}
             activeOpacity={0.85}
           >
-
             {isConfirming ? (
-
               <>
+                <ActivityIndicator color="#0B0F14" size="small" />
 
-                <ActivityIndicator
-                  color="#0B0F14"
-                  size="small"
-                />
-
-                <Text
-                  style={
-                    styles.confirmBtnText
-                  }
-                >
-                  Placing Order...
-                </Text>
-
+                <Text style={styles.confirmBtnText}>Placing Order...</Text>
               </>
-
             ) : (
-
               <>
-
                 <Ionicons
                   name="checkmark-circle-outline"
                   size={17}
                   color="#0B0F14"
                 />
 
-                <Text
-                  style={
-                    styles.confirmBtnText
-                  }
-                >
-                  Confirm Order
-                </Text>
-
+                <Text style={styles.confirmBtnText}>Confirm Order</Text>
               </>
-
             )}
-
           </TouchableOpacity>
-
 
           {/* ==================================================
               CANCEL BUTTON
@@ -513,150 +277,74 @@ export default function ConfirmOrderScreen() {
 
           <TouchableOpacity
             style={styles.cancelBtn}
-            onPress={() =>
-              router.back()
-            }
+            onPress={() => router.back()}
             activeOpacity={0.8}
           >
+            <Ionicons name="arrow-back-outline" size={14} color="#64748B" />
 
-            <Ionicons
-              name="arrow-back-outline"
-              size={14}
-              color="#64748B"
-            />
-
-            <Text
-              style={styles.cancelBtnText}
-            >
-              Cancel
-            </Text>
-
+            <Text style={styles.cancelBtnText}>Cancel</Text>
           </TouchableOpacity>
-
 
           {/* BOTTOM SPACE */}
 
-          <View
-            style={{ height: 25 }}
-          />
-
+          <View style={{ height: 25 }} />
         </ScrollView>
-
       </View>
-
 
       {/* ==================================================
           SUCCESS OVERLAY
       ================================================== */}
 
       {successVisible && (
-
-        <View
-          style={
-            styles.successModalOverlay
-          }
-        >
-
-          <View
-            style={
-              styles.successModalContent
-            }
-          >
-
-
+        <View style={styles.successModalOverlay}>
+          <View style={styles.successModalContent}>
             {/* SUCCESS ICON */}
 
-            <View
-              style={
-                styles.successIconWrapper
-              }
-            >
-
-              <Ionicons
-                name="checkmark-circle"
-                size={48}
-                color="#4CAF50"
-              />
-
+            <View style={styles.successIconWrapper}>
+              <Ionicons name="checkmark-circle" size={48} color="#4CAF50" />
             </View>
-
 
             {/* SUCCESS TITLE */}
 
-            <Text
-              style={styles.successTitle}
-            >
-              Order Confirmed! ✅
-            </Text>
-
+            <Text style={styles.successTitle}>Order Confirmed! ✅</Text>
 
             {/* SUCCESS DESCRIPTION */}
 
-            <Text
-              style={styles.successSubtitle}
-            >
-              Your order has been confirmed
-              and sent to the restaurant.
+            <Text style={styles.successSubtitle}>
+              Your order has been confirmed and sent to the restaurant.
             </Text>
-
 
             {/* AMOUNT */}
 
-            <View
-              style={styles.successAmountBox}
-            >
+            <View style={styles.successAmountBox}>
+              <Text style={styles.successAmountLabel}>Total Amount</Text>
 
-              <Text
-                style={styles.successAmountLabel}
-              >
-                Total Amount
-              </Text>
-
-              <Text
-                style={styles.successAmount}
-              >
-                ₹{parsedTotal}
-              </Text>
-
+              <Text style={styles.successAmount}>₹{parsedTotal}</Text>
             </View>
-
 
             {/* REDIRECT */}
 
-            <Text
-              style={styles.successRedirect}
-            >
-              Redirecting to Orders...
-            </Text>
-
+            <Text style={styles.successRedirect}>Redirecting to Orders...</Text>
 
             <ActivityIndicator
               size="small"
-              color="#F5B82E"
+              color="#FF8500"
               style={{
                 marginTop: 9,
               }}
             />
-
           </View>
-
         </View>
-
       )}
-
     </SafeAreaView>
-
   );
-
 }
-
 
 // ======================================================
 // STYLES
 // ======================================================
 
 const styles = StyleSheet.create({
-
   // ====================================================
   // MAIN
   // ====================================================
@@ -672,7 +360,6 @@ const styles = StyleSheet.create({
 
     backgroundColor: "#F5F7FA",
   },
-
 
   // ====================================================
   // HEADER
@@ -724,7 +411,6 @@ const styles = StyleSheet.create({
     width: 31,
   },
 
-
   // ====================================================
   // SCROLL
   // ====================================================
@@ -736,7 +422,6 @@ const styles = StyleSheet.create({
 
     paddingBottom: 25,
   },
-
 
   // ====================================================
   // REVIEW HEADER
@@ -765,8 +450,7 @@ const styles = StyleSheet.create({
 
     borderColor: "#E2E6EB",
 
-    boxShadow:
-      "0px 2px 4px rgba(0,0,0,0.04)",
+    boxShadow: "0px 2px 4px rgba(0,0,0,0.04)",
   },
 
   reviewIconCircle: {
@@ -807,7 +491,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
 
-
   // ====================================================
   // DETAILS CARD
   // ====================================================
@@ -829,8 +512,7 @@ const styles = StyleSheet.create({
 
     borderColor: "#E2E6EB",
 
-    boxShadow:
-      "0px 2px 4px rgba(0,0,0,0.04)",
+    boxShadow: "0px 2px 4px rgba(0,0,0,0.04)",
   },
 
   row: {
@@ -881,7 +563,6 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
 
-
   // ====================================================
   // TOTAL
   // ====================================================
@@ -925,9 +606,8 @@ const styles = StyleSheet.create({
 
     fontWeight: "800",
 
-    color: "#F5B82E",
+    color: "#FF8500",
   },
-
 
   // ====================================================
   // CONFIRM BUTTON
@@ -938,7 +618,7 @@ const styles = StyleSheet.create({
 
     alignSelf: "center",
 
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
 
     borderRadius: 9,
 
@@ -966,7 +646,6 @@ const styles = StyleSheet.create({
 
     fontSize: 11,
   },
-
 
   // ====================================================
   // CANCEL BUTTON
@@ -1004,7 +683,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
 
-
   // ====================================================
   // SUCCESS OVERLAY
   // ====================================================
@@ -1024,8 +702,7 @@ const styles = StyleSheet.create({
 
     alignItems: "center",
 
-    backgroundColor:
-      "rgba(0,0,0,0.7)",
+    backgroundColor: "rgba(0,0,0,0.7)",
 
     zIndex: 999,
 
@@ -1045,8 +722,7 @@ const styles = StyleSheet.create({
 
     alignItems: "center",
 
-    boxShadow:
-      "0px 5px 15px rgba(0,0,0,0.2)",
+    boxShadow: "0px 5px 15px rgba(0,0,0,0.2)",
   },
 
   successIconWrapper: {
@@ -1098,7 +774,7 @@ const styles = StyleSheet.create({
 
     borderWidth: 1,
 
-    borderColor: "#F5B82E",
+    borderColor: "#FF8500",
 
     borderRadius: 9,
 
@@ -1122,7 +798,7 @@ const styles = StyleSheet.create({
 
     fontWeight: "800",
 
-    color: "#F5B82E",
+    color: "",
 
     marginTop: 1,
   },
@@ -1134,5 +810,4 @@ const styles = StyleSheet.create({
 
     marginTop: 12,
   },
-
 });

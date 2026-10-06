@@ -6,11 +6,12 @@ import FoodItem from "../models/FoodItem.js";
 import Order from "../models/Order.js";
 import Restaurant from "../models/Restaurant.js";
 
-// --- AUTH CONTROLLERS ---
-// 1. Register Restaurant (Handles the uploaded image)
-// --- AUTH CONTROLLERS ---
+// ==========================================================
+// AUTH CONTROLLERS
+// ==========================================================
 
 // 1. Register Restaurant
+// Handles the uploaded restaurant image
 export const registerRestaurant = async (req, res) => {
   try {
     console.log("📦 REQ BODY:", req.body);
@@ -106,16 +107,27 @@ export const registerRestaurant = async (req, res) => {
   }
 };
 
-// 2. Login Restaurant (Blocks unverified users)
+// 2. Login Restaurant
+// Blocks unverified users
 export const loginRestaurant = async (req, res) => {
   try {
     const { email, password } = req.body;
+
     const restaurant = await Restaurant.findOne({ email });
-    if (!restaurant)
-      return res.status(401).json({ error: "Invalid credentials" });
+
+    if (!restaurant) {
+      return res.status(401).json({
+        error: "Invalid credentials",
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, restaurant.password);
-    if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
+
+    if (!isMatch) {
+      return res.status(401).json({
+        error: "Invalid credentials",
+      });
+    }
 
     // Block if not verified by Admin
     if (!restaurant.isVerified) {
@@ -125,12 +137,22 @@ export const loginRestaurant = async (req, res) => {
       });
     }
 
-    const token = jwt.sign({ id: restaurant._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
+    const token = jwt.sign(
+      { id: restaurant._id },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    res.json({
+      token,
+      restaurant,
     });
-    res.json({ token, restaurant });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+    });
   }
 };
 
@@ -138,23 +160,135 @@ export const loginRestaurant = async (req, res) => {
 export const getRestaurantProfile = async (req, res) => {
   try {
     const restaurant = await Restaurant.findById(req.restaurant.id).select(
-      "-password",
+      "-password"
     );
+
     res.json(restaurant);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+    });
   }
 };
 
-// --- FOOD CRUD CONTROLLERS ---
+// ==========================================================
+// RESTAURANT LOCATION
+// ==========================================================
 
+// 4. Update Restaurant Location
+//
+// Restaurant uses this endpoint to save its current/selected
+// location.
+//
+// IMPORTANT:
+// Restaurant location is NOT a live location.
+// It is simply saved as the restaurant's location.
+//
+// Delivery partner will have a separate live-location system.
+export const updateRestaurantLocation = async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+
+    // Validate that coordinates were provided
+    if (
+      latitude === undefined ||
+      longitude === undefined ||
+      latitude === null ||
+      longitude === null
+    ) {
+      return res.status(400).json({
+        error: "Latitude and longitude are required.",
+      });
+    }
+
+    // Convert values to numbers
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+
+    // Validate numeric values
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      return res.status(400).json({
+        error: "Latitude and longitude must be valid numbers.",
+      });
+    }
+
+    // Validate latitude range
+    if (lat < -90 || lat > 90) {
+      return res.status(400).json({
+        error: "Invalid latitude.",
+      });
+    }
+
+    // Validate longitude range
+    if (lng < -180 || lng > 180) {
+      return res.status(400).json({
+        error: "Invalid longitude.",
+      });
+    }
+
+    // Find logged-in restaurant
+    const restaurant = await Restaurant.findById(req.restaurant.id);
+
+    if (!restaurant) {
+      return res.status(404).json({
+        error: "Restaurant not found.",
+      });
+    }
+
+    // Save restaurant location
+    restaurant.latitude = lat;
+    restaurant.longitude = lng;
+
+    await restaurant.save();
+
+    console.log(
+      "📍 RESTAURANT LOCATION UPDATED:",
+      restaurant.restaurantName,
+      "| Latitude:",
+      lat,
+      "| Longitude:",
+      lng
+    );
+
+    return res.json({
+      message: "Restaurant location updated successfully.",
+      location: {
+        latitude: restaurant.latitude,
+        longitude: restaurant.longitude,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "❌ UPDATE RESTAURANT LOCATION ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      error:
+        error.message || "Failed to update restaurant location.",
+    });
+  }
+};
+
+// ==========================================================
+// FOOD CRUD CONTROLLERS
+// ==========================================================
+
+// 1. Add Food Item
 export const addFoodItem = async (req, res) => {
   try {
-    const { name, price, category, description } = req.body;
-    // Adds a timestamp to force browser reload
+    const {
+      name,
+      price,
+      category,
+      description,
+    } = req.body;
+
+    // Adds timestamp to force browser reload
     const imageUrl = req.file
       ? `/uploads/${req.file.filename}?t=${Date.now()}`
       : "";
+
     const food = new FoodItem({
       name,
       price,
@@ -163,77 +297,143 @@ export const addFoodItem = async (req, res) => {
       imageUrl,
       restaurantId: req.restaurant.id,
     });
+
     await food.save();
+
     res.status(201).json(food);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+    });
   }
 };
+
+// 2. Get Food Items
 export const getFoodItems = async (req, res) => {
   console.log("🔍 DEBUG: getFoodItems was called");
   console.log("🔍 DEBUG: req.restaurant =", req.restaurant);
 
   try {
-    // If req.restaurant is undefined, this explicitly crashes so we see it
+    // If req.restaurant is undefined, explicitly throw
+    // so authentication problems are visible.
     if (!req.restaurant || !req.restaurant.id) {
       throw new Error(
-        "❌ CRITICAL: req.restaurant.id is undefined! Auth middleware failed.",
+        "❌ CRITICAL: req.restaurant.id is undefined! Auth middleware failed."
       );
     }
 
-    const food = await FoodItem.find({ restaurantId: req.restaurant.id });
+    const food = await FoodItem.find({
+      restaurantId: req.restaurant.id,
+    });
+
     res.json(food);
   } catch (error) {
-    console.error("🔥🔥🔥 BACKEND CRASHED WITH THIS ERROR:", error); // This prints the REAL error
-    res.status(500).json({ error: error.message });
+    console.error(
+      "🔥🔥🔥 BACKEND CRASHED WITH THIS ERROR:",
+      error
+    );
+
+    res.status(500).json({
+      error: error.message,
+    });
   }
 };
 
+// 3. Update Food Item
 export const updateFoodItem = async (req, res) => {
   try {
-    const { name, price, category, description, isAvailable } = req.body;
-    let updateData = { name, price, category, description, isAvailable };
-    if (req.file)
-      updateData.imageUrl = `/uploads/${req.file.filename}?t=${Date.now()}`;
+    const {
+      name,
+      price,
+      category,
+      description,
+      isAvailable,
+    } = req.body;
+
+    let updateData = {
+      name,
+      price,
+      category,
+      description,
+      isAvailable,
+    };
+
+    if (req.file) {
+      updateData.imageUrl =
+        `/uploads/${req.file.filename}?t=${Date.now()}`;
+    }
 
     const food = await FoodItem.findOneAndUpdate(
-      { _id: req.params.id, restaurantId: req.restaurant.id },
+      {
+        _id: req.params.id,
+        restaurantId: req.restaurant.id,
+      },
       updateData,
-      { new: true },
+      {
+        new: true,
+      }
     );
-    if (!food) return res.status(404).json({ error: "Item not found" });
+
+    if (!food) {
+      return res.status(404).json({
+        error: "Item not found",
+      });
+    }
+
     res.json(food);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+    });
   }
 };
 
+// 4. Delete Food Item
 export const deleteFoodItem = async (req, res) => {
   try {
     const food = await FoodItem.findOneAndDelete({
       _id: req.params.id,
       restaurantId: req.restaurant.id,
     });
-    if (!food) return res.status(404).json({ error: "Item not found" });
-    res.json({ message: "Item deleted" });
+
+    if (!food) {
+      return res.status(404).json({
+        error: "Item not found",
+      });
+    }
+
+    res.json({
+      message: "Item deleted",
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+    });
   }
 };
 
-// --- ORDER CONTROLLERS ---
+// ==========================================================
+// ORDER CONTROLLERS
+// ==========================================================
 
+// 1. Get Restaurant Orders
 export const getOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ restaurantId: req.restaurant.id }).sort({
+    const orders = await Order.find({
+      restaurantId: req.restaurant.id,
+    }).sort({
       createdAt: -1,
     });
+
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+    });
   }
 };
 
+// 2. Update Restaurant Order Status
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -292,7 +492,8 @@ export const updateOrderStatus = async (req, res) => {
     if (status === "Preparing") {
       if (order.status !== "Accepted") {
         return res.status(400).json({
-          error: "Order must be accepted before preparation starts.",
+          error:
+            "Order must be accepted before preparation starts.",
         });
       }
 
@@ -304,43 +505,47 @@ export const updateOrderStatus = async (req, res) => {
       return res.json(order);
     }
 
-// ==========================================
-// 4. RESTAURANT CONFIRMS FOOD PICKUP
-// Accepted by Delivery → Out for Delivery
-// ==========================================
-if (status === "Out for Delivery") {
-  // Delivery partner must have accepted first
-  if (order.status !== "Accepted by Delivery") {
-    return res.status(400).json({
-      error:
-        "Delivery partner must accept the order before food can be picked up.",
-    });
-  }
+    // ==========================================
+    // 4. RESTAURANT CONFIRMS FOOD PICKUP
+    // Accepted by Delivery → Out for Delivery
+    // ==========================================
+    if (status === "Out for Delivery") {
+      // Delivery partner must have accepted first
+      if (order.status !== "Accepted by Delivery") {
+        return res.status(400).json({
+          error:
+            "Delivery partner must accept the order before food can be picked up.",
+        });
+      }
 
-  // A delivery partner must be assigned
-  if (!order.deliveryPartnerId) {
-    return res.status(400).json({
-      error: "No delivery partner is assigned to this order.",
-    });
-  }
+      // A delivery partner must be assigned
+      if (!order.deliveryPartnerId) {
+        return res.status(400).json({
+          error:
+            "No delivery partner is assigned to this order.",
+        });
+      }
 
-  // Restaurant confirms that food has physically
-  // been handed over to the delivery partner
-  order.status = "Out for Delivery";
+      // Restaurant confirms that food has physically
+      // been handed over to delivery partner
+      order.status = "Out for Delivery";
 
-  await order.save();
+      await order.save();
 
-  return res.json(order);
-}
+      return res.json(order);
+    }
+
     // ==========================================
     // INVALID RESTAURANT STATUS
     // ==========================================
     return res.status(400).json({
       error: "Invalid restaurant status update.",
     });
-
   } catch (error) {
-    console.error("UPDATE RESTAURANT ORDER STATUS ERROR:", error);
+    console.error(
+      "UPDATE RESTAURANT ORDER STATUS ERROR:",
+      error
+    );
 
     return res.status(500).json({
       error: error.message,
@@ -348,55 +553,107 @@ if (status === "Out for Delivery") {
   }
 };
 
-// --- DASHBOARD & AVAILABILITY CONTROLLERS ---
+// ==========================================================
+// DASHBOARD & AVAILABILITY CONTROLLERS
+// ==========================================================
 
+// 1. Get Dashboard Stats
 export const getDashboardStats = async (req, res) => {
   try {
     const today = new Date();
+
     today.setHours(0, 0, 0, 0);
+
     const tomorrow = new Date(today);
+
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const restaurantId = req.restaurant.id;
 
-    const totalOrders = await Order.countDocuments({ restaurantId });
+    const totalOrders = await Order.countDocuments({
+      restaurantId,
+    });
+
     const todayOrders = await Order.countDocuments({
       restaurantId,
-      createdAt: { $gte: today, $lt: tomorrow },
+      createdAt: {
+        $gte: today,
+        $lt: tomorrow,
+      },
     });
 
     const totalRevenueAgg = await Order.aggregate([
-      { $match: { restaurantId: new mongoose.Types.ObjectId(restaurantId) } },
-      { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+      {
+        $match: {
+          restaurantId: new mongoose.Types.ObjectId(
+            restaurantId
+          ),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: "$totalAmount",
+          },
+        },
+      },
     ]);
+
     const todayRevenueAgg = await Order.aggregate([
       {
         $match: {
-          restaurantId: new mongoose.Types.ObjectId(restaurantId),
-          createdAt: { $gte: today, $lt: tomorrow },
+          restaurantId: new mongoose.Types.ObjectId(
+            restaurantId
+          ),
+          createdAt: {
+            $gte: today,
+            $lt: tomorrow,
+          },
         },
       },
-      { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: "$totalAmount",
+          },
+        },
+      },
     ]);
 
     res.json({
       totalOrders,
       todayOrders,
-      totalRevenue: totalRevenueAgg[0]?.total || 0,
-      todayRevenue: todayRevenueAgg[0]?.total || 0,
+      totalRevenue:
+        totalRevenueAgg[0]?.total || 0,
+      todayRevenue:
+        todayRevenueAgg[0]?.total || 0,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+    });
   }
 };
 
+// 2. Toggle Restaurant Availability
 export const toggleAvailability = async (req, res) => {
   try {
-    const restaurant = await Restaurant.findById(req.restaurant.id);
+    const restaurant = await Restaurant.findById(
+      req.restaurant.id
+    );
+
     restaurant.isAvailable = !restaurant.isAvailable;
+
     await restaurant.save();
-    res.json({ isAvailable: restaurant.isAvailable });
+
+    res.json({
+      isAvailable: restaurant.isAvailable,
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+    });
   }
 };

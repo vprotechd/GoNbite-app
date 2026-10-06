@@ -18,7 +18,6 @@ import {
 } from "react-native";
 import api from "../../services/api";
 
-// ✅ 1. Define the type for your food items
 interface FoodItemType {
   _id: string;
   name: string;
@@ -29,12 +28,12 @@ interface FoodItemType {
 }
 
 export default function FoodManagement() {
-  // ✅ 2. Use the type in useState
   const [foodItems, setFoodItems] = useState<FoodItemType[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [image, setImage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+
   const [form, setForm] = useState({
     name: "",
     price: "",
@@ -42,13 +41,13 @@ export default function FoodManagement() {
     description: "",
   });
 
-  // 1. Fetch food on load
   useEffect(() => {
     fetchFood();
   }, []);
 
   const fetchFood = async () => {
     setLoading(true);
+
     try {
       const res = await api.get("/restaurant/food");
       setFoodItems(res.data);
@@ -60,39 +59,50 @@ export default function FoodManagement() {
     }
   };
 
-  // 2. Pick Image from Phone / Web
   const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
     });
 
-    if (!result.canceled && result.assets && result.assets.length > 0) {
+    if (
+      !result.canceled &&
+      result.assets &&
+      result.assets.length > 0
+    ) {
       setImage(result.assets[0].uri);
     }
   };
 
-  // 3. Save (Add or Edit)
   const handleSave = async () => {
     if (!form.name || !form.price || !form.category) {
-      Alert.alert("Error", "Please fill in Name, Price, and Category");
+      Alert.alert(
+        "Error",
+        "Please fill in Name, Price, and Category"
+      );
       return;
     }
 
     const formData = new FormData();
+
     formData.append("name", form.name);
     formData.append("price", form.price);
     formData.append("category", form.category);
     formData.append("description", form.description);
 
-    // Web Browser fix for images
     if (image) {
       if (Platform.OS === "web") {
         const response = await fetch(image);
         const blob = await response.blob();
-        const file = new File([blob], "food.jpg", { type: "image/jpeg" });
+
+        const file = new File(
+          [blob],
+          "food.jpg",
+          { type: "image/jpeg" }
+        );
+
         formData.append("image", file);
       } else {
         formData.append("image", {
@@ -105,291 +115,668 @@ export default function FoodManagement() {
 
     try {
       if (editingId) {
-        await api.put(`/restaurant/food/${editingId}`, formData);
+        await api.put(
+          `/restaurant/food/${editingId}`,
+          formData
+        );
+
         Alert.alert("Success", "Food item updated!");
       } else {
-        await api.post("/restaurant/food", formData);
-        Alert.alert("Success", "Food item added to menu!");
+        await api.post(
+          "/restaurant/food",
+          formData
+        );
+
+        Alert.alert(
+          "Success",
+          "Food item added to menu!"
+        );
       }
+
       setModalVisible(false);
       resetForm();
       fetchFood();
     } catch (error: any) {
-      console.error("Save Food Error:", error?.response?.data || error.message);
-      Alert.alert("Error", "Failed to save food item");
+      console.error(
+        "Save Food Error:",
+        error?.response?.data || error?.message
+      );
+
+      Alert.alert(
+        "Error",
+        "Failed to save food item"
+      );
     }
   };
 
-  // 4. Delete Item
   const deleteItem = (id: string) => {
-    Alert.alert("Delete", "Are you sure you want to remove this item?", [
-      { text: "Cancel" },
-      {
-        text: "Delete",
-        onPress: async () => {
-          try {
-            await api.delete(`/restaurant/food/${id}`);
-            fetchFood();
-          } catch (error) {
-            Alert.alert("Error", "Failed to delete item");
-          }
+    Alert.alert(
+      "Delete",
+      "Are you sure you want to remove this item?",
+      [
+        {
+          text: "Cancel",
         },
-      },
-    ]);
+        {
+          text: "Delete",
+          onPress: async () => {
+            try {
+              await api.delete(
+                `/restaurant/food/${id}`
+              );
+
+              fetchFood();
+            } catch (error) {
+              Alert.alert(
+                "Error",
+                "Failed to delete item"
+              );
+            }
+          },
+        },
+      ]
+    );
   };
 
   const resetForm = () => {
-    setForm({ name: "", price: "", category: "", description: "" });
+    setForm({
+      name: "",
+      price: "",
+      category: "",
+      description: "",
+    });
+
     setImage(null);
     setEditingId(null);
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.headerRow}>
-        <TouchableOpacity
-          onPress={() => router.replace("/restaurant/dashboard")}
-        >
-          <Ionicons name="arrow-back" size={24} color="#0A1628" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Manage Food</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <View style={styles.mainContent}>
 
-      {/* Add Button */}
-      <TouchableOpacity
-        style={styles.addBtn}
-        onPress={() => {
-          resetForm();
-          setModalVisible(true);
-        }}
-      >
-        <Ionicons name="add-circle" size={24} color="#FFF" />
-        <Text style={styles.addBtnText}>Add New Dish</Text>
-      </TouchableOpacity>
+        {/* HEADER */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            onPress={() =>
+              router.replace("/restaurant/dashboard")
+            }
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="arrow-back"
+              size={21}
+              color="#0A1628"
+            />
+          </TouchableOpacity>
 
-      {/* ✅ 3. Use FlatList with the generic type <FoodItemType> */}
-      {loading ? (
-        <ActivityIndicator
-          size="large"
-          color="#F48E16"
-          style={{ marginTop: 50 }}
-        />
-      ) : (
-        <FlatList<FoodItemType>
-          data={foodItems}
-          keyExtractor={(item) => item._id}
-          renderItem={({ item }) => (
-            <View style={styles.itemCard}>
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                <Text style={styles.itemCategory}>{item.category}</Text>
-                <Text style={styles.itemPrice}>₹{item.price}</Text>
-              </View>
+          <Text style={styles.headerTitle}>
+            Manage Food
+          </Text>
 
-              <View style={styles.actionBtns}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setEditingId(item._id);
-                    setForm({
-                      name: item.name,
-                      price: item.price.toString(), // ✅ Convert number to string
-                      category: item.category,
-                      description: item.description || "",
-                    });
-                    setModalVisible(true);
-                  }}
-                >
-                  <Ionicons name="pencil" size={22} color="#F48E16" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => deleteItem(item._id)}>
-                  <Ionicons name="trash" size={22} color="#FF5252" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        />
-      )}
-
-      {/* MODAL for Add/Edit */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ScrollView>
-              <Text style={styles.modalTitle}>
-                {editingId ? "Edit Dish" : "Add New Dish"}
-              </Text>
-
-              <TextInput
-                style={styles.input}
-                placeholder="Dish Name (e.g. Chicken Burger)"
-                value={form.name}
-                onChangeText={(t) => setForm({ ...form, name: t })}
-              />
-
-              <TextInput
-                style={styles.input}
-                placeholder="Price (e.g. 250)"
-                keyboardType="numeric"
-                value={form.price}
-                onChangeText={(t) => setForm({ ...form, price: t })}
-              />
-
-              <TextInput
-                style={styles.input}
-                placeholder="Category (e.g. Burgers, Pizza)"
-                value={form.category}
-                onChangeText={(t) => setForm({ ...form, category: t })}
-              />
-
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Description (optional)"
-                multiline={true}
-                numberOfLines={3}
-                value={form.description}
-                onChangeText={(t) => setForm({ ...form, description: t })}
-              />
-
-              {/* Image Picker */}
-              <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
-                <Ionicons name="camera" size={20} color="#F48E16" />
-                <Text style={styles.imagePickerText}>
-                  {image ? "Change Image" : "Upload Food Image"}
-                </Text>
-              </TouchableOpacity>
-              {image && (
-                <Image source={{ uri: image }} style={styles.previewImage} />
-              )}
-
-              {/* Action Buttons */}
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                <Text style={styles.saveBtnText}>Save Dish</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
+          <View style={styles.headerSpacer} />
         </View>
-      </Modal>
+
+        {/* ADD BUTTON */}
+        <TouchableOpacity
+          style={styles.addBtn}
+          onPress={() => {
+            resetForm();
+            setModalVisible(true);
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name="add-circle"
+            size={20}
+            color="#FFFFFF"
+          />
+
+          <Text style={styles.addBtnText}>
+            Add New Dish
+          </Text>
+        </TouchableOpacity>
+
+        {/* FOOD LIST */}
+        {loading ? (
+          <ActivityIndicator
+            size="large"
+            color="#FF6B35"
+            style={styles.loader}
+          />
+        ) : (
+          <FlatList<FoodItemType>
+            data={foodItems}
+            keyExtractor={(item) => item._id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => (
+              <View style={styles.itemCard}>
+
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemName}>
+                    {item.name}
+                  </Text>
+
+                  <Text style={styles.itemCategory}>
+                    {item.category}
+                  </Text>
+
+                  <Text style={styles.itemPrice}>
+                    ₹{item.price}
+                  </Text>
+                </View>
+
+                <View style={styles.actionBtns}>
+                  <TouchableOpacity
+                    style={styles.smallActionBtn}
+                    onPress={() => {
+                      setEditingId(item._id);
+
+                      setForm({
+                        name: item.name,
+                        price: item.price.toString(),
+                        category: item.category,
+                        description:
+                          item.description || "",
+                      });
+
+                      setImage(
+                        item.imageUrl || null
+                      );
+
+                      setModalVisible(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="pencil"
+                      size={18}
+                      color="#FF6B35"
+                    />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.smallActionBtn}
+                    onPress={() =>
+                      deleteItem(item._id)
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="trash"
+                      size={18}
+                      color="#FF8500"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          />
+        )}
+
+        {/* ADD / EDIT MODAL */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() =>
+            setModalVisible(false)
+          }
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                <Text style={styles.modalTitle}>
+                  {editingId
+                    ? "Edit Dish"
+                    : "Add New Dish"}
+                </Text>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Dish Name (e.g. Chicken Burger)"
+                  placeholderTextColor="#8E9BAE"
+                  value={form.name}
+                  onChangeText={(t) =>
+                    setForm({
+                      ...form,
+                      name: t,
+                    })
+                  }
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Price (e.g. 250)"
+                  placeholderTextColor="#8E9BAE"
+                  keyboardType="numeric"
+                  value={form.price}
+                  onChangeText={(t) =>
+                    setForm({
+                      ...form,
+                      price: t,
+                    })
+                  }
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Category (e.g. Burgers, Pizza)"
+                  placeholderTextColor="#8E9BAE"
+                  value={form.category}
+                  onChangeText={(t) =>
+                    setForm({
+                      ...form,
+                      category: t,
+                    })
+                  }
+                />
+
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.textArea,
+                  ]}
+                  placeholder="Description (optional)"
+                  placeholderTextColor="#8E9BAE"
+                  multiline
+                  numberOfLines={3}
+                  value={form.description}
+                  onChangeText={(t) =>
+                    setForm({
+                      ...form,
+                      description: t,
+                    })
+                  }
+                />
+
+                {/* IMAGE PICKER */}
+                <TouchableOpacity
+                  style={styles.imagePicker}
+                  onPress={pickImage}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name="camera"
+                    size={18}
+                    color="#FF6B35"
+                  />
+
+                  <Text
+                    style={styles.imagePickerText}
+                  >
+                    {image
+                      ? "Change Image"
+                      : "Upload Food Image"}
+                  </Text>
+                </TouchableOpacity>
+
+                {image && (
+                  <Image
+                    source={{ uri: image }}
+                    style={styles.previewImage}
+                  />
+                )}
+
+                {/* SAVE */}
+                <TouchableOpacity
+                  style={styles.saveBtn}
+                  onPress={handleSave}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.saveBtnText}>
+                    Save Dish
+                  </Text>
+                </TouchableOpacity>
+
+                {/* CANCEL */}
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() =>
+                    setModalVisible(false)
+                  }
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={styles.cancelBtnText}
+                  >
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F7FA", padding: 20 },
+  /* =========================
+     MAIN
+  ========================= */
+
+  container: {
+    flex: 1,
+    backgroundColor: "#F5F7FA",
+  },
+
+  mainContent: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 1100,
+    alignSelf: "center",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+
+  /* =========================
+     HEADER
+  ========================= */
+
   headerRow: {
+    height: 48,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 12,
   },
-  headerTitle: { fontSize: 22, fontWeight: "800", color: "#0A1628" },
+
+  backButton: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  headerSpacer: {
+    width: 34,
+  },
+
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#0A1628",
+  },
+
+  /* =========================
+     ADD BUTTON
+  ========================= */
+
   addBtn: {
-    backgroundColor: "#F48E16",
+    alignSelf: "center",
+
+    width:
+      Platform.OS === "web"
+        ? 190
+        : "58%",
+
+    maxWidth: 210,
+    minWidth: 150,
+
+    height: 42,
+
+    backgroundColor: "#FF6B35",
+
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 20,
+
+    paddingHorizontal: 12,
+
+    borderRadius: 10,
+
+    marginBottom: 14,
   },
-  addBtnText: { color: "#FFF", fontWeight: "700", fontSize: 16, marginLeft: 8 },
+
+  addBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 13,
+    marginLeft: 6,
+  },
+
+  /* =========================
+     LIST
+  ========================= */
+
+  listContent: {
+    paddingBottom: 25,
+  },
+
+  loader: {
+    marginTop: 40,
+  },
 
   itemCard: {
+    width: "100%",
+
     flexDirection: "row",
-    backgroundColor: "#FFF",
-    padding: 16,
+
+    backgroundColor: "#FFFFFF",
+
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+
     borderRadius: 12,
-    marginBottom: 12,
+
+    marginBottom: 9,
+
     justifyContent: "space-between",
     alignItems: "center",
+
     borderWidth: 1,
     borderColor: "#E8ECF0",
   },
-  itemInfo: { flex: 1 },
-  itemName: { fontSize: 16, fontWeight: "700", color: "#0A1628" },
-  itemCategory: { fontSize: 12, color: "#6B7B8D", marginTop: 2 },
-  itemPrice: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#F48E16",
-    marginTop: 4,
-  },
-  actionBtns: { flexDirection: "row", gap: 16 },
 
-  // Modal Styles
-  modalOverlay: {
+  itemInfo: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
+    paddingRight: 10,
   },
-  modalContent: {
-    backgroundColor: "#FFF",
-    width: "90%",
-    maxHeight: "80%",
-    borderRadius: 20,
-    padding: 24,
-  },
-  modalTitle: {
-    fontSize: 20,
+
+  itemName: {
+    fontSize: 15,
     fontWeight: "700",
     color: "#0A1628",
-    marginBottom: 16,
+  },
+
+  itemCategory: {
+    fontSize: 11,
+    color: "#6B7B8D",
+    marginTop: 2,
+  },
+
+  itemPrice: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FF6B35",
+    marginTop: 3,
+  },
+
+  /* =========================
+     ITEM ACTION BUTTONS
+  ========================= */
+
+  actionBtns: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+
+  smallActionBtn: {
+    width: 34,
+    height: 34,
+
+    borderRadius: 8,
+
+    alignItems: "center",
+    justifyContent: "center",
+
+    backgroundColor: "#FFF7F6",
+  },
+
+  /* =========================
+     MODAL
+  ========================= */
+
+  modalOverlay: {
+    flex: 1,
+
+    backgroundColor: "rgba(0,0,0,0.5)",
+
+    justifyContent: "center",
+    alignItems: "center",
+
+    padding: 16,
+  },
+
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+
+    width: "100%",
+    maxWidth: 500,
+
+    maxHeight: "85%",
+
+    borderRadius: 18,
+
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+
+  modalTitle: {
+    fontSize: 19,
+    fontWeight: "700",
+    color: "#0A1628",
+
+    marginBottom: 14,
+
     textAlign: "center",
   },
+
   input: {
+    width: "100%",
+
+    height: 42,
+
     backgroundColor: "#F5F7FA",
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
+
+    borderRadius: 9,
+
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+
+    marginBottom: 10,
+
     borderWidth: 1,
     borderColor: "#E8ECF0",
-    fontSize: 14,
+
+    fontSize: 13,
+    color: "#0A1628",
   },
-  textArea: { height: 80, textAlignVertical: "top" },
+
+  textArea: {
+    height: 72,
+    textAlignVertical: "top",
+    paddingTop: 10,
+  },
+
+  /* =========================
+     IMAGE
+  ========================= */
 
   imagePicker: {
+    height: 40,
+
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+
     backgroundColor: "#FFF1E6",
-    padding: 12,
-    borderRadius: 10,
+
+    paddingHorizontal: 10,
+
+    borderRadius: 9,
+
     borderWidth: 1,
-    borderColor: "#F48E16",
+    borderColor: "#FF6B35",
     borderStyle: "dashed",
-    marginBottom: 12,
-  },
-  imagePickerText: { color: "#0A1628", fontWeight: "600", marginLeft: 8 },
-  previewImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 10,
-    alignSelf: "center",
-    marginBottom: 12,
+
+    marginBottom: 10,
   },
 
-  saveBtn: {
-    backgroundColor: "#F48E16",
-    padding: 16,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 8,
+  imagePickerText: {
+    color: "#0A1628",
+    fontWeight: "600",
+    fontSize: 12,
+    marginLeft: 7,
   },
-  saveBtnText: { color: "#0A1628", fontWeight: "700", fontSize: 16 },
-  cancelBtn: { padding: 14, alignItems: "center", marginTop: 6 },
-  cancelBtnText: { color: "#8E9BAE", fontWeight: "600" },
+
+  previewImage: {
+    width: 90,
+    height: 90,
+
+    borderRadius: 9,
+
+    alignSelf: "center",
+
+    marginBottom: 10,
+  },
+
+  /* =========================
+     SAVE BUTTON
+  ========================= */
+
+  saveBtn: {
+    alignSelf: "center",
+
+    width:
+      Platform.OS === "web"
+        ? 180
+        : "60%",
+
+    maxWidth: 200,
+    minWidth: 140,
+
+    height: 40,
+
+    backgroundColor: "#FF6B35",
+
+    borderRadius: 9,
+
+    alignItems: "center",
+    justifyContent: "center",
+
+    marginTop: 5,
+  },
+
+  saveBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 13,
+  },
+
+  /* =========================
+     CANCEL
+  ========================= */
+
+  cancelBtn: {
+    height: 36,
+
+    alignItems: "center",
+    justifyContent: "center",
+
+    marginTop: 3,
+  },
+
+  cancelBtnText: {
+    color: "#8E9BAE",
+    fontWeight: "600",
+    fontSize: 12,
+  },
 });

@@ -1,15 +1,14 @@
-
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import {
-  Alert,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import { useTheme } from "../context/ThemeContext";
@@ -120,11 +119,7 @@ export default function HelpSupportScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Ionicons
-              name="arrow-back"
-              size={21}
-              color={theme.primary}
-            />
+            <Ionicons name="arrow-back" size={21} color={theme.primary} />
           </TouchableOpacity>
 
           <Text
@@ -164,11 +159,7 @@ export default function HelpSupportScreen() {
                 },
               ]}
             >
-              <Ionicons
-                name="help-circle-outline"
-                size={28}
-                color="#F5B82E"
-              />
+              <Ionicons name="help-circle-outline" size={28} color="#FF8500" />
             </View>
 
             <Text
@@ -283,12 +274,7 @@ export default function HelpSupportScreen() {
               },
             ]}
             activeOpacity={0.7}
-            onPress={() =>
-              Alert.alert(
-                t.email,
-                t.emailSub
-              )
-            }
+            onPress={() => Alert.alert(t.email, t.emailSub)}
           >
             <View
               style={[
@@ -298,11 +284,7 @@ export default function HelpSupportScreen() {
                 },
               ]}
             >
-              <Ionicons
-                name="mail-outline"
-                size={19}
-                color="#F5B82E"
-              />
+              <Ionicons name="mail-outline" size={19} color="#FF8500" />
             </View>
 
             <View style={styles.contactText}>
@@ -329,11 +311,7 @@ export default function HelpSupportScreen() {
               </Text>
             </View>
 
-            <Ionicons
-              name="chevron-forward"
-              size={17}
-              color={theme.chevron}
-            />
+            <Ionicons name="chevron-forward" size={17} color={theme.chevron} />
           </TouchableOpacity>
 
           {/* FAQ */}
@@ -360,9 +338,7 @@ export default function HelpSupportScreen() {
           >
             <FAQItem
               question={t.faq1}
-              onPress={() =>
-                showFAQ(t.faq1, t.faq1Answer)
-              }
+              onPress={() => showFAQ(t.faq1, t.faq1Answer)}
               theme={theme}
             />
 
@@ -377,9 +353,7 @@ export default function HelpSupportScreen() {
 
             <FAQItem
               question={t.faq2}
-              onPress={() =>
-                showFAQ(t.faq2, t.faq2Answer)
-              }
+              onPress={() => showFAQ(t.faq2, t.faq2Answer)}
               theme={theme}
             />
 
@@ -394,9 +368,7 @@ export default function HelpSupportScreen() {
 
             <FAQItem
               question={t.faq3}
-              onPress={() =>
-                showFAQ(t.faq3, t.faq3Answer)
-              }
+              onPress={() => showFAQ(t.faq3, t.faq3Answer)}
               theme={theme}
             />
           </View>
@@ -423,17 +395,9 @@ export default function HelpSupportScreen() {
 // HELP ITEM
 // ============================================================
 
-function HelpItem({
-  icon,
-  title,
-  subtitle,
-  theme,
-}) {
+function HelpItem({ icon, title, subtitle, theme }) {
   return (
-    <TouchableOpacity
-      style={styles.itemRow}
-      activeOpacity={0.7}
-    >
+    <TouchableOpacity style={styles.itemRow} activeOpacity={0.7}>
       <View
         style={[
           styles.iconBox,
@@ -442,11 +406,7 @@ function HelpItem({
           },
         ]}
       >
-        <Ionicons
-          name={icon}
-          size={18}
-          color="#F5B82E"
-        />
+        <Ionicons name={icon} size={18} color="#FF8500" />
       </View>
 
       <View style={styles.itemText}>
@@ -473,11 +433,7 @@ function HelpItem({
         </Text>
       </View>
 
-      <Ionicons
-        name="chevron-forward"
-        size={17}
-        color={theme.chevron}
-      />
+      <Ionicons name="chevron-forward" size={17} color={theme.chevron} />
     </TouchableOpacity>
   );
 }
@@ -486,11 +442,7 @@ function HelpItem({
 // FAQ ITEM
 // ============================================================
 
-function FAQItem({
-  question,
-  onPress,
-  theme,
-}) {
+function FAQItem({ question, onPress, theme }) {
   return (
     <TouchableOpacity
       style={styles.faqRow}
@@ -508,11 +460,7 @@ function FAQItem({
         {question}
       </Text>
 
-      <Ionicons
-        name="chevron-forward"
-        size={17}
-        color={theme.chevron}
-      />
+      <Ionicons name="chevron-forward" size={17} color={theme.chevron} />
     </TouchableOpacity>
   );
 }
@@ -682,4 +630,3 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 });
-

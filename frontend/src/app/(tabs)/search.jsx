@@ -2,17 +2,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useCart } from "../../context/CartContext";
 import api from "../../services/api";
@@ -55,10 +55,7 @@ export default function SearchScreen() {
       } catch (error) {
         console.error("Failed to load data:", error);
 
-        Alert.alert(
-          "Error",
-          "Could not load menu items. Please try again.",
-        );
+        Alert.alert("Error", "Could not load menu items. Please try again.");
       } finally {
         setIsLoading(false);
         setIsProfileLoading(false);
@@ -88,10 +85,7 @@ export default function SearchScreen() {
   // --------------------------------------------------
   // CART TOTALS
   // --------------------------------------------------
-  const totalItems = cartItems.reduce(
-    (sum, item) => sum + item.quantity,
-    0,
-  );
+  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const totalPrice = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -100,37 +94,23 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
       <View style={styles.container}>
-
         {/* =====================================================
             SEARCH HEADER
         ====================================================== */}
         <View style={styles.header}>
-
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
-            <Ionicons
-              name="arrow-back"
-              size={20}
-              color="#0B0F14"
-            />
+            <Ionicons name="arrow-back" size={20} color="#0B0F14" />
           </TouchableOpacity>
 
           <View style={styles.searchInputContainer}>
-
-            <Ionicons
-              name="search-outline"
-              size={17}
-              color="#F5B82E"
-            />
+            <Ionicons name="search-outline" size={17} color="#FF8500" />
 
             <TextInput
               style={styles.searchInput}
@@ -147,14 +127,9 @@ export default function SearchScreen() {
                 onPress={() => setSearchQuery("")}
                 style={styles.clearButton}
               >
-                <Ionicons
-                  name="close-circle"
-                  size={17}
-                  color="#64748B"
-                />
+                <Ionicons name="close-circle" size={17} color="#64748B" />
               </TouchableOpacity>
             )}
-
           </View>
         </View>
 
@@ -166,18 +141,12 @@ export default function SearchScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-
           {/* LOADING */}
           {isLoading ? (
             <View style={styles.loadingState}>
-              <ActivityIndicator
-                size="large"
-                color="#F5B82E"
-              />
+              <ActivityIndicator size="large" color="#FF8500" />
 
-              <Text style={styles.loadingText}>
-                Loading menu items...
-              </Text>
+              <Text style={styles.loadingText}>Loading menu items...</Text>
             </View>
           ) : (
             <>
@@ -189,54 +158,39 @@ export default function SearchScreen() {
                   {/* NO RESULTS */}
                   {filteredDishes.length === 0 ? (
                     <View style={styles.emptyState}>
-
                       <Ionicons
                         name="search-outline"
                         size={52}
                         color="#D1D5DB"
                       />
 
-                      <Text style={styles.emptyTitle}>
-                        No results found
-                      </Text>
+                      <Text style={styles.emptyTitle}>No results found</Text>
 
                       <Text style={styles.emptySubtitle}>
                         We couldn't find anything matching
                       </Text>
 
-                      <Text style={styles.searchKeyword}>
-                        "{searchQuery}"
-                      </Text>
-
+                      <Text style={styles.searchKeyword}>"{searchQuery}"</Text>
                     </View>
                   ) : (
                     <View style={styles.resultSection}>
-
                       {/* =================================================
                           CART SUMMARY
                       ================================================== */}
                       {totalItems > 0 && (
                         <View style={styles.cartSummaryContainer}>
-
                           <View style={styles.cartSummaryLeft}>
-
                             <Text
                               style={styles.cartSummaryText}
                               numberOfLines={1}
                             >
                               {totalItems} item
-                              {totalItems > 1 ? "s" : ""} • ₹
-                              {totalPrice}
+                              {totalItems > 1 ? "s" : ""} • ₹{totalPrice}
                             </Text>
 
                             {/* ADDRESS */}
                             <View style={styles.addressRow}>
-
-                              <Ionicons
-                                name="location"
-                                size={12}
-                                color="#F5B82E"
-                              />
+                              <Ionicons name="location" size={12} color="#FF8500" />
 
                               {isProfileLoading ? (
                                 <Text
@@ -254,31 +208,20 @@ export default function SearchScreen() {
                                 </Text>
                               ) : (
                                 <TouchableOpacity
-                                  onPress={() =>
-                                    router.push(
-                                      "/(tabs)/profile",
-                                    )
-                                  }
+                                  onPress={() => router.push("/(tabs)/profile")}
                                 >
-                                  <Text
-                                    style={
-                                      styles.addressActionText
-                                    }
-                                  >
+                                  <Text style={styles.addressActionText}>
                                     Add address
                                   </Text>
                                 </TouchableOpacity>
                               )}
-
                             </View>
                           </View>
 
                           {/* VIEW CART */}
                           <TouchableOpacity
                             style={styles.viewCartBtn}
-                            onPress={() =>
-                              router.push("/(tabs)/cart")
-                            }
+                            onPress={() => router.push("/(tabs)/cart")}
                             activeOpacity={0.8}
                           >
                             <Ionicons
@@ -287,19 +230,14 @@ export default function SearchScreen() {
                               color="#0B0F14"
                             />
 
-                            <Text style={styles.viewCartBtnText}>
-                              Cart
-                            </Text>
+                            <Text style={styles.viewCartBtnText}>Cart</Text>
                           </TouchableOpacity>
-
                         </View>
                       )}
 
                       {/* RESULTS TITLE */}
                       <View style={styles.resultsHeader}>
-                        <Text style={styles.sectionTitle}>
-                          Results
-                        </Text>
+                        <Text style={styles.sectionTitle}>Results</Text>
 
                         <Text style={styles.resultCount}>
                           {filteredDishes.length}
@@ -310,21 +248,14 @@ export default function SearchScreen() {
                           DISH RESULTS
                       ================================================== */}
                       {filteredDishes.map((item) => {
-
                         const cartItem = cartItems.find(
                           (i) => i._id === item._id,
                         );
 
-                        const currentQty = cartItem
-                          ? cartItem.quantity
-                          : 0;
+                        const currentQty = cartItem ? cartItem.quantity : 0;
 
                         return (
-                          <View
-                            key={item._id}
-                            style={styles.dishItem}
-                          >
-
+                          <View key={item._id} style={styles.dishItem}>
                             {/* DISH IMAGE */}
                             <Image
                               source={{
@@ -338,11 +269,7 @@ export default function SearchScreen() {
 
                             {/* DISH INFORMATION */}
                             <View style={styles.dishInfo}>
-
-                              <Text
-                                style={styles.dishName}
-                                numberOfLines={1}
-                              >
+                              <Text style={styles.dishName} numberOfLines={1}>
                                 {item.name}
                               </Text>
 
@@ -356,33 +283,23 @@ export default function SearchScreen() {
                               <Text style={styles.dishPrice}>
                                 ₹{item.price}
                               </Text>
-
                             </View>
 
                             {/* =================================================
                                 QUANTITY CONTROLS
                             ================================================== */}
-                            <View
-                              style={styles.quantityContainer}
-                            >
-
+                            <View style={styles.quantityContainer}>
                               {currentQty > 0 ? (
                                 <>
-
                                   <TouchableOpacity
                                     style={styles.qtyBtn}
-                                    onPress={() =>
-                                      updateQuantity(
-                                        item._id,
-                                        -1,
-                                      )
-                                    }
+                                    onPress={() => updateQuantity(item._id, -1)}
                                     activeOpacity={0.7}
                                   >
                                     <Ionicons
                                       name="remove"
                                       size={13}
-                                      color="#F5B82E"
+                                      color="#FF8500"
                                     />
                                   </TouchableOpacity>
 
@@ -392,44 +309,29 @@ export default function SearchScreen() {
 
                                   <TouchableOpacity
                                     style={styles.qtyBtn}
-                                    onPress={() =>
-                                      updateQuantity(
-                                        item._id,
-                                        1,
-                                      )
-                                    }
+                                    onPress={() => updateQuantity(item._id, 1)}
                                     activeOpacity={0.7}
                                   >
-                                    <Ionicons
-                                      name="add"
-                                      size={13}
-                                      color="#F5B82E"
-                                    />
+                                    <Ionicons name="add" size={13} color="#FF8500" />
                                   </TouchableOpacity>
-
                                 </>
                               ) : (
                                 <TouchableOpacity
                                   style={styles.addBtn}
-                                  onPress={() =>
-                                    addToCart(item)
-                                  }
+                                  onPress={() => addToCart(item)}
                                   activeOpacity={0.7}
                                 >
                                   <Ionicons
                                     name="add-circle"
                                     size={27}
-                                    color="#F5B82E"
+                                    color="#FF8500"
                                   />
                                 </TouchableOpacity>
                               )}
-
                             </View>
-
                           </View>
                         );
                       })}
-
                     </View>
                   )}
                 </>
@@ -438,30 +340,21 @@ export default function SearchScreen() {
                    INITIAL STATE
                 ================================================== */
                 <View style={styles.initialState}>
-
                   <View style={styles.initialIconCircle}>
-                    <Ionicons
-                      name="fast-food-outline"
-                      size={42}
-                      color="#F5B82E"
-                    />
+                    <Ionicons name="fast-food-outline" size={42} color="#FF8500" />
                   </View>
 
-                  <Text style={styles.initialTitle}>
-                    Find your flavor
-                  </Text>
+                  <Text style={styles.initialTitle}>Find your flavor</Text>
 
                   <Text style={styles.initialSubtitle}>
                     Search your favorite dishes or restaurants
                   </Text>
-
                 </View>
               )}
             </>
           )}
 
           <View style={{ height: 25 }} />
-
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -469,7 +362,6 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-
   // ============================================================
   // MAIN
   // ============================================================
@@ -505,7 +397,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 7,
   },
-
   searchInputContainer: {
     flex: 1,
     height: 40,
@@ -514,8 +405,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F7FA",
     borderRadius: 10,
     paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: "#E2E6EB",
+
+    // Remove visible border
+    borderWidth: 0,
+    borderColor: "transparent",
+
+    // Remove shadow/focus appearance
+    shadowColor: "transparent",
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
 
   searchInput: {
@@ -524,6 +423,18 @@ const styles = StyleSheet.create({
     color: "#0B0F14",
     marginLeft: 7,
     paddingVertical: 0,
+
+    // Remove browser focus outline on web
+    outlineStyle: "none",
+    outlineWidth: 0,
+    borderWidth: 0,
+    borderColor: "transparent",
+
+    // Remove shadow
+    shadowColor: "transparent",
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
 
   clearButton: {
@@ -581,7 +492,7 @@ const styles = StyleSheet.create({
 
   searchKeyword: {
     fontSize: 12,
-    color: "#F5B82E",
+    color: "#FF8500",
     fontWeight: "700",
     marginTop: 3,
     textAlign: "center",
@@ -665,7 +576,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 13,
     borderWidth: 1,
-    borderColor: "#F5B82E",
+    borderColor: "#FF8500",
   },
 
   cartSummaryLeft: {
@@ -695,13 +606,13 @@ const styles = StyleSheet.create({
 
   addressActionText: {
     fontSize: 10,
-    color: "#F5B82E",
+    color: "#FF8500",
     fontWeight: "700",
     marginLeft: 3,
   },
 
   viewCartBtn: {
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     minWidth: 58,
     height: 29,
     paddingHorizontal: 8,
@@ -766,7 +677,7 @@ const styles = StyleSheet.create({
   dishPrice: {
     fontSize: 12,
     fontWeight: "800",
-    color: "#F5B82E",
+    color: "#FF8500",
     marginTop: 3,
   },
 
@@ -789,7 +700,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#F5B82E",
+    borderColor: "#FF8500",
   },
 
   qtyText: {

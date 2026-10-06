@@ -2,18 +2,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import api from "../../services/api";
 
@@ -45,10 +45,7 @@ export default function ProfileScreen() {
       } catch (error) {
         console.error("Failed to load profile:", error);
 
-        Alert.alert(
-          "Error",
-          "Failed to load your profile. Please try again.",
-        );
+        Alert.alert("Error", "Failed to load your profile. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -93,17 +90,11 @@ export default function ProfileScreen() {
 
       setOriginalData(userData);
 
-      Alert.alert(
-        "Success",
-        "Profile updated successfully!",
-      );
+      Alert.alert("Success", "Profile updated successfully!");
     } catch (error) {
       console.error("Save error:", error);
 
-      Alert.alert(
-        "Error",
-        "Failed to save profile. Please try again.",
-      );
+      Alert.alert("Error", "Failed to save profile. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -126,48 +117,32 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
       <View style={styles.container}>
-
         {/* ======================================================
             HEADER
         ======================================================= */}
 
-       <View style={styles.header}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color="#081A33" />
+          </TouchableOpacity>
 
-  <TouchableOpacity
-    style={styles.backButton}
-    onPress={() => router.back()}
-    activeOpacity={0.7}
-  >
-    <Ionicons
-      name="arrow-back"
-      size={20}
-      color="#081A33"
-    />
-  </TouchableOpacity>
+          <Text style={styles.headerTitle}>My Profile</Text>
 
-  <Text style={styles.headerTitle}>
-    My Profile
-  </Text>
-
-  <TouchableOpacity
-    style={styles.settingsButton}
-    onPress={() => router.push("/settings")}
-    activeOpacity={0.7}
-  >
-    <Ionicons
-      name="settings-outline"
-      size={20}
-      color="#081A33"
-    />
-  </TouchableOpacity>
-
-</View>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => router.push("/settings")}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="settings-outline" size={20} color="#081A33" />
+          </TouchableOpacity>
+        </View>
 
         {/* ======================================================
             KEYBOARD AVOIDING VIEW
@@ -177,55 +152,37 @@ export default function ProfileScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.keyboardView}
         >
-
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
-
             {/* ==================================================
                 LOADING
             =================================================== */}
 
             {isLoading ? (
               <View style={styles.loadingState}>
+                <ActivityIndicator size="large" color="#FF8500" />
 
-                <ActivityIndicator
-                  size="large"
-                  color="#F5B82E"
-                />
-
-                <Text style={styles.loadingText}>
-                  Loading profile...
-                </Text>
-
+                <Text style={styles.loadingText}>Loading profile...</Text>
               </View>
             ) : (
               <>
-
                 {/* ==================================================
                     PROFILE INTRO
                 =================================================== */}
 
                 <View style={styles.profileIconArea}>
-
                   <View style={styles.avatarCircle}>
-                    <Ionicons
-                      name="person"
-                      size={38}
-                      color="#FFFFFF"
-                    />
+                    <Ionicons name="person" size={38} color="#FFFFFF" />
                   </View>
 
-                  <Text style={styles.profileTitle}>
-                    Delivery Details
-                  </Text>
+                  <Text style={styles.profileTitle}>Delivery Details</Text>
 
                   <Text style={styles.profileSubtitle}>
                     Update your contact and delivery information
                   </Text>
-
                 </View>
 
                 {/* ==================================================
@@ -233,17 +190,12 @@ export default function ProfileScreen() {
                 =================================================== */}
 
                 <View style={styles.formContainer}>
-
                   {/* FULL NAME */}
 
                   <View style={styles.inputGroup}>
-
-                    <Text style={styles.label}>
-                      Full Name
-                    </Text>
+                    <Text style={styles.label}>Full Name</Text>
 
                     <View style={styles.inputWrapper}>
-
                       <Ionicons
                         name="person-outline"
                         size={17}
@@ -256,26 +208,18 @@ export default function ProfileScreen() {
                         placeholder="Enter your full name"
                         placeholderTextColor="#8E9BAE"
                         value={userData.name}
-                        onChangeText={(text) =>
-                          updateField("name", text)
-                        }
+                        onChangeText={(text) => updateField("name", text)}
                         returnKeyType="next"
                       />
-
                     </View>
-
                   </View>
 
                   {/* CONTACT NUMBER */}
 
                   <View style={styles.inputGroup}>
-
-                    <Text style={styles.label}>
-                      Contact Number
-                    </Text>
+                    <Text style={styles.label}>Contact Number</Text>
 
                     <View style={styles.inputWrapper}>
-
                       <Ionicons
                         name="call-outline"
                         size={17}
@@ -289,30 +233,17 @@ export default function ProfileScreen() {
                         placeholderTextColor="#8E9BAE"
                         keyboardType="phone-pad"
                         value={userData.phone}
-                        onChangeText={(text) =>
-                          updateField("phone", text)
-                        }
+                        onChangeText={(text) => updateField("phone", text)}
                       />
-
                     </View>
-
                   </View>
 
                   {/* DELIVERY ADDRESS */}
 
                   <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Delivery Address</Text>
 
-                    <Text style={styles.label}>
-                      Delivery Address
-                    </Text>
-
-                    <View
-                      style={[
-                        styles.inputWrapper,
-                        styles.textAreaWrapper,
-                      ]}
-                    >
-
+                    <View style={[styles.inputWrapper, styles.textAreaWrapper]}>
                       <Ionicons
                         name="location-outline"
                         size={17}
@@ -321,23 +252,16 @@ export default function ProfileScreen() {
                       />
 
                       <TextInput
-                        style={[
-                          styles.textInput,
-                          styles.textArea,
-                        ]}
+                        style={[styles.textInput, styles.textArea]}
                         placeholder="Street, Area, City, State, Pincode"
                         placeholderTextColor="#8E9BAE"
                         multiline
                         numberOfLines={3}
                         textAlignVertical="top"
                         value={userData.address}
-                        onChangeText={(text) =>
-                          updateField("address", text)
-                        }
+                        onChangeText={(text) => updateField("address", text)}
                       />
-
                     </View>
-
                   </View>
 
                   {/* ==================================================
@@ -347,48 +271,31 @@ export default function ProfileScreen() {
                   <TouchableOpacity
                     style={[
                       styles.saveButton,
-                      (!hasChanges() || isSaving) &&
-                        styles.saveButtonDisabled,
+                      (!hasChanges() || isSaving) && styles.saveButtonDisabled,
                     ]}
                     disabled={!hasChanges() || isSaving}
                     onPress={handleSaveProfile}
                     activeOpacity={0.8}
                   >
-
                     {isSaving ? (
                       <View style={styles.savingContent}>
+                        <ActivityIndicator size="small" color="#081A33" />
 
-                        <ActivityIndicator
-                          size="small"
-                          color="#081A33"
-                        />
-
-                        <Text style={styles.saveButtonText}>
-                          Saving...
-                        </Text>
-
+                        <Text style={styles.saveButtonText}>Saving...</Text>
                       </View>
                     ) : (
                       <Text style={styles.saveButtonText}>
-                        {hasChanges()
-                          ? "Save Changes"
-                          : "No Changes Made"}
+                        {hasChanges() ? "Save Changes" : "No Changes Made"}
                       </Text>
                     )}
-
                   </TouchableOpacity>
-
                 </View>
-
               </>
             )}
 
             <View style={{ height: 25 }} />
-
           </ScrollView>
-
         </KeyboardAvoidingView>
-
       </View>
     </SafeAreaView>
   );
@@ -399,7 +306,6 @@ export default function ProfileScreen() {
 // ================================================================
 
 const styles = StyleSheet.create({
-
   // ==============================================================
   // MAIN
   // ==============================================================
@@ -446,12 +352,12 @@ const styles = StyleSheet.create({
     color: "#081A33",
   },
 
-settingsButton: {
-  width: 30,
-  height: 30,
-  alignItems: "center",
-  justifyContent: "center",
-},
+  settingsButton: {
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   // ==============================================================
   // SCROLL
@@ -496,7 +402,7 @@ settingsButton: {
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#F5B82E",
+    borderColor: "#FF8500",
     marginBottom: 9,
   },
 
@@ -591,7 +497,7 @@ settingsButton: {
   // ==============================================================
 
   saveButton: {
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     borderRadius: 10,
     height: 45,
     alignItems: "center",

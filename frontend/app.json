@@ -1,21 +1,21 @@
 {
   "expo": {
     "name": "GoNbite",
-    "slug": "snaxx",
+    "slug": "gonbite",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "snaxx",
+    "scheme": "gonbite",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
       "infoPlist": {
-        "NSSpeechRecognitionUsageDescription": "Allow Snaxx to recognize your voice orders.",
-        "NSMicrophoneUsageDescription": "Allow Snaxx to use your microphone for voice ordering."
+        "NSSpeechRecognitionUsageDescription": "Allow GoNbite to recognize your voice orders.",
+        "NSMicrophoneUsageDescription": "Allow GoNbite to use your microphone for voice ordering."
       }
     },
     "android": {
-      "package": "com.snaxx.app",
+      "package": "com.gonbite.app",
       "adaptiveIcon": {
         "backgroundColor": "#EF2C1E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -51,14 +51,14 @@
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "Allow Snaxx to use your microphone for voice ordering.",
-          "speechRecognitionPermission": "Allow Snaxx to recognize your voice orders."
+          "microphonePermission": "Allow GoNbite to use your microphone for voice ordering.",
+          "speechRecognitionPermission": "Allow GoNbite to recognize your voice orders."
         }
       ],
       [
         "react-native-maps",
         {
-          "androidGoogleMapsApiKey": "AIzaSyB_07WVBVy5bVdb9H7R2IbDnLnRBzZnklA"
+          "androidGoogleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
         }
       ],
       "expo-asset"
@@ -70,8 +70,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "32e6ca51-093a-403b-8c65-c089e34e825a"
+        "projectId": "ed73460c-4f17-4e85-a50f-502ab1279039"
       }
-    }
+    },
+    "owner": "ayush112"
   }
 }

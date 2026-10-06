@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
+
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +13,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 
 import api from "../../services/api";
@@ -20,6 +22,16 @@ export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // =========================================
+  // RESPONSIVE SCREEN SIZE
+  // =========================================
+
+  const { width } = useWindowDimensions();
+
+  const isMobile = width < 600;
+  const isTablet = width >= 600 && width < 1024;
+  const isDesktop = width >= 1024;
 
   // =========================================
   // FETCH USERS
@@ -104,10 +116,7 @@ export default function AdminUsers() {
                 error?.response?.data || error?.message,
               );
 
-              Alert.alert(
-                "Error",
-                "Failed to update user status.",
-              );
+              Alert.alert("Error", "Failed to update user status.");
             }
           },
         },
@@ -119,15 +128,15 @@ export default function AdminUsers() {
   // VIEW USER ORDERS
   // =========================================
 
-const viewUserOrders = (userId, userName) => {
-  router.push({
-    pathname: "/admin/user-orders",
-    params: {
-      userId: userId,
-      userName: userName,
-    },
-  });
-};
+  const viewUserOrders = (userId, userName) => {
+    router.push({
+      pathname: "/admin/user-orders",
+      params: {
+        userId: userId,
+        userName: userName,
+      },
+    });
+  };
 
   // =========================================
   // USER INITIAL
@@ -153,37 +162,46 @@ const viewUserOrders = (userId, userName) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
       <View style={styles.container}>
-
         {/* =====================================
             HEADER
         ====================================== */}
 
-        <View style={styles.header}>
-
+        <View
+          style={[
+            styles.header,
+            isMobile && styles.headerMobile,
+            isTablet && styles.headerTablet,
+          ]}
+        >
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.replace("/admin")}
             activeOpacity={0.7}
           >
-            <Ionicons
-              name="arrow-back"
-              size={22}
-              color="#0A1628"
-            />
+            <Ionicons name="arrow-back" size={22} color="#0A1628" />
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>
+            <Text
+              style={[
+                styles.headerTitle,
+                isMobile && styles.headerTitleMobile,
+              ]}
+              numberOfLines={1}
+            >
               Manage Users
             </Text>
 
-            <Text style={styles.headerSubtitle}>
+            <Text
+              style={[
+                styles.headerSubtitle,
+                isMobile && styles.headerSubtitleMobile,
+              ]}
+              numberOfLines={1}
+            >
               View and manage customer accounts
             </Text>
           </View>
@@ -193,13 +211,8 @@ const viewUserOrders = (userId, userName) => {
             onPress={fetchUsers}
             activeOpacity={0.7}
           >
-            <Ionicons
-              name="refresh"
-              size={21}
-              color="#0A1628"
-            />
+            <Ionicons name="refresh" size={21} color="#0A1628" />
           </TouchableOpacity>
-
         </View>
 
         {/* =====================================
@@ -208,74 +221,60 @@ const viewUserOrders = (userId, userName) => {
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FF6B35" />
 
-            <ActivityIndicator
-              size="large"
-              color="#F5B82E"
-            />
-
-            <Text style={styles.loadingText}>
-              Loading users...
-            </Text>
-
+            <Text style={styles.loadingText}>Loading users...</Text>
           </View>
         ) : users.length === 0 ? (
-
           /* =====================================
               EMPTY STATE
           ====================================== */
 
           <View style={styles.emptyState}>
-
             <View style={styles.emptyIcon}>
-              <Ionicons
-                name="people-outline"
-                size={55}
-                color="#CBD5E1"
-              />
+              <Ionicons name="people-outline" size={55} color="#CBD5E1" />
             </View>
 
-            <Text style={styles.emptyTitle}>
-              No Users Found
-            </Text>
+            <Text style={styles.emptyTitle}>No Users Found</Text>
 
             <Text style={styles.emptySubtitle}>
               No customers have registered yet.
             </Text>
-
           </View>
         ) : (
-
           /* =====================================
               USER LIST
           ====================================== */
 
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[
+              styles.listContent,
+              isMobile && styles.listContentMobile,
+              isTablet && styles.listContentTablet,
+              isDesktop && styles.listContentDesktop,
+            ]}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                tintColor="#F5B82E"
+                tintColor="#FF6B35"
               />
             }
           >
-
             {/* USER COUNT */}
 
-            <View style={styles.countRow}>
-
-              <Text style={styles.countTitle}>
-                All Users
-              </Text>
+            <View
+              style={[
+                styles.countRow,
+                isMobile && styles.countRowMobile,
+              ]}
+            >
+              <Text style={styles.countTitle}>All Users</Text>
 
               <View style={styles.countBadge}>
-                <Text style={styles.countText}>
-                  {users.length}
-                </Text>
+                <Text style={styles.countText}>{users.length}</Text>
               </View>
-
             </View>
 
             {/* USER CARDS */}
@@ -286,21 +285,29 @@ const viewUserOrders = (userId, userName) => {
               return (
                 <View
                   key={user._id}
-                  style={styles.card}
+                  style={[
+                    styles.card,
+                    isMobile && styles.cardMobile,
+                    isTablet && styles.cardTablet,
+                    isDesktop && styles.cardDesktop,
+                  ]}
                 >
-
                   {/* =================================
                       USER HEADER
                   ================================== */}
 
-                  <View style={styles.userHeader}>
-
+                  <View
+                    style={[
+                      styles.userHeader,
+                      isMobile && styles.userHeaderMobile,
+                    ]}
+                  >
                     <View
                       style={[
                         styles.avatar,
                         {
                           backgroundColor: active
-                            ? "#F5B82E"
+                            ? "#FF6B35"
                             : "#CBD5E1",
                         },
                       ]}
@@ -311,28 +318,25 @@ const viewUserOrders = (userId, userName) => {
                     </View>
 
                     <View style={styles.userMainInfo}>
-
                       <Text
-                        style={styles.userName}
+                        style={[
+                          styles.userName,
+                          isMobile && styles.userNameMobile,
+                        ]}
                         numberOfLines={1}
                       >
                         {user.name || "Unknown User"}
                       </Text>
 
                       <View style={styles.roleRow}>
-
                         <Ionicons
                           name="person-outline"
                           size={12}
                           color="#64748B"
                         />
 
-                        <Text style={styles.roleText}>
-                          Customer
-                        </Text>
-
+                        <Text style={styles.roleText}>Customer</Text>
                       </View>
-
                     </View>
 
                     {/* STATUS */}
@@ -340,6 +344,7 @@ const viewUserOrders = (userId, userName) => {
                     <View
                       style={[
                         styles.statusBadge,
+                        isMobile && styles.statusBadgeMobile,
                         {
                           backgroundColor: active
                             ? "#DCFCE7"
@@ -347,7 +352,6 @@ const viewUserOrders = (userId, userName) => {
                         },
                       ]}
                     >
-
                       <View
                         style={[
                           styles.statusDot,
@@ -371,21 +375,22 @@ const viewUserOrders = (userId, userName) => {
                       >
                         {active ? "Active" : "Inactive"}
                       </Text>
-
                     </View>
-
                   </View>
 
                   {/* =================================
                       USER DETAILS
                   ================================== */}
 
-                  <View style={styles.detailsContainer}>
-
+                  <View
+                    style={[
+                      styles.detailsContainer,
+                      isMobile && styles.detailsContainerMobile,
+                    ]}
+                  >
                     {/* EMAIL */}
 
                     <View style={styles.infoRow}>
-
                       <View style={styles.infoIcon}>
                         <Ionicons
                           name="mail-outline"
@@ -395,26 +400,21 @@ const viewUserOrders = (userId, userName) => {
                       </View>
 
                       <View style={styles.infoContent}>
-
-                        <Text style={styles.infoLabel}>
-                          Email
-                        </Text>
+                        <Text style={styles.infoLabel}>Email</Text>
 
                         <Text
                           style={styles.infoText}
                           numberOfLines={1}
+                          ellipsizeMode="tail"
                         >
                           {user.email || "Not provided"}
                         </Text>
-
                       </View>
-
                     </View>
 
                     {/* PHONE */}
 
                     <View style={styles.infoRow}>
-
                       <View style={styles.infoIcon}>
                         <Ionicons
                           name="call-outline"
@@ -424,27 +424,22 @@ const viewUserOrders = (userId, userName) => {
                       </View>
 
                       <View style={styles.infoContent}>
-
-                        <Text style={styles.infoLabel}>
-                          Phone
-                        </Text>
+                        <Text style={styles.infoLabel}>Phone</Text>
 
                         <Text
                           style={styles.infoText}
                           numberOfLines={1}
+                          ellipsizeMode="tail"
                         >
                           {user.phone || "No phone number"}
                         </Text>
-
                       </View>
-
                     </View>
 
                     {/* ADDRESS */}
 
                     {user.address ? (
                       <View style={styles.infoRow}>
-
                         <View style={styles.infoIcon}>
                           <Ionicons
                             name="location-outline"
@@ -454,38 +449,42 @@ const viewUserOrders = (userId, userName) => {
                         </View>
 
                         <View style={styles.infoContent}>
-
-                          <Text style={styles.infoLabel}>
-                            Address
-                          </Text>
+                          <Text style={styles.infoLabel}>Address</Text>
 
                           <Text
                             style={styles.infoText}
                             numberOfLines={2}
+                            ellipsizeMode="tail"
                           >
                             {user.address}
                           </Text>
-
                         </View>
-
                       </View>
                     ) : null}
-
                   </View>
 
                   {/* =================================
                       ACTION BUTTONS
                   ================================== */}
 
-                  <View style={styles.actionContainer}>
-
+                  <View
+                    style={[
+                      styles.actionContainer,
+                      isMobile && styles.actionContainerMobile,
+                    ]}
+                  >
                     {/* VIEW ORDERS */}
 
                     <TouchableOpacity
-                      style={styles.ordersButton}
-                     onPress={() => viewUserOrders(user._id, user.name)}
+                      style={[
+                        styles.ordersButton,
+                        isMobile && styles.actionButtonMobile,
+                      ]}
+                      onPress={() =>
+                        viewUserOrders(user._id, user.name)
+                      }
+                      activeOpacity={0.8}
                     >
-
                       <Ionicons
                         name="receipt-outline"
                         size={16}
@@ -495,7 +494,6 @@ const viewUserOrders = (userId, userName) => {
                       <Text style={styles.ordersButtonText}>
                         Orders
                       </Text>
-
                     </TouchableOpacity>
 
                     {/* ACTIVATE / DEACTIVATE */}
@@ -506,6 +504,7 @@ const viewUserOrders = (userId, userName) => {
                         active
                           ? styles.deactivateButton
                           : styles.activateButton,
+                        isMobile && styles.actionButtonMobile,
                       ]}
                       onPress={() =>
                         toggleUserStatus(
@@ -516,7 +515,6 @@ const viewUserOrders = (userId, userName) => {
                       }
                       activeOpacity={0.8}
                     >
-
                       <Ionicons
                         name={
                           active
@@ -530,25 +528,19 @@ const viewUserOrders = (userId, userName) => {
                       <Text style={styles.statusButtonText}>
                         {active ? "Deactivate" : "Activate"}
                       </Text>
-
                     </TouchableOpacity>
-
                   </View>
-
                 </View>
               );
             })}
-
           </ScrollView>
         )}
-
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-
   // =========================================
   // MAIN
   // =========================================
@@ -578,6 +570,15 @@ const styles = StyleSheet.create({
     borderBottomColor: "#E5E7EB",
   },
 
+  headerMobile: {
+    height: 68,
+    paddingHorizontal: 12,
+  },
+
+  headerTablet: {
+    paddingHorizontal: 22,
+  },
+
   backButton: {
     width: 40,
     height: 40,
@@ -585,11 +586,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
 
   headerCenter: {
     flex: 1,
     alignItems: "center",
+    paddingHorizontal: 8,
+    minWidth: 0,
   },
 
   headerTitle: {
@@ -598,10 +602,18 @@ const styles = StyleSheet.create({
     color: "#0A1628",
   },
 
+  headerTitleMobile: {
+    fontSize: 17,
+  },
+
   headerSubtitle: {
     fontSize: 11,
     color: "#64748B",
     marginTop: 2,
+  },
+
+  headerSubtitleMobile: {
+    fontSize: 9,
   },
 
   refreshButton: {
@@ -611,6 +623,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
 
   // =========================================
@@ -654,6 +667,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "800",
     color: "#0A1628",
+    textAlign: "center",
   },
 
   emptySubtitle: {
@@ -672,10 +686,30 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
+  listContentMobile: {
+    paddingHorizontal: 12,
+    paddingTop: 14,
+  },
+
+  listContentTablet: {
+    paddingHorizontal: 28,
+    alignItems: "center",
+  },
+
+  listContentDesktop: {
+    paddingHorizontal: 30,
+    alignItems: "center",
+  },
+
   countRow: {
+    width: "100%",
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 14,
+  },
+
+  countRowMobile: {
+    marginBottom: 12,
   },
 
   countTitle: {
@@ -689,7 +723,7 @@ const styles = StyleSheet.create({
     height: 28,
     paddingHorizontal: 8,
     borderRadius: 14,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 8,
@@ -706,6 +740,7 @@ const styles = StyleSheet.create({
   // =========================================
 
   card: {
+    width: "100%",
     backgroundColor: "#FFFFFF",
     borderRadius: 18,
     marginBottom: 16,
@@ -725,6 +760,22 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
+  cardMobile: {
+    borderRadius: 15,
+    marginBottom: 13,
+    padding: 13,
+  },
+
+  cardTablet: {
+    width: "90%",
+    maxWidth: 650,
+  },
+
+  cardDesktop: {
+    width: "100%",
+    maxWidth: 680,
+  },
+
   // =========================================
   // USER HEADER
   // =========================================
@@ -733,6 +784,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 15,
+    minWidth: 0,
+  },
+
+  userHeaderMobile: {
+    marginBottom: 13,
   },
 
   avatar: {
@@ -742,6 +798,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+    flexShrink: 0,
   },
 
   avatarText: {
@@ -752,12 +809,17 @@ const styles = StyleSheet.create({
 
   userMainInfo: {
     flex: 1,
+    minWidth: 0,
   },
 
   userName: {
     fontSize: 17,
     fontWeight: "800",
     color: "#0A1628",
+  },
+
+  userNameMobile: {
+    fontSize: 16,
   },
 
   roleRow: {
@@ -784,6 +846,13 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 14,
     marginLeft: 8,
+    flexShrink: 0,
+  },
+
+  statusBadgeMobile: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginLeft: 5,
   },
 
   statusDot: {
@@ -808,10 +877,15 @@ const styles = StyleSheet.create({
     paddingTop: 13,
   },
 
+  detailsContainerMobile: {
+    paddingTop: 11,
+  },
+
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 11,
+    minWidth: 0,
   },
 
   infoIcon: {
@@ -822,10 +896,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
+    flexShrink: 0,
   },
 
   infoContent: {
     flex: 1,
+    minWidth: 0,
   },
 
   infoLabel: {
@@ -854,12 +930,17 @@ const styles = StyleSheet.create({
     paddingTop: 5,
   },
 
+  actionContainerMobile: {
+    gap: 7,
+    paddingTop: 3,
+  },
+
   ordersButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
 
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
 
     paddingHorizontal: 13,
     paddingVertical: 8,
@@ -886,6 +967,11 @@ const styles = StyleSheet.create({
     gap: 5,
   },
 
+  actionButtonMobile: {
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+  },
+
   deactivateButton: {
     backgroundColor: "#EF4444",
   },
@@ -899,5 +985,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
-
 });

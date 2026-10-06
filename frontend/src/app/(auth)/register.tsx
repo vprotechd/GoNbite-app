@@ -2,9 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
+
 import {
+  Alert,
   ActivityIndicator,
-  Dimensions,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -17,17 +18,57 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
 import Toast from "react-native-toast-message";
 
 import api from "../../services/api";
-import { useFacebookLogin, useGoogleLogin } from "../../services/oauthService";
+import {
+  useFacebookLogin,
+  useGoogleLogin,
+} from "../../services/oauthService";
 
-// Logo
+// ============================================================
+// GO-NBITE COLORS
+// ============================================================
+
+const COLORS = {
+  navy: "#061D4D",
+  navyLight: "#102B5C",
+
+  orange: "#FF6B35",
+  orangeDark: "#E95727",
+  orangeLight: "#FFF0EA",
+
+  cream: "#FFF9F5",
+  white: "#FFFFFF",
+
+  dark: "#2F2926",
+  text: "#3D3734",
+  muted: "#718096",
+  placeholder: "#9AA5B5",
+
+  inputBg: "#FBFCFE",
+  inputBorder: "#E4E8EE",
+
+  success: "#22A06B",
+  error: "#D64545",
+};
+
+// ============================================================
+// LOGO
+// ============================================================
+
 const Logo = require("../../../assets/images/Logo.png");
 
-const { width } = Dimensions.get("window");
+// ============================================================
+// COMPONENT
+// ============================================================
 
 export default function RegisterScreen() {
+  // ----------------------------------------------------------
+  // FORM STATE
+  // ----------------------------------------------------------
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -39,43 +80,54 @@ export default function RegisterScreen() {
 
   const [loading, setLoading] = useState(false);
 
+  // ----------------------------------------------------------
+  // SOCIAL LOGIN
+  // ----------------------------------------------------------
+
   const googleLogin = useGoogleLogin();
   const facebookLogin = useFacebookLogin();
 
-  // --------------------------------------------------
-  // WEB AUTOFILL CONTROL
-  // --------------------------------------------------
+  // ----------------------------------------------------------
+  // REMOVE BROWSER DEFAULT INPUT OUTLINE
+  // ----------------------------------------------------------
 
   useEffect(() => {
-    if (Platform.OS === "web") {
-      const timer = setTimeout(() => {
-        const inputs = document.querySelectorAll("input");
+    if (Platform.OS !== "web") return;
 
-        inputs.forEach((input) => {
-          input.setAttribute("autocomplete", "off");
-          input.setAttribute("autocorrect", "off");
-          input.setAttribute("spellcheck", "false");
-          input.setAttribute("data-lpignore", "true");
-          input.setAttribute("data-form-type", "other");
-        });
-      }, 100);
+    const timer = setTimeout(() => {
+      const inputs = document.querySelectorAll("input");
 
-      return () => clearTimeout(timer);
-    }
+      inputs.forEach((input) => {
+        input.setAttribute("autocomplete", "off");
+        input.setAttribute("autocorrect", "off");
+        input.setAttribute("spellcheck", "false");
+        input.setAttribute("data-lpignore", "true");
+        input.setAttribute("data-form-type", "other");
+
+        // Remove browser black focus border
+        const element = input as HTMLInputElement;
+
+        element.style.outline = "none";
+        element.style.border = "none";
+        element.style.boxShadow = "none";
+      });
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
-  // --------------------------------------------------
+  // ----------------------------------------------------------
   // TOAST HELPERS
-  // --------------------------------------------------
+  // ----------------------------------------------------------
 
   const showSuccessToast = (message: string) => {
     Toast.show({
       type: "success",
       text1: message,
       position: "top",
-      visibilityTime: 2000,
+      visibilityTime: 1800,
       autoHide: true,
-      topOffset: 50,
+      topOffset: 55,
     });
   };
 
@@ -86,25 +138,28 @@ export default function RegisterScreen() {
       position: "top",
       visibilityTime: 3000,
       autoHide: true,
-      topOffset: 50,
+      topOffset: 55,
     });
   };
 
-  // --------------------------------------------------
+  // ----------------------------------------------------------
   // REGISTER
-  // --------------------------------------------------
+  // ----------------------------------------------------------
 
   const handleRegister = async () => {
+    // Name
     if (!name.trim()) {
       showErrorToast("Please enter your name.");
       return;
     }
 
+    // Email
     if (!email.trim()) {
       showErrorToast("Please enter your email.");
       return;
     }
 
+    // Correct email regex
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(email.trim())) {
@@ -112,11 +167,18 @@ export default function RegisterScreen() {
       return;
     }
 
+    // Phone
     if (!phone.trim()) {
       showErrorToast("Please enter your phone number.");
       return;
     }
 
+    if (phone.trim().length < 10) {
+      showErrorToast("Please enter a valid phone number.");
+      return;
+    }
+
+    // Password
     if (!password) {
       showErrorToast("Please enter a password.");
       return;
@@ -124,6 +186,12 @@ export default function RegisterScreen() {
 
     if (password.length < 8) {
       showErrorToast("Password must be at least 8 characters.");
+      return;
+    }
+
+    // Confirm password
+    if (!confirmPassword) {
+      showErrorToast("Please confirm your password.");
       return;
     }
 
@@ -142,24 +210,35 @@ export default function RegisterScreen() {
         password,
       });
 
-   const { token, user } = response.data;
+      console.log("Registration response:", response.data);
 
-await AsyncStorage.setItem("token", token);
-await AsyncStorage.setItem("user", JSON.stringify(user));
+      /*
+       * IMPORTANT:
+       *
+       * We are NOT saving the token here because after registration
+       * the user should go to the LOGIN page.
+       *
+       * The user will receive/login with their credentials there.
+       */
 
-showSuccessToast("Registration Successful!");
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
 
-setTimeout(() => {
-  router.replace("/(tabs)");
-}, 1500);
+      showSuccessToast("Registration successful!");
+
+      // Give Toast time to appear before navigating
+      setTimeout(() => {
+        router.replace("/(auth)/login");
+      }, 1200);
     } catch (error: any) {
       console.log(
         "Registration error:",
-        error?.response?.data || error?.message,
+        error?.response?.data || error?.message
       );
 
       const errorMessage =
         error?.response?.data?.message ||
+        error?.response?.data?.error ||
         "Unable to create account. Please try again.";
 
       showErrorToast(errorMessage);
@@ -168,20 +247,20 @@ setTimeout(() => {
     }
   };
 
-  // --------------------------------------------------
+  // ----------------------------------------------------------
   // GOOGLE LOGIN
-  // --------------------------------------------------
+  // ----------------------------------------------------------
 
   const handleGooglePress = async () => {
     try {
       const result = await googleLogin.promptAsync();
 
       if (result?.success) {
-        showSuccessToast("Login Successful!");
+        showSuccessToast("Login successful!");
 
         setTimeout(() => {
           router.replace("/(tabs)");
-        }, 1500);
+        }, 1200);
       } else {
         showErrorToast("Google login failed or was cancelled.");
       }
@@ -191,20 +270,20 @@ setTimeout(() => {
     }
   };
 
-  // --------------------------------------------------
+  // ----------------------------------------------------------
   // FACEBOOK LOGIN
-  // --------------------------------------------------
+  // ----------------------------------------------------------
 
   const handleFacebookPress = async () => {
     try {
       const result = await facebookLogin.promptAsync();
 
       if (result?.success) {
-        showSuccessToast("Login Successful!");
+        showSuccessToast("Login successful!");
 
         setTimeout(() => {
           router.replace("/(tabs)");
-        }, 1500);
+        }, 1200);
       } else {
         showErrorToast("Facebook login failed or was cancelled.");
       }
@@ -214,170 +293,234 @@ setTimeout(() => {
     }
   };
 
-  // --------------------------------------------------
+  // ----------------------------------------------------------
   // UI
-  // --------------------------------------------------
+  // ----------------------------------------------------------
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={COLORS.navy}
+      />
 
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* HEADER */}
+          {/* ==================================================
+              HEADER
+          ================================================== */}
+
           <View style={styles.header}>
-            <Image
-              source={Logo}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+            <View style={styles.logoContainer}>
+              <Image
+                source={Logo}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
+
+            <View style={styles.orangeLine} />
 
             <Text style={styles.title}>Create Account</Text>
 
             <Text style={styles.subtitle}>
-              Join us and start your food journey
+              Join GoNbite and start your delicious food journey.
             </Text>
           </View>
 
-          {/* FORM */}
+          {/* ==================================================
+              FORM CARD
+          ================================================== */}
+
           <View style={styles.formWrapper}>
-            <View style={styles.form}>
-              {/* FULL NAME */}
-              <View style={styles.inputContainer}>
+            <View style={styles.formCard}>
+              {/* Card heading */}
+
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>
+                  Let's get started
+                </Text>
+
+                <Text style={styles.cardSubtitle}>
+                  Create your GoNbite account in a few simple steps.
+                </Text>
+              </View>
+
+              {/* ==================================================
+                  FULL NAME
+              ================================================== */}
+
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>Full Name</Text>
+
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="person-outline"
-                    size={18}
-                    color="#64748B"
+                    size={19}
+                    color={COLORS.orange}
                     style={styles.inputIcon}
                   />
 
                   <TextInput
                     style={styles.input}
-                    placeholder="Full Name"
-                    placeholderTextColor="#64748B"
+                    placeholder="Enter your full name"
+                    placeholderTextColor={COLORS.placeholder}
                     value={name}
                     onChangeText={setName}
                     autoCapitalize="words"
                     autoCorrect={false}
+                    underlineColorAndroid="transparent"
                   />
                 </View>
               </View>
 
-              {/* EMAIL */}
-              <View style={styles.inputContainer}>
+              {/* ==================================================
+                  EMAIL
+              ================================================== */}
+
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>Email Address</Text>
+
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="mail-outline"
-                    size={18}
-                    color="#64748B"
+                    size={19}
+                    color={COLORS.orange}
                     style={styles.inputIcon}
                   />
 
                   <TextInput
                     style={styles.input}
-                    placeholder="Email Address"
-                    placeholderTextColor="#64748B"
+                    placeholder="Enter your email"
+                    placeholderTextColor={COLORS.placeholder}
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
+                    underlineColorAndroid="transparent"
                   />
                 </View>
               </View>
 
-              {/* PHONE */}
-              <View style={styles.inputContainer}>
+              {/* ==================================================
+                  PHONE
+              ================================================== */}
+
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>Phone Number</Text>
+
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="call-outline"
-                    size={18}
-                    color="#64748B"
+                    size={19}
+                    color={COLORS.orange}
                     style={styles.inputIcon}
                   />
 
                   <TextInput
                     style={styles.input}
-                    placeholder="Phone Number"
-                    placeholderTextColor="#64748B"
+                    placeholder="Enter your phone number"
+                    placeholderTextColor={COLORS.placeholder}
                     value={phone}
                     onChangeText={setPhone}
                     keyboardType="phone-pad"
+                    underlineColorAndroid="transparent"
                   />
                 </View>
               </View>
 
-              {/* PASSWORD */}
-              <View style={styles.inputContainer}>
+              {/* ==================================================
+                  PASSWORD
+              ================================================== */}
+
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>Password</Text>
+
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="lock-closed-outline"
-                    size={18}
-                    color="#64748B"
+                    size={19}
+                    color={COLORS.orange}
                     style={styles.inputIcon}
                   />
 
                   <TextInput
                     style={styles.input}
-                    placeholder="Password"
-                    placeholderTextColor="#64748B"
+                    placeholder="Create a password"
+                    placeholderTextColor={COLORS.placeholder}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
+                    underlineColorAndroid="transparent"
                   />
 
                   <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                    style={styles.eyeIcon}
+                    onPress={() =>
+                      setShowPassword((previous) => !previous)
+                    }
+                    style={styles.eyeButton}
+                    activeOpacity={0.7}
                   >
                     <Ionicons
                       name={
-                        showPassword ? "eye-outline" : "eye-off-outline"
+                        showPassword
+                          ? "eye-outline"
+                          : "eye-off-outline"
                       }
-                      size={18}
-                      color="#64748B"
+                      size={20}
+                      color={COLORS.muted}
                     />
                   </TouchableOpacity>
                 </View>
               </View>
 
-              {/* CONFIRM PASSWORD */}
-              <View style={styles.inputContainer}>
+              {/* ==================================================
+                  CONFIRM PASSWORD
+              ================================================== */}
+
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>
+                  Confirm Password
+                </Text>
+
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="shield-checkmark-outline"
-                    size={18}
-                    color="#64748B"
+                    size={19}
+                    color={COLORS.orange}
                     style={styles.inputIcon}
                   />
 
                   <TextInput
                     style={styles.input}
-                    placeholder="Confirm Password"
-                    placeholderTextColor="#64748B"
+                    placeholder="Confirm your password"
+                    placeholderTextColor={COLORS.placeholder}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry={!showConfirmPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
+                    underlineColorAndroid="transparent"
                   />
 
                   <TouchableOpacity
                     onPress={() =>
-                      setShowConfirmPassword(!showConfirmPassword)
+                      setShowConfirmPassword(
+                        (previous) => !previous
+                      )
                     }
-                    style={styles.eyeIcon}
+                    style={styles.eyeButton}
+                    activeOpacity={0.7}
                   >
                     <Ionicons
                       name={
@@ -385,14 +528,17 @@ setTimeout(() => {
                           ? "eye-outline"
                           : "eye-off-outline"
                       }
-                      size={18}
-                      color="#64748B"
+                      size={20}
+                      color={COLORS.muted}
                     />
                   </TouchableOpacity>
                 </View>
               </View>
 
-              {/* REGISTER BUTTON */}
+              {/* ==================================================
+                  REGISTER BUTTON
+              ================================================== */}
+
               <TouchableOpacity
                 style={[
                   styles.registerButton,
@@ -404,256 +550,553 @@ setTimeout(() => {
               >
                 {loading ? (
                   <ActivityIndicator
-                    color="#0B0F14"
+                    color={COLORS.white}
                     size="small"
                   />
                 ) : (
-                  <Text style={styles.registerButtonText}>
-                    Create Account
-                  </Text>
+                  <>
+                    <Text style={styles.registerButtonText}>
+                      Create Account
+                    </Text>
+
+                    <Ionicons
+                      name="arrow-forward"
+                      size={20}
+                      color={COLORS.white}
+                    />
+                  </>
                 )}
               </TouchableOpacity>
 
-              {/* DIVIDER */}
+              {/* ==================================================
+                  DIVIDER
+              ================================================== */}
+
               <View style={styles.dividerContainer}>
                 <View style={styles.dividerLine} />
 
                 <Text style={styles.dividerText}>
-                  or continue with
+                  OR CONTINUE WITH
                 </Text>
 
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* SOCIAL LOGIN */}
+              {/* ==================================================
+                  SOCIAL LOGIN
+              ================================================== */}
+
               <View style={styles.socialContainer}>
                 <TouchableOpacity
                   style={styles.socialButton}
                   onPress={handleGooglePress}
-                  activeOpacity={0.7}
+                  activeOpacity={0.75}
                 >
-                  <Ionicons
-                    name="logo-google"
-                    size={18}
-                    color="#EA4335"
-                  />
+                 <Image
+                   source={require("../../../assets/images/google-logo.png")}
+                   style={styles.googleLogo}
+                 />
+
+                  <Text style={styles.socialText}>
+                    Google
+                  </Text>
                 </TouchableOpacity>
+
+
+ {/* APPLE */}
+
+                <TouchableOpacity
+                  style={styles.socialButton}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    Alert.alert(
+                      "Apple Login",
+                      "Apple login will be available soon.",
+                    )
+                  }
+                >
+                  <Ionicons name="logo-apple" size={19} color="#000000" />
+
+                  <Text style={styles.socialText}>Apple</Text>
+                </TouchableOpacity>
+
 
                 <TouchableOpacity
                   style={styles.socialButton}
                   onPress={handleFacebookPress}
-                  activeOpacity={0.7}
+                  activeOpacity={0.75}
                 >
                   <Ionicons
                     name="logo-facebook"
-                    size={18}
+                    size={19}
                     color="#1877F2"
                   />
+
+                  <Text style={styles.socialText}>
+                    Facebook
+                  </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* LOGIN LINK */}
+              {/* ==================================================
+                  LOGIN
+              ================================================== */}
+
               <View style={styles.loginContainer}>
                 <Text style={styles.loginText}>
                   Already have an account?
                 </Text>
 
                 <TouchableOpacity
-                  onPress={() => router.push("/(auth)/login")}
+                  onPress={() =>
+                    router.push("/(auth)/login")
+                  }
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.loginLink}> Sign In</Text>
+                  <Text style={styles.loginLink}>
+                    {" "}
+                    Sign In
+                  </Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Small footer text */}
+
+              <Text style={styles.footerText}>
+                By creating an account, you agree to GoNbite's
+                Terms & Privacy Policy.
+              </Text>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* TOAST CONTAINER */}
+      {/* ==================================================
+          TOAST
+      ================================================== */}
+
       <Toast />
     </SafeAreaView>
   );
 }
 
-// --------------------------------------------------
+// ============================================================
 // STYLES
-// --------------------------------------------------
+// ============================================================
 
 const styles = StyleSheet.create({
+  // ----------------------------------------------------------
+  // MAIN
+  // ----------------------------------------------------------
+
   safeArea: {
     flex: 1,
-    backgroundColor: "#081A33",
+    backgroundColor: COLORS.navy,
   },
 
   container: {
     flex: 1,
-    backgroundColor: "#081A33",
+    backgroundColor: COLORS.navy,
   },
 
   scrollContent: {
     flexGrow: 1,
+    alignItems: "center",
+
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
-    alignItems: "center",
+    paddingTop: Platform.OS === "web" ? 35 : 20,
+    paddingBottom: 50,
   },
 
+  // ----------------------------------------------------------
   // HEADER
+  // ----------------------------------------------------------
+
   header: {
-    alignItems: "center",
-    marginBottom: 30,
     width: "100%",
+    maxWidth: 600,
+    alignItems: "center",
+
+    marginBottom: 30,
   },
 
-  logoImage: {
+  logoContainer: {
     width: 260,
-    height: 90,
-    marginBottom: 20,
+    height: 105,
+
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  logo: {
+    width: 245,
+    height: 95,
+  },
+
+  orangeLine: {
+    width: 55,
+    height: 5,
+
+    borderRadius: 10,
+
+    backgroundColor: COLORS.orange,
+
+    marginTop: 4,
+    marginBottom: 18,
   },
 
   title: {
-    fontSize: 28,
+    fontSize: 30,
+    lineHeight: 38,
+
     fontWeight: "800",
-    color: "#FFFFFF",
+
+    color: COLORS.white,
+
     textAlign: "center",
+
+    letterSpacing: -0.5,
   },
 
   subtitle: {
+    maxWidth: 430,
+
     fontSize: 14,
-    color: "#64748B",
+    lineHeight: 22,
+
+    color: "#AAB6C8",
+
     textAlign: "center",
-    marginTop: 4,
+
+    marginTop: 7,
   },
 
+  // ----------------------------------------------------------
   // FORM
+  // ----------------------------------------------------------
+
   formWrapper: {
     width: "100%",
-    maxWidth: 420,
+    maxWidth: 520,
   },
 
-  form: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 24,
+  formCard: {
+    backgroundColor: COLORS.white,
 
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    borderRadius: 24,
+
+    paddingHorizontal: 28,
+    paddingTop: 30,
+    paddingBottom: 28,
+
+    // Native shadow
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: {
+          width: 0,
+          height: 12,
+        },
+        shadowOpacity: 0.15,
+        shadowRadius: 25,
+      },
+
+      android: {
+        elevation: 10,
+      },
+
+      web: {
+        boxShadow: "0px 18px 45px rgba(0, 0, 0, 0.14)",
+      },
+    }),
   },
 
-  // INPUTS
-  inputContainer: {
-    marginBottom: 12,
+  // ----------------------------------------------------------
+  // CARD HEADER
+  // ----------------------------------------------------------
+
+  cardHeader: {
+    marginBottom: 25,
+  },
+
+  cardTitle: {
+    fontSize: 23,
+    fontWeight: "800",
+
+    color: COLORS.dark,
+
+    marginBottom: 6,
+  },
+
+  cardSubtitle: {
+    fontSize: 13.5,
+    lineHeight: 20,
+
+    color: COLORS.muted,
+  },
+
+  // ----------------------------------------------------------
+  // INPUT FIELDS
+  // ----------------------------------------------------------
+
+  fieldContainer: {
+    marginBottom: 17,
+  },
+
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+
+    color: COLORS.text,
+
+    marginBottom: 7,
   },
 
   inputWrapper: {
+    height: 53,
+
+    width: "100%",
+
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+
+    backgroundColor: COLORS.inputBg,
+
     borderWidth: 1,
-    borderColor: "#E2E6EB",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 48,
+    borderColor: COLORS.inputBorder,
+
+    borderRadius: 14,
+
+    paddingHorizontal: 15,
+
+    // Important:
+    // This prevents the browser/native focus outline
+    // from creating a black border.
+    ...(Platform.OS === "web"
+      ? ({
+          outlineStyle: "none",
+          outlineWidth: 0,
+          outlineColor: "transparent",
+        } as any)
+      : {}),
   },
 
   inputIcon: {
-    marginRight: 10,
+    marginRight: 11,
   },
 
   input: {
     flex: 1,
-    fontSize: 14,
-    color: "#0B0F14",
+
+    height: "100%",
+
+    fontSize: 14.5,
+
+    color: COLORS.dark,
+
     paddingVertical: 0,
+    paddingHorizontal: 0,
+
+    // Android
+    underlineColorAndroid: "transparent",
+
+    // Web
+    ...(Platform.OS === "web"
+      ? ({
+          outlineStyle: "none",
+          outlineWidth: 0,
+          outlineColor: "transparent",
+          borderWidth: 0,
+          borderColor: "transparent",
+          boxShadow: "none",
+        } as any)
+      : {}),
   },
 
-  eyeIcon: {
-    padding: 4,
-  },
+  eyeButton: {
+    width: 34,
+    height: 40,
 
-  // REGISTER BUTTON
-  registerButton: {
-    height: 50,
-    backgroundColor: "#F5B82E",
-    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 8,
+
+    marginLeft: 5,
+  },
+
+  // ----------------------------------------------------------
+  // REGISTER BUTTON
+  // ----------------------------------------------------------
+
+  registerButton: {
+    height: 54,
+
+    width: "100%",
+
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+
+    gap: 10,
+
+    backgroundColor: COLORS.orange,
+
+    borderRadius: 14,
+
+    marginTop: 4,
+
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.orange,
+        shadowOffset: {
+          width: 0,
+          height: 5,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+      },
+
+      android: {
+        elevation: 5,
+      },
+
+      web: {
+        boxShadow: "0px 8px 18px rgba(255, 107, 53, 0.22)",
+      },
+    }),
   },
 
   disabledButton: {
-    opacity: 0.6,
+    opacity: 0.65,
   },
 
   registerButtonText: {
-    color: "#0B0F14",
+    color: COLORS.white,
+
     fontSize: 16,
-    fontWeight: "700",
+
+    fontWeight: "800",
   },
 
+  // ----------------------------------------------------------
   // DIVIDER
+  // ----------------------------------------------------------
+
   dividerContainer: {
+    width: "100%",
+
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 16,
+
+    marginVertical: 22,
   },
 
   dividerLine: {
     flex: 1,
+
     height: 1,
-    backgroundColor: "#E2E6EB",
+
+    backgroundColor: "#E7E9ED",
   },
 
   dividerText: {
-    paddingHorizontal: 14,
-    color: "#64748B",
-    fontSize: 12,
-    fontWeight: "500",
+    paddingHorizontal: 12,
+
+    color: "#9AA2AE",
+
+    fontSize: 10.5,
+
+    fontWeight: "700",
+
+    letterSpacing: 0.6,
   },
 
+  // ----------------------------------------------------------
   // SOCIAL BUTTONS
+  // ----------------------------------------------------------
+
   socialContainer: {
+    width: "100%",
+
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 16,
+
+    gap: 12,
   },
 
   socialButton: {
+    flex: 1,
+
+    height: 48,
+
     flexDirection: "row",
+
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#F8FAFC",
+
+    gap: 9,
+
+    backgroundColor: COLORS.white,
+
     borderWidth: 1,
-    borderColor: "#E2E6EB",
+    borderColor: COLORS.inputBorder,
+
+    borderRadius: 12,
   },
 
+  socialText: {
+    color: COLORS.text,
+
+    fontSize: 13,
+
+    fontWeight: "700",
+  },
+
+  // ----------------------------------------------------------
   // LOGIN
+  // ----------------------------------------------------------
+
   loginContainer: {
     flexDirection: "row",
+
     justifyContent: "center",
-    marginTop: 18,
+    alignItems: "center",
+
+    marginTop: 23,
   },
 
   loginText: {
-    color: "#64748B",
+    color: COLORS.muted,
+
     fontSize: 13,
   },
 
   loginLink: {
-    color: "#F5B82E",
+    color: COLORS.orange,
+
     fontSize: 13,
-    fontWeight: "700",
+
+    fontWeight: "800",
   },
+
+  // ----------------------------------------------------------
+  // FOOTER
+  // ----------------------------------------------------------
+
+  footerText: {
+    color: "#A0A7B2",
+
+    fontSize: 10.5,
+
+    lineHeight: 16,
+
+    textAlign: "center",
+
+    marginTop: 18,
+
+    paddingHorizontal: 10,
+  },
+  googleLogo: {
+  width: 19,
+  height: 19,
+  resizeMode: "contain",
+},
 });

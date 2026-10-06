@@ -1,13 +1,12 @@
-import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useState } from "react";
 import {
-  Alert,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Modal,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 export default function ScanModal({ visible, onClose, onOrderFound }) {
@@ -16,19 +15,15 @@ export default function ScanModal({ visible, onClose, onOrderFound }) {
 
   const handleBarCodeScanned = ({ type, data }) => {
     setScanned(true);
-    Alert.alert(
-      "Barcode Scanned!",
-      `Data: ${data}`,
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            onOrderFound(data);
-            setTimeout(() => onClose(), 500);
-          },
+    Alert.alert("Barcode Scanned!", `Data: ${data}`, [
+      {
+        text: "OK",
+        onPress: () => {
+          onOrderFound(data);
+          setTimeout(() => onClose(), 500);
         },
-      ]
-    );
+      },
+    ]);
   };
 
   if (!permission) {
@@ -38,7 +33,10 @@ export default function ScanModal({ visible, onClose, onOrderFound }) {
     return (
       <View style={styles.permissionContainer}>
         <Text style={styles.permissionText}>No access to camera</Text>
-        <TouchableOpacity onPress={requestPermission} style={styles.permissionBtn}>
+        <TouchableOpacity
+          onPress={requestPermission}
+          style={styles.permissionBtn}
+        >
           <Text style={styles.permissionBtnText}>Grant Permission</Text>
         </TouchableOpacity>
       </View>
@@ -127,7 +125,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingVertical: 10,
     paddingHorizontal: 20,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
     borderRadius: 10,
   },
   rescanBtnText: {
@@ -157,7 +155,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   permissionBtn: {
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,

@@ -58,47 +58,32 @@ export default function VerifyRegistrationOTP() {
     try {
       setLoading(true);
 
-      const response = await api.post(
-        "/auth/verify-registration-otp",
-        {
-          email,
-          otp: otp.trim(),
-        }
-      );
+      const response = await api.post("/auth/verify-registration-otp", {
+        email,
+        otp: otp.trim(),
+      });
 
       const { token, user } = response.data;
 
-      await AsyncStorage.setItem(
-        "token",
-        token
-      );
+      await AsyncStorage.setItem("token", token);
 
-      await AsyncStorage.setItem(
-        "user",
-        JSON.stringify(user)
-      );
+      await AsyncStorage.setItem("user", JSON.stringify(user));
 
-      showSuccessToast(
-        "Email verified successfully!"
-      );
+      showSuccessToast("Email verified successfully!");
 
       setTimeout(() => {
         router.replace("/(tabs)");
       }, 1200);
-
     } catch (error: any) {
       console.log(
         "OTP verification error:",
-        error?.response?.data ||
-          error?.message
+        error?.response?.data || error?.message,
       );
 
       const message =
-        error?.response?.data?.message ||
-        "Invalid or expired OTP.";
+        error?.response?.data?.message || "Invalid or expired OTP.";
 
       showErrorToast(message);
-
     } finally {
       setLoading(false);
     }
@@ -107,71 +92,43 @@ export default function VerifyRegistrationOTP() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
+        <Text style={styles.icon}>✉️</Text>
 
-        <Text style={styles.icon}>
-          ✉️
-        </Text>
+        <Text style={styles.title}>Verify Your Email</Text>
 
-        <Text style={styles.title}>
-          Verify Your Email
-        </Text>
+        <Text style={styles.subtitle}>We have sent a 6-digit OTP to</Text>
 
-        <Text style={styles.subtitle}>
-          We have sent a 6-digit OTP to
-        </Text>
-
-        <Text style={styles.email}>
-          {email}
-        </Text>
+        <Text style={styles.email}>{email}</Text>
 
         <TextInput
           style={styles.otpInput}
           placeholder="Enter OTP"
           placeholderTextColor="#64748B"
           value={otp}
-          onChangeText={(text) =>
-            setOtp(
-              text.replace(/[^0-9]/g, "")
-            )
-          }
+          onChangeText={(text) => setOtp(text.replace(/[^0-9]/g, ""))}
           keyboardType="number-pad"
           maxLength={6}
           textAlign="center"
         />
 
         <TouchableOpacity
-          style={[
-            styles.verifyButton,
-            loading &&
-              styles.disabledButton,
-          ]}
+          style={[styles.verifyButton, loading && styles.disabledButton]}
           onPress={handleVerify}
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator
-              color="#0B0F14"
-            />
+            <ActivityIndicator color="#0B0F14" />
           ) : (
-            <Text
-              style={styles.buttonText}
-            >
-              Verify OTP
-            </Text>
+            <Text style={styles.buttonText}>Verify OTP</Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() =>
-            router.back()
-          }
+          onPress={() => router.back()}
           style={styles.backButton}
         >
-          <Text style={styles.backText}>
-            Back to Registration
-          </Text>
+          <Text style={styles.backText}>Back to Registration</Text>
         </TouchableOpacity>
-
       </View>
 
       <Toast />
@@ -211,7 +168,7 @@ const styles = StyleSheet.create({
   },
 
   email: {
-    color: "#F5B82E",
+    color: "#FF6B35",
     fontSize: 15,
     fontWeight: "700",
     marginTop: 5,
@@ -236,7 +193,7 @@ const styles = StyleSheet.create({
     maxWidth: 350,
     height: 52,
     borderRadius: 12,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -256,7 +213,7 @@ const styles = StyleSheet.create({
   },
 
   backText: {
-    color: "#F5B82E",
+    color: "#FF6B355",
     fontSize: 14,
     fontWeight: "600",
   },

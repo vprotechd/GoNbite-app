@@ -53,6 +53,11 @@ router.use(authMiddleware);
 router.get("/profile", restaurantController.getRestaurantProfile);
 router.put("/availability", restaurantController.toggleAvailability);
 
+router.put(
+  "/location",
+  restaurantController.updateRestaurantLocation
+);
+
 // --- FOOD CRUD ROUTES ---
 router.get("/food", restaurantController.getFoodItems);
 router.post("/food", upload.single("image"), restaurantController.addFoodItem);

@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
+
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +15,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 
 import api from "../../services/api";
@@ -24,12 +26,21 @@ export default function AdminRestaurants() {
   const [refreshing, setRefreshing] = useState(false);
 
   // =========================================================
+  // RESPONSIVE SCREEN SIZE
+  // =========================================================
+
+  const { width } = useWindowDimensions();
+
+  const isMobile = width < 600;
+  const isTablet = width >= 600 && width < 1024;
+  const isDesktop = width >= 1024;
+
+  // =========================================================
   // GET ADMIN TOKEN
   // =========================================================
 
   const getAdminToken = async () => {
-    const token =
-      await AsyncStorage.getItem("adminToken");
+    const token = await AsyncStorage.getItem("adminToken");
 
     if (!token) {
       router.replace("/admin/login");
@@ -57,55 +68,33 @@ export default function AdminRestaurants() {
         return;
       }
 
-      console.log(
-        "📡 Fetching all restaurants..."
-      );
+      console.log("📡 Fetching all restaurants...");
 
-      const res = await api.get(
-        "/admin/all-restaurants",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await api.get("/admin/all-restaurants", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      console.log(
-        "✅ Restaurants received:",
-        res.data?.length
-      );
+      console.log("✅ Restaurants received:", res.data?.length);
 
-      setRestaurants(
-        Array.isArray(res.data)
-          ? res.data
-          : []
-      );
-
+      setRestaurants(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error(
         "❌ Fetch restaurants error:",
-        error?.response?.data ||
-        error?.message
+        error?.response?.data || error?.message,
       );
 
       if (
         error?.response?.status === 401 ||
         error?.response?.status === 403
       ) {
-        await AsyncStorage.removeItem(
-          "adminToken"
-        );
-
+        await AsyncStorage.removeItem("adminToken");
         router.replace("/admin/login");
-
         return;
       }
 
-      Alert.alert(
-        "Error",
-        "Failed to load restaurants."
-      );
-
+      Alert.alert("Error", "Failed to load restaurants.");
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -118,7 +107,6 @@ export default function AdminRestaurants() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-
     await fetchAllRestaurants();
   };
 
@@ -134,53 +122,39 @@ export default function AdminRestaurants() {
         return;
       }
 
-      console.log(
-        "✅ Approving restaurant:",
-        id
-      );
+      console.log("✅ Approving restaurant:", id);
 
       await api.put(
         `/admin/approve-restaurant/${id}`,
         {},
         {
           headers: {
-            Authorization:
-              `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
-      Alert.alert(
-        "Success",
-        "Restaurant approved successfully."
-      );
+      Alert.alert("Success", "Restaurant approved successfully.");
 
       await fetchAllRestaurants();
-
     } catch (error) {
       console.error(
         "❌ Approve restaurant error:",
-        error?.response?.data ||
-        error?.message
+        error?.response?.data || error?.message,
       );
 
       if (
         error?.response?.status === 401 ||
         error?.response?.status === 403
       ) {
-        await AsyncStorage.removeItem(
-          "adminToken"
-        );
-
+        await AsyncStorage.removeItem("adminToken");
         router.replace("/admin/login");
-
         return;
       }
 
       Alert.alert(
         "Error",
-        error?.response?.data?.error ||
-          "Failed to approve restaurant."
+        error?.response?.data?.error || "Failed to approve restaurant.",
       );
     }
   };
@@ -201,76 +175,60 @@ export default function AdminRestaurants() {
           text: "Cancel",
           style: "cancel",
         },
-
         {
           text: "Reject",
           style: "destructive",
 
           onPress: async () => {
             try {
-              const token =
-                await getAdminToken();
+              const token = await getAdminToken();
 
               if (!token) {
                 return;
               }
 
-              console.log(
-                "❌ Rejecting restaurant:",
-                id
-              );
+              console.log("❌ Rejecting restaurant:", id);
 
               await api.put(
                 `/admin/reject-restaurant/${id}`,
                 {},
                 {
                   headers: {
-                    Authorization:
-                      `Bearer ${token}`,
+                    Authorization: `Bearer ${token}`,
                   },
-                }
+                },
               );
 
               Alert.alert(
                 "Rejected",
-                "Restaurant has been rejected."
+                "Restaurant has been rejected.",
               );
 
               await fetchAllRestaurants();
-
             } catch (error) {
               console.error(
                 "❌ Reject restaurant error:",
-                error?.response?.data ||
-                error?.message
+                error?.response?.data || error?.message,
               );
 
               if (
-                error?.response?.status ===
-                  401 ||
-                error?.response?.status ===
-                  403
+                error?.response?.status === 401 ||
+                error?.response?.status === 403
               ) {
-                await AsyncStorage.removeItem(
-                  "adminToken"
-                );
-
-                router.replace(
-                  "/admin/login"
-                );
-
+                await AsyncStorage.removeItem("adminToken");
+                router.replace("/admin/login");
                 return;
               }
 
               Alert.alert(
                 "Error",
                 error?.response?.data?.error ||
-                  "Failed to reject restaurant."
+                  "Failed to reject restaurant.",
               );
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -278,12 +236,9 @@ export default function AdminRestaurants() {
   // TOGGLE RESTAURANT ACTIVE / INACTIVE
   // =========================================================
 
-  const toggleRestaurant = async (
-    restaurant
-  ) => {
+  const toggleRestaurant = async (restaurant) => {
     try {
-      const token =
-        await getAdminToken();
+      const token = await getAdminToken();
 
       if (!token) {
         return;
@@ -291,7 +246,7 @@ export default function AdminRestaurants() {
 
       console.log(
         "🔄 Toggling restaurant:",
-        restaurant._id
+        restaurant._id,
       );
 
       await api.put(
@@ -299,10 +254,9 @@ export default function AdminRestaurants() {
         {},
         {
           headers: {
-            Authorization:
-              `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       Alert.alert(
@@ -311,35 +265,29 @@ export default function AdminRestaurants() {
           restaurant.isAvailable
             ? "deactivated"
             : "activated"
-        } successfully.`
+        } successfully.`,
       );
 
       await fetchAllRestaurants();
-
     } catch (error) {
       console.error(
         "❌ Toggle restaurant error:",
-        error?.response?.data ||
-        error?.message
+        error?.response?.data || error?.message,
       );
 
       if (
         error?.response?.status === 401 ||
         error?.response?.status === 403
       ) {
-        await AsyncStorage.removeItem(
-          "adminToken"
-        );
-
+        await AsyncStorage.removeItem("adminToken");
         router.replace("/admin/login");
-
         return;
       }
 
       Alert.alert(
         "Error",
         error?.response?.data?.error ||
-          "Failed to update restaurant status."
+          "Failed to update restaurant status.",
       );
     }
   };
@@ -348,9 +296,7 @@ export default function AdminRestaurants() {
   // RESTAURANT STATUS
   // =========================================================
 
-  const getStatusInfo = (
-    restaurant
-  ) => {
+  const getStatusInfo = (restaurant) => {
     if (!restaurant.isVerified) {
       return {
         text: "Pending",
@@ -378,9 +324,7 @@ export default function AdminRestaurants() {
   // IMAGE URL
   // =========================================================
 
-  const getImageUrl = (
-    imageUrl
-  ) => {
+  const getImageUrl = (imageUrl) => {
     if (!imageUrl) {
       return null;
     }
@@ -394,19 +338,18 @@ export default function AdminRestaurants() {
 
     /*
       IMPORTANT:
+
       Your api.js has the backend base URL.
       If imageUrl is relative, use the same backend
       host instead of hardcoding localhost.
     */
 
-    const apiBaseUrl =
-      api.defaults?.baseURL || "";
+    const apiBaseUrl = api.defaults?.baseURL || "";
 
-    const backendUrl =
-      apiBaseUrl.replace(
-        /\/api\/?$/,
-        ""
-      );
+    const backendUrl = apiBaseUrl.replace(
+      /\/api\/?$/,
+      "",
+    );
 
     return `${backendUrl}${imageUrl}?t=${Date.now()}`;
   };
@@ -417,27 +360,19 @@ export default function AdminRestaurants() {
 
   if (isLoading) {
     return (
-      <SafeAreaView
-        style={styles.safeArea}
-      >
+      <SafeAreaView style={styles.safeArea}>
         <StatusBar
           barStyle="light-content"
           backgroundColor="#081A33"
         />
 
-        <View
-          style={
-            styles.loadingContainer
-          }
-        >
+        <View style={styles.loadingContainer}>
           <ActivityIndicator
             size="large"
-            color="#F5B82E"
+            color="#FF6B35"
           />
 
-          <Text
-            style={styles.loadingText}
-          >
+          <Text style={styles.loadingText}>
             Loading restaurants...
           </Text>
         </View>
@@ -450,9 +385,7 @@ export default function AdminRestaurants() {
   // =========================================================
 
   return (
-    <SafeAreaView
-      style={styles.safeArea}
-    >
+    <SafeAreaView style={styles.safeArea}>
       <StatusBar
         barStyle="light-content"
         backgroundColor="#081A33"
@@ -464,13 +397,16 @@ export default function AdminRestaurants() {
             HEADER
         ================================================= */}
 
-        <View style={styles.header}>
-
+        <View
+          style={[
+            styles.header,
+            isMobile && styles.headerMobile,
+            isTablet && styles.headerTablet,
+          ]}
+        >
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() =>
-              router.replace("/admin")
-            }
+            onPress={() => router.replace("/admin")}
             activeOpacity={0.7}
           >
             <Ionicons
@@ -480,17 +416,23 @@ export default function AdminRestaurants() {
             />
           </TouchableOpacity>
 
-          <View
-            style={styles.headerCenter}
-          >
+          <View style={styles.headerCenter}>
             <Text
-              style={styles.headerTitle}
+              style={[
+                styles.headerTitle,
+                isMobile && styles.headerTitleMobile,
+              ]}
+              numberOfLines={1}
             >
               Restaurants
             </Text>
 
             <Text
-              style={styles.headerSubtitle}
+              style={[
+                styles.headerSubtitle,
+                isMobile && styles.headerSubtitleMobile,
+              ]}
+              numberOfLines={1}
             >
               Manage restaurant registrations
             </Text>
@@ -507,21 +449,15 @@ export default function AdminRestaurants() {
               color="#0A1628"
             />
           </TouchableOpacity>
-
         </View>
-
 
         {/* =================================================
             EMPTY STATE
         ================================================= */}
 
         {restaurants.length === 0 ? (
-
           <View style={styles.emptyState}>
-
-            <View
-              style={styles.emptyIcon}
-            >
+            <View style={styles.emptyIcon}>
               <Ionicons
                 name="storefront-outline"
                 size={55}
@@ -529,15 +465,11 @@ export default function AdminRestaurants() {
               />
             </View>
 
-            <Text
-              style={styles.emptyTitle}
-            >
+            <Text style={styles.emptyTitle}>
               No Restaurants Found
             </Text>
 
-            <Text
-              style={styles.emptySubtitle}
-            >
+            <Text style={styles.emptySubtitle}>
               No restaurants have registered yet.
             </Text>
 
@@ -551,27 +483,23 @@ export default function AdminRestaurants() {
                 color="#0B0F14"
               />
 
-              <Text
-                style={
-                  styles.emptyRefreshText
-                }
-              >
+              <Text style={styles.emptyRefreshText}>
                 Refresh
               </Text>
             </TouchableOpacity>
-
           </View>
-
         ) : (
-
           <ScrollView
-            showsVerticalScrollIndicator={
-              false
-            }
-            contentContainerStyle={
-              styles.listContent
-            }
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.listContent,
 
+              isMobile && styles.listContentMobile,
+
+              isTablet && styles.listContentTablet,
+
+              isDesktop && styles.listContentDesktop,
+            ]}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -585,474 +513,327 @@ export default function AdminRestaurants() {
             ================================================= */}
 
             <View
-              style={styles.countRow}
+              style={[
+                styles.countRow,
+                isMobile && styles.countRowMobile,
+              ]}
             >
-              <Text
-                style={styles.countTitle}
-              >
+              <Text style={styles.countTitle}>
                 All Restaurants
               </Text>
 
-              <View
-                style={styles.countBadge}
-              >
-                <Text
-                  style={styles.countText}
-                >
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>
                   {restaurants.length}
                 </Text>
               </View>
             </View>
 
-
             {/* =================================================
                 RESTAURANTS
             ================================================= */}
 
-            {restaurants.map(
-              (restaurant) => {
+            {restaurants.map((restaurant) => {
+              const status =
+                getStatusInfo(restaurant);
 
-                const status =
-                  getStatusInfo(
-                    restaurant
-                  );
+              const imageUrl =
+                getImageUrl(restaurant.imageUrl);
 
-                const imageUrl =
-                  getImageUrl(
-                    restaurant.imageUrl
-                  );
+              return (
+                <View
+                  key={restaurant._id}
+                  style={[
+                    styles.card,
 
-                return (
+                    isMobile &&
+                      styles.cardMobile,
+
+                    isTablet &&
+                      styles.cardTablet,
+
+                    isDesktop &&
+                      styles.cardDesktop,
+                  ]}
+                >
+
+                  {/* =========================================
+                      RESTAURANT IMAGE
+                  ========================================= */}
 
                   <View
-                    key={restaurant._id}
-                    style={styles.card}
+                    style={[
+                      styles.imageContainer,
+
+                      isMobile &&
+                        styles.imageContainerMobile,
+
+                      isTablet &&
+                        styles.imageContainerTablet,
+
+                      isDesktop &&
+                        styles.imageContainerDesktop,
+                    ]}
                   >
-
-                    {/* =========================================
-                        RESTAURANT IMAGE
-                    ========================================= */}
-
-                    <View
-                      style={
-                        styles.imageContainer
-                      }
-                    >
-
-                      {imageUrl ? (
-
-                        <Image
-                          source={{
-                            uri: imageUrl,
-                          }}
-                          style={
-                            styles.restaurantImage
-                          }
-                          resizeMode="cover"
+                    {imageUrl ? (
+                      <Image
+                        source={{
+                          uri: imageUrl,
+                        }}
+                        style={styles.restaurantImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.noImage}>
+                        <Ionicons
+                          name="image-outline"
+                          size={55}
+                          color="#CBD5E1"
                         />
 
-                      ) : (
+                        <Text style={styles.noImageText}>
+                          No restaurant image
+                        </Text>
+                      </View>
+                    )}
 
-                        <View
-                          style={
-                            styles.noImage
-                          }
-                        >
+                    {/* =======================================
+                        STATUS
+                    ======================================= */}
 
-                          <Ionicons
-                            name="image-outline"
-                            size={55}
-                            color="#CBD5E1"
-                          />
+                    <View
+                      style={[
+                        styles.statusBadge,
 
-                          <Text
-                            style={
-                              styles.noImageText
-                            }
-                          >
-                            No restaurant image
-                          </Text>
+                        isMobile &&
+                          styles.statusBadgeMobile,
+                      ]}
+                    >
+                      <View
+                        style={styles.statusDot}
+                      />
 
-                        </View>
-                      )}
+                      <Text
+                        style={styles.statusText}
+                      >
+                        {status.text}
+                      </Text>
+                    </View>
+                  </View>
 
+                  {/* =========================================
+                      DETAILS
+                  ========================================= */}
 
-                      {/* =======================================
-                          STATUS
-                      ======================================= */}
+                  <View
+                    style={[
+                      styles.detailsContainer,
+
+                      isMobile &&
+                        styles.detailsContainerMobile,
+                    ]}
+                  >
+                    <View style={styles.titleRow}>
+                      <Text
+                        style={[
+                          styles.restaurantName,
+
+                          isMobile &&
+                            styles.restaurantNameMobile,
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {restaurant.restaurantName ||
+                          "Unnamed Restaurant"}
+                      </Text>
+                    </View>
+
+                    {/* OWNER */}
+
+                    <View style={styles.infoRow}>
+                      <Ionicons
+                        name="person-outline"
+                        size={17}
+                        color="#64748B"
+                      />
 
                       <View
+                        style={styles.infoContent}
+                      >
+                        <Text
+                          style={styles.infoLabel}
+                        >
+                          Owner
+                        </Text>
+
+                        <Text
+                          style={styles.infoText}
+                          numberOfLines={1}
+                        >
+                          {restaurant.ownerName ||
+                            "Not provided"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* EMAIL */}
+
+                    <View style={styles.infoRow}>
+                      <Ionicons
+                        name="mail-outline"
+                        size={17}
+                        color="#64748B"
+                      />
+
+                      <View
+                        style={styles.infoContent}
+                      >
+                        <Text
+                          style={styles.infoLabel}
+                        >
+                          Email
+                        </Text>
+
+                        <Text
+                          style={styles.infoText}
+                          numberOfLines={1}
+                        >
+                          {restaurant.email ||
+                            "Not provided"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* PHONE */}
+
+                    <View style={styles.infoRow}>
+                      <Ionicons
+                        name="call-outline"
+                        size={17}
+                        color="#64748B"
+                      />
+
+                      <View
+                        style={styles.infoContent}
+                      >
+                        <Text
+                          style={styles.infoLabel}
+                        >
+                          Phone
+                        </Text>
+
+                        <Text
+                          style={styles.infoText}
+                          numberOfLines={1}
+                        >
+                          {restaurant.phone ||
+                            "Not provided"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* ADDRESS */}
+
+                    <View style={styles.infoRow}>
+                      <Ionicons
+                        name="location-outline"
+                        size={17}
+                        color="#64748B"
+                      />
+
+                      <View
+                        style={styles.infoContent}
+                      >
+                        <Text
+                          style={styles.infoLabel}
+                        >
+                          Address
+                        </Text>
+
+                        <Text
+                          style={styles.infoText}
+                          numberOfLines={2}
+                        >
+                          {restaurant.address ||
+                            "Not provided"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* =======================================
+                        VERIFICATION
+                    ======================================= */}
+
+                    <View
+                      style={styles.verificationRow}
+                    >
+                      <Ionicons
+                        name={
+                          restaurant.isVerified
+                            ? "shield-checkmark"
+                            : "shield-outline"
+                        }
+                        size={17}
+                        color={
+                          restaurant.isVerified
+                            ? "#10B981"
+                            : "#F59E0B"
+                        }
+                      />
+
+                      <Text
                         style={[
-                          styles.statusBadge,
+                          styles.verificationText,
                           {
-                            backgroundColor:
-                              status.color,
+                            color:
+                              restaurant.isVerified
+                                ? "#10B981"
+                                : "#F59E0B",
                           },
                         ]}
                       >
-
-                        <View
-                          style={
-                            styles.statusDot
-                          }
-                        />
-
-                        <Text
-                          style={
-                            styles.statusText
-                          }
-                        >
-                          {status.text}
-                        </Text>
-
-                      </View>
-
+                        {restaurant.isVerified
+                          ? "Verified Restaurant"
+                          : "Verification Pending"}
+                      </Text>
                     </View>
-
-
-                    {/* =========================================
-                        DETAILS
-                    ========================================= */}
-
-                    <View
-                      style={
-                        styles.detailsContainer
-                      }
-                    >
-
-                      <View
-                        style={styles.titleRow}
-                      >
-
-                        <Text
-                          style={
-                            styles.restaurantName
-                          }
-                          numberOfLines={2}
-                        >
-                          {restaurant.restaurantName ||
-                            "Unnamed Restaurant"}
-                        </Text>
-
-                      </View>
-
-
-                      {/* OWNER */}
-
-                      <View
-                        style={styles.infoRow}
-                      >
-
-                        <Ionicons
-                          name="person-outline"
-                          size={17}
-                          color="#64748B"
-                        />
-
-                        <View
-                          style={
-                            styles.infoContent
-                          }
-                        >
-
-                          <Text
-                            style={
-                              styles.infoLabel
-                            }
-                          >
-                            Owner
-                          </Text>
-
-                          <Text
-                            style={
-                              styles.infoText
-                            }
-                            numberOfLines={1}
-                          >
-                            {restaurant.ownerName ||
-                              "Not provided"}
-                          </Text>
-
-                        </View>
-
-                      </View>
-
-
-                      {/* EMAIL */}
-
-                      <View
-                        style={styles.infoRow}
-                      >
-
-                        <Ionicons
-                          name="mail-outline"
-                          size={17}
-                          color="#64748B"
-                        />
-
-                        <View
-                          style={
-                            styles.infoContent
-                          }
-                        >
-
-                          <Text
-                            style={
-                              styles.infoLabel
-                            }
-                          >
-                            Email
-                          </Text>
-
-                          <Text
-                            style={
-                              styles.infoText
-                            }
-                            numberOfLines={1}
-                          >
-                            {restaurant.email ||
-                              "Not provided"}
-                          </Text>
-
-                        </View>
-
-                      </View>
-
-
-                      {/* PHONE */}
-
-                      <View
-                        style={styles.infoRow}
-                      >
-
-                        <Ionicons
-                          name="call-outline"
-                          size={17}
-                          color="#64748B"
-                        />
-
-                        <View
-                          style={
-                            styles.infoContent
-                          }
-                        >
-
-                          <Text
-                            style={
-                              styles.infoLabel
-                            }
-                          >
-                            Phone
-                          </Text>
-
-                          <Text
-                            style={
-                              styles.infoText
-                            }
-                            numberOfLines={1}
-                          >
-                            {restaurant.phone ||
-                              "Not provided"}
-                          </Text>
-
-                        </View>
-
-                      </View>
-
-
-                      {/* ADDRESS */}
-
-                      <View
-                        style={styles.infoRow}
-                      >
-
-                        <Ionicons
-                          name="location-outline"
-                          size={17}
-                          color="#64748B"
-                        />
-
-                        <View
-                          style={
-                            styles.infoContent
-                          }
-                        >
-
-                          <Text
-                            style={
-                              styles.infoLabel
-                            }
-                          >
-                            Address
-                          </Text>
-
-                          <Text
-                            style={
-                              styles.infoText
-                            }
-                            numberOfLines={2}
-                          >
-                            {restaurant.address ||
-                              "Not provided"}
-                          </Text>
-
-                        </View>
-
-                      </View>
-
-
-                      {/* =======================================
-                          VERIFICATION
-                      ======================================= */}
-
-                      <View
-                        style={
-                          styles.verificationRow
-                        }
-                      >
-
-                        <Ionicons
-                          name={
-                            restaurant.isVerified
-                              ? "shield-checkmark"
-                              : "shield-outline"
-                          }
-                          size={17}
-                          color={
-                            restaurant.isVerified
-                              ? "#10B981"
-                              : "#F59E0B"
-                          }
-                        />
-
-                        <Text
-                          style={[
-                            styles.verificationText,
-                            {
-                              color:
-                                restaurant.isVerified
-                                  ? "#10B981"
-                                  : "#F59E0B",
-                            },
-                          ]}
-                        >
-                          {restaurant.isVerified
-                            ? "Verified Restaurant"
-                            : "Verification Pending"}
-                        </Text>
-
-                      </View>
-
-                    </View>
-
-
-                    {/* =========================================
-                        ACTION BUTTONS
-                    ========================================= */}
-
-                    <View
-                      style={
-                        styles.actionContainer
-                      }
-                    >
-
-                      {/* =====================================
-                          PENDING
-                      ===================================== */}
-
-                      {!restaurant.isVerified ? (
-
-                        <>
-
-                          <TouchableOpacity
-                            style={
-                              styles.smallApproveButton
-                            }
-                            onPress={() =>
-                              approveRestaurant(
-                                restaurant._id
-                              )
-                            }
-                            activeOpacity={0.8}
-                          >
-
-                            <Ionicons
-                              name="checkmark"
-                              size={16}
-                              color="#FFFFFF"
-                            />
-
-                            <Text
-                              style={
-                                styles.smallButtonText
-                              }
-                            >
-                              Approve
-                            </Text>
-
-                          </TouchableOpacity>
-
-
-                          <TouchableOpacity
-                            style={
-                              styles.smallRejectButton
-                            }
-                            onPress={() =>
-                              rejectRestaurant(
-                                restaurant._id
-                              )
-                            }
-                            activeOpacity={0.8}
-                          >
-
-                            <Ionicons
-                              name="close"
-                              size={16}
-                              color="#FFFFFF"
-                            />
-
-                            <Text
-                              style={
-                                styles.smallButtonText
-                              }
-                            >
-                              Reject
-                            </Text>
-
-                          </TouchableOpacity>
-
-                        </>
-
-                      ) : (
-
-                        /* =====================================
-                           APPROVED
-                        ===================================== */
-
+                  </View>
+
+                  {/* =========================================
+                      ACTION BUTTONS
+                  ========================================= */}
+
+                  <View
+                    style={[
+                      styles.actionContainer,
+
+                      isMobile &&
+                        styles.actionContainerMobile,
+                    ]}
+                  >
+
+                    {/* =====================================
+                        PENDING
+                    ===================================== */}
+
+                    {!restaurant.isVerified ? (
+                      <>
                         <TouchableOpacity
                           style={[
-                            styles.smallToggleButton,
-                            {
-                              backgroundColor:
-                                restaurant.isAvailable
-                                  ? "#EF4444"
-                                  : "#10B981",
-                            },
+                            styles.smallApproveButton,
+
+                            isMobile &&
+                              styles.smallButtonMobile,
                           ]}
                           onPress={() =>
-                            toggleRestaurant(
-                              restaurant
+                            approveRestaurant(
+                              restaurant._id,
                             )
                           }
                           activeOpacity={0.8}
                         >
-
                           <Ionicons
-                            name={
-                              restaurant.isAvailable
-                                ? "pause-circle-outline"
-                                : "play-circle-outline"
-                            }
+                            name="checkmark"
                             size={16}
                             color="#FFFFFF"
                           />
@@ -1062,37 +843,103 @@ export default function AdminRestaurants() {
                               styles.smallButtonText
                             }
                           >
-                            {restaurant.isAvailable
-                              ? "Deactivate"
-                              : "Activate"}
+                            Approve
                           </Text>
-
                         </TouchableOpacity>
 
-                      )}
+                        <TouchableOpacity
+                          style={[
+                            styles.smallRejectButton,
 
-                    </View>
+                            isMobile &&
+                              styles.smallButtonMobile,
+                          ]}
+                          onPress={() =>
+                            rejectRestaurant(
+                              restaurant._id,
+                            )
+                          }
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons
+                            name="close"
+                            size={16}
+                            color="#FFFFFF"
+                          />
 
+                          <Text
+                            style={
+                              styles.smallButtonText
+                            }
+                          >
+                            Reject
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+
+                      /* =====================================
+                         APPROVED
+                      ===================================== */
+
+                      <TouchableOpacity
+                        style={[
+                          styles.smallToggleButton,
+
+                          {
+                            backgroundColor:
+                              restaurant.isAvailable
+                                ? "#EF4444"
+                                : "#10B981",
+                          },
+
+                          isMobile &&
+                            styles.smallButtonMobile,
+                        ]}
+                        onPress={() =>
+                          toggleRestaurant(
+                            restaurant,
+                          )
+                        }
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons
+                          name={
+                            restaurant.isAvailable
+                              ? "pause-circle-outline"
+                              : "play-circle-outline"
+                          }
+                          size={16}
+                          color="#FFFFFF"
+                        />
+
+                        <Text
+                          style={
+                            styles.smallButtonText
+                          }
+                        >
+                          {restaurant.isAvailable
+                            ? "Deactivate"
+                            : "Activate"}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-                );
-              }
-            )}
-
+                </View>
+              );
+            })}
           </ScrollView>
         )}
-
       </View>
     </SafeAreaView>
   );
 }
-
 
 // ==================================================
 // STYLES
 // ==================================================
 
 const styles = StyleSheet.create({
-
   safeArea: {
     flex: 1,
     backgroundColor: "#081A33",
@@ -1118,6 +965,15 @@ const styles = StyleSheet.create({
     borderBottomColor: "#E5E7EB",
   },
 
+  headerMobile: {
+    height: 68,
+    paddingHorizontal: 12,
+  },
+
+  headerTablet: {
+    paddingHorizontal: 22,
+  },
+
   backButton: {
     width: 40,
     height: 40,
@@ -1125,11 +981,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
 
   headerCenter: {
     flex: 1,
     alignItems: "center",
+    paddingHorizontal: 8,
+    minWidth: 0,
   },
 
   headerTitle: {
@@ -1138,10 +997,18 @@ const styles = StyleSheet.create({
     color: "#0A1628",
   },
 
+  headerTitleMobile: {
+    fontSize: 17,
+  },
+
   headerSubtitle: {
     fontSize: 11,
     color: "#64748B",
     marginTop: 2,
+  },
+
+  headerSubtitleMobile: {
+    fontSize: 9,
   },
 
   refreshButton: {
@@ -1151,6 +1018,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
 
   // ==================================================
@@ -1196,6 +1064,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "800",
     color: "#0A1628",
+    textAlign: "center",
   },
 
   emptySubtitle: {
@@ -1207,7 +1076,7 @@ const styles = StyleSheet.create({
 
   emptyRefreshButton: {
     marginTop: 20,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 20,
@@ -1231,10 +1100,30 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
+  listContentMobile: {
+    paddingHorizontal: 12,
+    paddingTop: 14,
+  },
+
+  listContentTablet: {
+    paddingHorizontal: 28,
+    alignItems: "center",
+  },
+
+  listContentDesktop: {
+    paddingHorizontal: 30,
+    alignItems: "center",
+  },
+
   countRow: {
+    width: "100%",
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 14,
+  },
+
+  countRowMobile: {
+    marginBottom: 12,
   },
 
   countTitle: {
@@ -1249,7 +1138,7 @@ const styles = StyleSheet.create({
     height: 28,
     paddingHorizontal: 8,
     borderRadius: 14,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1265,13 +1154,13 @@ const styles = StyleSheet.create({
   // ==================================================
 
   card: {
+    width: "100%",
     backgroundColor: "#FFFFFF",
     borderRadius: 18,
     marginBottom: 18,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#E5E7EB",
-
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -1279,8 +1168,22 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.07,
     shadowRadius: 8,
-
     elevation: 3,
+  },
+
+  cardMobile: {
+    borderRadius: 15,
+    marginBottom: 14,
+  },
+
+  cardTablet: {
+    width: "90%",
+    maxWidth: 650,
+  },
+
+  cardDesktop: {
+    width: "100%",
+    maxWidth: 680,
   },
 
   // ==================================================
@@ -1292,6 +1195,18 @@ const styles = StyleSheet.create({
     height: 230,
     backgroundColor: "#E2E8F0",
     position: "relative",
+  },
+
+  imageContainerMobile: {
+    height: 190,
+  },
+
+  imageContainerTablet: {
+    height: 270,
+  },
+
+  imageContainerDesktop: {
+    height: 300,
   },
 
   restaurantImage: {
@@ -1319,14 +1234,18 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 12,
     right: 12,
-
     flexDirection: "row",
     alignItems: "center",
-
     paddingHorizontal: 10,
     paddingVertical: 6,
-
     borderRadius: 15,
+  },
+
+  statusBadgeMobile: {
+    top: 9,
+    right: 9,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
   },
 
   statusDot: {
@@ -1352,6 +1271,11 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
 
+  detailsContainerMobile: {
+    padding: 13,
+    paddingBottom: 8,
+  },
+
   titleRow: {
     marginBottom: 12,
   },
@@ -1362,15 +1286,21 @@ const styles = StyleSheet.create({
     color: "#0A1628",
   },
 
+  restaurantNameMobile: {
+    fontSize: 18,
+  },
+
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 10,
+    minWidth: 0,
   },
 
   infoContent: {
     flex: 1,
     marginLeft: 10,
+    minWidth: 0,
   },
 
   infoLabel: {
@@ -1420,16 +1350,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
+  actionContainerMobile: {
+    paddingHorizontal: 13,
+    paddingBottom: 13,
+    gap: 7,
+  },
+
   smallApproveButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-
     backgroundColor: "#10B981",
-
     paddingHorizontal: 14,
     paddingVertical: 8,
-
     borderRadius: 8,
     gap: 5,
   },
@@ -1438,12 +1371,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-
     backgroundColor: "#EF4444",
-
     paddingHorizontal: 14,
     paddingVertical: 8,
-
     borderRadius: 8,
     gap: 5,
   },
@@ -1452,12 +1382,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-
     paddingHorizontal: 14,
     paddingVertical: 8,
-
     borderRadius: 8,
     gap: 5,
+  },
+
+  smallButtonMobile: {
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
 
   smallButtonText: {
@@ -1465,5 +1399,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
-
 });

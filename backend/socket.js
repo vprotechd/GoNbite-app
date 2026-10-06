@@ -15,7 +15,13 @@ export const initializeSocket = (httpServer) => {
     cors: {
       origin: "*",
       methods: ["GET", "POST"],
+      credentials: false,
     },
+
+  transports: ["polling", "websocket"],
+
+    pingTimeout: 60000,
+    pingInterval: 25000,
   });
 
   // ===================================================
@@ -27,7 +33,10 @@ export const initializeSocket = (httpServer) => {
       const token = socket.handshake.auth?.token;
 
       if (!token) {
-        console.log("❌ Socket auth failed: No token");
+        console.log(
+          "❌ Socket auth failed: No token"
+        );
+
         return next(
           new Error("Authentication required")
         );
@@ -51,7 +60,6 @@ export const initializeSocket = (httpServer) => {
       );
 
       next();
-
     } catch (error) {
       console.error(
         "❌ Socket authentication failed:",
@@ -59,7 +67,9 @@ export const initializeSocket = (httpServer) => {
       );
 
       next(
-        new Error("Invalid or expired token")
+        new Error(
+          "Invalid or expired token"
+        )
       );
     }
   });
@@ -73,140 +83,171 @@ export const initializeSocket = (httpServer) => {
       "🟢 Socket connected:",
       socket.id,
       "User:",
-      socket.user?.id
+      socket.user?.id,
+      "Role:",
+      socket.user?.role
     );
 
     // =================================================
     // JOIN ORDER ROOM
     // =================================================
 
-    socket.on("joinOrder", async (orderId) => {
-      try {
-        if (!orderId) {
-          console.log(
-            "❌ joinOrder: orderId missing"
-          );
-          return;
-        }
+    socket.on(
+      "joinOrder",
+      async (orderId) => {
+        try {
+          if (!orderId) {
+            console.log(
+              "❌ joinOrder: orderId missing"
+            );
+            return;
+          }
 
-        // ---------------------------------------------
-        // FIND ORDER
-        // ---------------------------------------------
+          const order =
+            await Order.findById(orderId);
 
-        const order = await Order.findById(orderId);
+          if (!order) {
+            console.log(
+              "❌ joinOrder: Order not found:",
+              orderId
+            );
 
-        if (!order) {
-          console.log(
-            "❌ joinOrder: Order not found:",
-            orderId
-          );
+            return;
+          }
 
-          return;
-        }
+          // -------------------------------------------
+          // CUSTOMER
+          // -------------------------------------------
 
-        // ---------------------------------------------
-        // CHECK CUSTOMER
-        // ---------------------------------------------
-
-        const isCustomer =
-          String(order.customerId) ===
-          String(socket.user.id);
-
-        // ---------------------------------------------
-        // CHECK DELIVERY PARTNER
-        // ---------------------------------------------
-
-        const isDeliveryPartner =
-          order.deliveryPartnerId &&
-          String(order.deliveryPartnerId) ===
+          const isCustomer =
+            String(order.customerId) ===
             String(socket.user.id);
 
-        // ---------------------------------------------
-        // AUTHORIZE
-        // ---------------------------------------------
+          // -------------------------------------------
+          // DELIVERY PARTNER
+          // -------------------------------------------
 
-        if (
-          !isCustomer &&
-          !isDeliveryPartner
-        ) {
+          const isDeliveryPartner =
+            order.deliveryPartnerId &&
+            String(order.deliveryPartnerId) ===
+              String(socket.user.id);
+
+          // -------------------------------------------
+          // AUTHORIZE
+          // -------------------------------------------
+
+          if (
+            !isCustomer &&
+            !isDeliveryPartner
+          ) {
+            console.log(
+              "🚫 Unauthorized order room access:",
+              {
+                userId:
+                  socket.user.id,
+                role:
+                  socket.user.role,
+                orderId,
+              }
+            );
+
+            return;
+          }
+
+          // -------------------------------------------
+          // JOIN ROOM
+          // -------------------------------------------
+
+          const room =
+            `order:${orderId}`;
+
+          socket.join(room);
+
           console.log(
-            "🚫 Unauthorized order room access:",
+            `📦 Socket ${socket.id} joined ${room}`
+          );
+
+          console.log(
+            "👤 Room member:",
             {
-              userId: socket.user.id,
+              userId:
+                socket.user.id,
+              role:
+                socket.user.role,
               orderId,
             }
           );
-
-          return;
+        } catch (error) {
+          console.error(
+            "❌ joinOrder error:",
+            error
+          );
         }
-
-        // ---------------------------------------------
-        // JOIN ROOM
-        // ---------------------------------------------
-
-        const room = `order:${orderId}`;
-
-        socket.join(room);
-
-        console.log(
-          `📦 Socket ${socket.id} joined ${room}`
-        );
-
-      } catch (error) {
-        console.error(
-          "❌ joinOrder error:",
-          error
-        );
       }
-    });
+    );
 
     // =================================================
     // LEAVE ORDER ROOM
     // =================================================
 
-    socket.on("leaveOrder", (orderId) => {
-      if (!orderId) {
-        return;
+    socket.on(
+      "leaveOrder",
+      (orderId) => {
+        if (!orderId) {
+          return;
+        }
+
+        const room =
+          `order:${orderId}`;
+
+        socket.leave(room);
+
+        console.log(
+          `📤 Socket ${socket.id} left ${room}`
+        );
       }
-
-      const room = `order:${orderId}`;
-
-      socket.leave(room);
-
-      console.log(
-        `📤 Socket ${socket.id} left ${room}`
-      );
-    });
+    );
 
     // =================================================
-    // DELIVERY LOCATION UPDATE
+    // DELIVERY PARTNER LOCATION
     // =================================================
     //
-    // ONLY assigned delivery partner can send location.
+    // ONLY assigned delivery partner
+    // can send delivery location.
     //
     // =================================================
 
     socket.on(
       "deliveryLocationUpdate",
       async (data) => {
+console.log("🚨 DELIVERY LOCATION EVENT RECEIVED:", {
+  socketId: socket.id,
+  userId: socket.user?.id,
+  role: socket.user?.role,
+  data,
+});
+
         try {
           const {
             orderId,
             latitude,
             longitude,
+            updatedAt,
           } = data || {};
 
           // -------------------------------------------
-          // BASIC VALIDATION
+          // VALIDATION
           // -------------------------------------------
 
           if (
             !orderId ||
-            typeof latitude !== "number" ||
-            typeof longitude !== "number"
+            typeof latitude !==
+              "number" ||
+            typeof longitude !==
+              "number"
           ) {
             console.log(
-              "❌ Invalid location update:",
+              "❌ Invalid delivery location:",
               data
             );
 
@@ -218,11 +259,14 @@ export const initializeSocket = (httpServer) => {
           // -------------------------------------------
 
           const order =
-            await Order.findById(orderId);
+            await Order.findById(
+              orderId
+            );
 
           if (!order) {
             console.log(
-              "❌ Location update: Order not found"
+              "❌ Delivery location: Order not found:",
+              orderId
             );
 
             return;
@@ -234,13 +278,16 @@ export const initializeSocket = (httpServer) => {
 
           if (
             !order.deliveryPartnerId ||
-            String(order.deliveryPartnerId) !==
+            String(
+              order.deliveryPartnerId
+            ) !==
               String(socket.user.id)
           ) {
             console.log(
-              "🚫 Unauthorized location update:",
+              "🚫 Unauthorized delivery location:",
               {
-                userId: socket.user.id,
+                userId:
+                  socket.user.id,
                 orderId,
               }
             );
@@ -249,22 +296,30 @@ export const initializeSocket = (httpServer) => {
           }
 
           // -------------------------------------------
-          // SAVE LATEST LOCATION
+          // SAVE LOCATION
           // -------------------------------------------
 
-          order.deliveryPartnerLocation = {
-            latitude,
-            longitude,
-            updatedAt: new Date(),
-          };
+          const locationTime =
+            updatedAt
+              ? new Date(updatedAt)
+              : new Date();
+
+          order.deliveryPartnerLocation =
+            {
+              latitude,
+              longitude,
+              updatedAt:
+                locationTime,
+            };
 
           await order.save();
 
           // -------------------------------------------
-          // BROADCAST TO ORDER ROOM
+          // BROADCAST
           // -------------------------------------------
 
-          const room = `order:${orderId}`;
+          const room =
+            `order:${orderId}`;
 
           io.to(room).emit(
             "deliveryLocationUpdate",
@@ -272,7 +327,8 @@ export const initializeSocket = (httpServer) => {
               orderId,
               latitude,
               longitude,
-              updatedAt: new Date(),
+              updatedAt:
+                locationTime,
             }
           );
 
@@ -284,10 +340,142 @@ export const initializeSocket = (httpServer) => {
               longitude,
             }
           );
-
         } catch (error) {
           console.error(
-            "❌ Socket location error:",
+            "❌ Delivery location socket error:",
+            error
+          );
+        }
+      }
+    );
+
+    // =================================================
+    // CUSTOMER LOCATION
+    // =================================================
+    //
+    // ONLY order customer can send
+    // customer location.
+    //
+    // =================================================
+
+    socket.on(
+      "customerLocationUpdate",
+      async (data) => {
+        try {
+          const {
+            orderId,
+            latitude,
+            longitude,
+            updatedAt,
+          } = data || {};
+
+          // -------------------------------------------
+          // VALIDATION
+          // -------------------------------------------
+
+          if (
+            !orderId ||
+            typeof latitude !==
+              "number" ||
+            typeof longitude !==
+              "number"
+          ) {
+            console.log(
+              "❌ Invalid customer location:",
+              data
+            );
+
+            return;
+          }
+
+          // -------------------------------------------
+          // FIND ORDER
+          // -------------------------------------------
+
+          const order =
+            await Order.findById(
+              orderId
+            );
+
+          if (!order) {
+            console.log(
+              "❌ Customer location: Order not found:",
+              orderId
+            );
+
+            return;
+          }
+
+          // -------------------------------------------
+          // VERIFY CUSTOMER
+          // -------------------------------------------
+
+          if (
+            String(
+              order.customerId
+            ) !==
+            String(socket.user.id)
+          ) {
+            console.log(
+              "🚫 Unauthorized customer location:",
+              {
+                userId:
+                  socket.user.id,
+                orderId,
+              }
+            );
+
+            return;
+          }
+
+          // -------------------------------------------
+          // SAVE LOCATION
+          // -------------------------------------------
+
+          const locationTime =
+            updatedAt
+              ? new Date(updatedAt)
+              : new Date();
+
+          order.customerLocation =
+            {
+              latitude,
+              longitude,
+              updatedAt:
+                locationTime,
+            };
+
+          await order.save();
+
+          // -------------------------------------------
+          // BROADCAST TO ORDER ROOM
+          // -------------------------------------------
+
+          const room =
+            `order:${orderId}`;
+
+          io.to(room).emit(
+            "customerLocationUpdate",
+            {
+              orderId,
+              latitude,
+              longitude,
+              updatedAt:
+                locationTime,
+            }
+          );
+
+          console.log(
+            "👤 Live customer location:",
+            {
+              orderId,
+              latitude,
+              longitude,
+            }
+          );
+        } catch (error) {
+          console.error(
+            "❌ Customer location socket error:",
             error
           );
         }
@@ -296,13 +484,6 @@ export const initializeSocket = (httpServer) => {
 
     // =================================================
     // SEND MESSAGE
-    // =================================================
-    //
-    // Customer <-> Delivery Partner
-    //
-    // Sender identity comes from authenticated socket.
-    // Client cannot fake another sender.
-    //
     // =================================================
 
     socket.on(
@@ -322,12 +503,10 @@ export const initializeSocket = (httpServer) => {
             return;
           }
 
-          // -------------------------------------------
-          // FIND ORDER
-          // -------------------------------------------
-
           const order =
-            await Order.findById(orderId);
+            await Order.findById(
+              orderId
+            );
 
           if (!order) {
             console.log(
@@ -338,16 +517,24 @@ export const initializeSocket = (httpServer) => {
           }
 
           // -------------------------------------------
-          // CHECK USER ACCESS
+          // CHECK CUSTOMER
           // -------------------------------------------
 
           const isCustomer =
-            String(order.customerId) ===
+            String(
+              order.customerId
+            ) ===
             String(socket.user.id);
+
+          // -------------------------------------------
+          // CHECK DELIVERY PARTNER
+          // -------------------------------------------
 
           const isDeliveryPartner =
             order.deliveryPartnerId &&
-            String(order.deliveryPartnerId) ===
+            String(
+              order.deliveryPartnerId
+            ) ===
               String(socket.user.id);
 
           if (
@@ -372,24 +559,29 @@ export const initializeSocket = (httpServer) => {
               : "customer";
 
           // -------------------------------------------
-          // MESSAGE OBJECT
+          // MESSAGE DATA
           // -------------------------------------------
 
           const messageData = {
             orderId,
-            senderId: socket.user.id,
+            senderId:
+              socket.user.id,
             senderName:
-              socket.user.name || "User",
+              socket.user.name ||
+              "User",
             senderRole,
-            message: message.trim(),
-            createdAt: new Date(),
+            message:
+              message.trim(),
+            createdAt:
+              new Date(),
           };
 
           // -------------------------------------------
           // BROADCAST
           // -------------------------------------------
 
-          const room = `order:${orderId}`;
+          const room =
+            `order:${orderId}`;
 
           io.to(room).emit(
             "receiveMessage",
@@ -400,7 +592,6 @@ export const initializeSocket = (httpServer) => {
             "💬 Message sent:",
             messageData
           );
-
         } catch (error) {
           console.error(
             "❌ Socket message error:",

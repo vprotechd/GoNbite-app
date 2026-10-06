@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.feedster.app'
+    namespace 'com.gonbite.app'
     defaultConfig {
-        applicationId 'com.feedster.app'
+        applicationId 'com.gonbite.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

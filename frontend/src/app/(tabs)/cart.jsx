@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useCart } from "../../context/CartContext";
 import api from "../../services/api";
@@ -51,6 +52,51 @@ const cartItems = Array.isArray(rawCartItems)
   const [profile, setProfile] = useState(null);
   const [isProfileLoading, setIsProfileLoading] =
     useState(true);
+    const [deliveryLocation, setDeliveryLocation] = useState(null);
+
+    useEffect(() => {
+  const loadDeliveryLocation = async () => {
+    try {
+      const saved = await AsyncStorage.getItem(
+        "gonbite_delivery_address"
+      );
+
+      if (!saved) {
+        console.log("📍 No saved delivery location found");
+        setDeliveryLocation(null);
+        return;
+      }
+
+      const data = JSON.parse(saved);
+
+      console.log("📦 CART DELIVERY LOCATION:", data);
+
+      setDeliveryLocation({
+        address: data.address || "",
+        latitude:
+          data.latitude !== undefined
+            ? Number(data.latitude)
+            : null,
+        longitude:
+          data.longitude !== undefined
+            ? Number(data.longitude)
+            : null,
+        receiverName: data.receiverName || "",
+        receiverPhone: data.receiverPhone || "",
+        landmark: data.landmark || "",
+      });
+    } catch (error) {
+      console.error(
+        "❌ Failed to load cart delivery location:",
+        error
+      );
+    } finally {
+      setIsProfileLoading(false);
+    }
+  };
+
+  loadDeliveryLocation();
+}, []);
 
   const [appliedCoupon, setAppliedCoupon] =
     useState(null);
@@ -510,42 +556,32 @@ const cartItems = Array.isArray(rawCartItems)
 
               {isProfileLoading ? (
 
-                <Text
-                  style={styles.addressText}
-                >
-                  Loading address...
-                </Text>
+  <Text style={styles.addressText}>
+    Loading address...
+  </Text>
 
-              ) : profile?.address ? (
+) : deliveryLocation?.address ? (
 
-                <Text
-                  style={styles.addressText}
-                  numberOfLines={1}
-                >
-                  {profile.address}
-                </Text>
+  <Text
+    style={styles.addressText}
+    numberOfLines={1}
+  >
+    {deliveryLocation.address}
+  </Text>
 
-              ) : (
+) : (
 
-                <TouchableOpacity
-                  onPress={() =>
-                    router.push(
-                      "/(tabs)/profile"
-                    )
-                  }
-                >
+  <TouchableOpacity
+    onPress={() =>
+      router.push("/(tabs)/profile")
+    }
+  >
+    <Text style={styles.addressActionText}>
+      Add delivery address
+    </Text>
+  </TouchableOpacity>
 
-                  <Text
-                    style={
-                      styles.addressActionText
-                    }
-                  >
-                    Add delivery address
-                  </Text>
-
-                </TouchableOpacity>
-
-              )}
+)}
 
             </View>
 

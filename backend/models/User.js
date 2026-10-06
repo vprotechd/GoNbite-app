@@ -22,6 +22,22 @@ const userSchema = new mongoose.Schema(
       minlength: 6,
     },
 
+    // ==========================================
+    // SOCIAL LOGIN
+    // ==========================================
+
+    googleId: {
+      type: String,
+      default: null,
+      sparse: true,
+    },
+
+    facebookId: {
+      type: String,
+      default: null,
+      sparse: true,
+    },
+
     phone: {
       type: String,
       default: "",
@@ -43,38 +59,35 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
+    latitude: {
+      type: Number,
+      default: null,
+    },
 
-latitude: {
-  type: Number,
-  default: null,
-},
-
-longitude: {
-  type: Number,
-  default: null,
-},
-
+    longitude: {
+      type: Number,
+      default: null,
+    },
 
     isActive: {
       type: Boolean,
       default: true,
     },
 
-
     isVerified: {
-  type: Boolean,
-  default: false,
-},
+      type: Boolean,
+      default: false,
+    },
 
-registrationOTP: {
-  type: String,
-  default: null,
-},
+    registrationOTP: {
+      type: String,
+      default: null,
+    },
 
-registrationOTPExpires: {
-  type: Date,
-  default: null,
-},
+    registrationOTPExpires: {
+      type: Date,
+      default: null,
+    },
 
     // ==========================================
     // PASSWORD RESET

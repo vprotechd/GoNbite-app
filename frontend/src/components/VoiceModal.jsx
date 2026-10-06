@@ -1,23 +1,19 @@
 import { Ionicons } from "@expo/vector-icons";
 import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent,
+    ExpoSpeechRecognitionModule,
+    useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
 import { useEffect, useState } from "react";
 import {
-  Alert,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Modal,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
-export default function VoiceModal({
-  visible,
-  onClose,
-  onOrderFound,
-}) {
+export default function VoiceModal({ visible, onClose, onOrderFound }) {
   const [isRecording, setIsRecording] = useState(false);
   const [transcribedText, setTranscribedText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -26,30 +22,29 @@ export default function VoiceModal({
   // SPEECH RECOGNITION RESULT
   // =====================================================
 
- useSpeechRecognitionEvent("result", (event) => {
-  const transcript =
-    event.results?.[0]?.transcript || "";
+  useSpeechRecognitionEvent("result", (event) => {
+    const transcript = event.results?.[0]?.transcript || "";
 
-  console.log("🎤 Transcript:", transcript);
-  console.log("🎤 Is final:", event.isFinal);
+    console.log("🎤 Transcript:", transcript);
+    console.log("🎤 Is final:", event.isFinal);
 
-  if (event.isFinal && transcript.trim()) {
-  const query = transcript
-    .trim()
-    .replace(/[.,!?;:]+/g, "")
-    .trim();
+    if (event.isFinal && transcript.trim()) {
+      const query = transcript
+        .trim()
+        .replace(/[.,!?;:]+/g, "")
+        .trim();
 
-  console.log("🎤 FINAL VOICE SEARCH:", query);
+      console.log("🎤 FINAL VOICE SEARCH:", query);
 
-  setTranscribedText(query);
-  setIsRecording(false);
-  setIsProcessing(false);
+      setTranscribedText(query);
+      setIsRecording(false);
+      setIsProcessing(false);
 
-  if (onOrderFound) {
-    onOrderFound(query);
-  }
-}
-});
+      if (onOrderFound) {
+        onOrderFound(query);
+      }
+    }
+  });
 
   // =====================================================
   // SPEECH RECOGNITION END
@@ -66,39 +61,30 @@ export default function VoiceModal({
   // =====================================================
 
   useSpeechRecognitionEvent("error", (event) => {
-    console.error(
-      "Speech recognition error:",
-      event.error,
-      event.message
-    );useSpeechRecognitionEvent("error", (event) => {
-  if (event.error === "aborted") {
-    console.log("🎤 Speech recognition stopped.");
-    setIsRecording(false);
-    return;
-  }
+    console.error("Speech recognition error:", event.error, event.message);
+    useSpeechRecognitionEvent("error", (event) => {
+      if (event.error === "aborted") {
+        console.log("🎤 Speech recognition stopped.");
+        setIsRecording(false);
+        return;
+      }
 
-  console.error(
-    "Speech recognition error:",
-    event.error,
-    event.message
-  );
+      console.error("Speech recognition error:", event.error, event.message);
 
-  setIsRecording(false);
+      setIsRecording(false);
 
-  Alert.alert(
-    "Voice Recognition Error",
-    event.message ||
-      "Unable to recognize your voice."
-  );
-});
+      Alert.alert(
+        "Voice Recognition Error",
+        event.message || "Unable to recognize your voice.",
+      );
+    });
 
     setIsRecording(false);
 
     if (event.error !== "aborted") {
       Alert.alert(
         "Voice Recognition Error",
-        event.message ||
-          "Unable to recognize your voice."
+        event.message || "Unable to recognize your voice.",
       );
     }
   });
@@ -128,18 +114,18 @@ export default function VoiceModal({
       if (!microphonePermission.granted) {
         Alert.alert(
           "Microphone Permission",
-          "Please allow microphone access to use voice ordering."
+          "Please allow microphone access to use voice ordering.",
         );
         return;
       }
 
       // Start speech recognition
       ExpoSpeechRecognitionModule.start({
-  lang: "en-IN",
-  interimResults: true,
-  continuous: false,
-  maxAlternatives: 1,
-});
+        lang: "en-IN",
+        interimResults: true,
+        continuous: false,
+        maxAlternatives: 1,
+      });
 
       setIsRecording(true);
 
@@ -147,16 +133,13 @@ export default function VoiceModal({
       //   "Listening. Please tell me what you would like to order."
       // );
     } catch (error) {
-      console.error(
-        "Failed to start voice recognition:",
-        error
-      );
+      console.error("Failed to start voice recognition:", error);
 
       setIsRecording(false);
 
       Alert.alert(
         "Voice Recognition Error",
-        "Unable to start voice recognition."
+        "Unable to start voice recognition.",
       );
     }
   };
@@ -166,27 +149,24 @@ export default function VoiceModal({
   // =====================================================
 
   const stopRecording = () => {
-  try {
-    setIsRecording(false);
+    try {
+      setIsRecording(false);
 
-    ExpoSpeechRecognitionModule.stop();
+      ExpoSpeechRecognitionModule.stop();
 
-    console.log("🛑 Stopping speech recognition...");
-  } catch (error) {
-    console.error(
-      "Failed to stop voice recognition:",
-      error
-    );
+      console.log("🛑 Stopping speech recognition...");
+    } catch (error) {
+      console.error("Failed to stop voice recognition:", error);
 
-    setIsRecording(false);
-    setIsProcessing(false);
+      setIsRecording(false);
+      setIsProcessing(false);
 
-    Alert.alert(
-      "Voice Recognition Error",
-      "Unable to stop voice recognition."
-    );
-  }
-};
+      Alert.alert(
+        "Voice Recognition Error",
+        "Unable to stop voice recognition.",
+      );
+    }
+  };
   // =====================================================
   // CLOSE MODAL
   // =====================================================
@@ -214,18 +194,11 @@ export default function VoiceModal({
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-
           <View style={styles.titleIcon}>
-            <Ionicons
-              name="mic"
-              size={22}
-              color="#081A33"
-            />
+            <Ionicons name="mic" size={22} color="#081A33" />
           </View>
 
-          <Text style={styles.modalTitle}>
-            Voice Order
-          </Text>
+          <Text style={styles.modalTitle}>Voice Order</Text>
 
           <Text style={styles.modalSubtitle}>
             Tap the mic and speak your order naturally.
@@ -234,7 +207,6 @@ export default function VoiceModal({
           {/* MICROPHONE */}
 
           <View style={styles.micContainer}>
-
             {isRecording && (
               <View style={styles.pulseRingOuter}>
                 <View style={styles.pulseRingMiddle}>
@@ -246,54 +218,38 @@ export default function VoiceModal({
             <TouchableOpacity
               style={[
                 styles.micButton,
-                isRecording &&
-                  styles.micButtonRecording,
+                isRecording && styles.micButtonRecording,
               ]}
-              onPress={
-                isRecording
-                  ? stopRecording
-                  : startRecording
-              }
+              onPress={isRecording ? stopRecording : startRecording}
               activeOpacity={0.85}
             >
               <Ionicons
-                name={
-                  isRecording
-                    ? "stop"
-                    : "mic"
-                }
+                name={isRecording ? "stop" : "mic"}
                 size={38}
                 color="#FFFFFF"
               />
             </TouchableOpacity>
-
           </View>
 
           {/* STATUS */}
 
-         <Text style={styles.statusText}>
-  {isRecording
-    ? "Listening..."
-    : isProcessing
-    ? "Processing your order..."
-    : transcribedText
-    ? "Order captured"
-    : "Tap to speak"}
-</Text>
+          <Text style={styles.statusText}>
+            {isRecording
+              ? "Listening..."
+              : isProcessing
+                ? "Processing your order..."
+                : transcribedText
+                  ? "Order captured"
+                  : "Tap to speak"}
+          </Text>
 
           {/* TRANSCRIPTION */}
 
           {transcribedText ? (
             <View style={styles.transcriptionBox}>
-              <Ionicons
-                name="chatbubble-outline"
-                size={16}
-                color="#F5B82E"
-              />
+              <Ionicons name="chatbubble-outline" size={16} color="#FF6B35" />
 
-              <Text style={styles.transcribedText}>
-                "{transcribedText}"
-              </Text>
+              <Text style={styles.transcribedText}>"{transcribedText}"</Text>
             </View>
           ) : null}
 
@@ -304,11 +260,8 @@ export default function VoiceModal({
             onPress={handleClose}
             activeOpacity={0.8}
           >
-            <Text style={styles.closeButtonText}>
-              Close
-            </Text>
+            <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
-
         </View>
       </View>
     </Modal>
@@ -341,7 +294,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,
@@ -399,14 +352,14 @@ const styles = StyleSheet.create({
     width: 85,
     height: 85,
     borderRadius: 43,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
     alignItems: "center",
     justifyContent: "center",
     elevation: 5,
   },
 
   micButtonRecording: {
-    backgroundColor: "#E53935",
+    backgroundColor: "#FF6B35",
   },
 
   statusText: {

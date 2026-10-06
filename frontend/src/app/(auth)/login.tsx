@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
+import { useGoogleLogin, useFacebookLogin } from "../../services/oauthService";
+
 import {
   ActivityIndicator,
   Alert,
@@ -20,18 +22,22 @@ import {
 
 import api from "../../services/api";
 
-// Logo is in assets/images/ at the project root
+// Logo
 const Logo = require("../../../assets/images/Logo.png");
 
 export default function LoginScreen() {
+  const googleLogin = useGoogleLogin();
+  const facebookLogin = useFacebookLogin();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // --------------------------------------------------
-  // WEB AUTOFILL FIX
+  // WEB AUTOFILL / INPUT OUTLINE FIX
   // --------------------------------------------------
+
   useEffect(() => {
     if (Platform.OS === "web") {
       const timer = setTimeout(() => {
@@ -43,6 +49,11 @@ export default function LoginScreen() {
           input.setAttribute("spellcheck", "false");
           input.setAttribute("data-lpignore", "true");
           input.setAttribute("data-form-type", "other");
+
+          // Remove browser black focus outline
+          input.style.outline = "none";
+          input.style.boxShadow = "none";
+          input.style.border = "none";
         });
       }, 100);
 
@@ -53,6 +64,7 @@ export default function LoginScreen() {
   // --------------------------------------------------
   // LOGIN
   // --------------------------------------------------
+
   const handleLogin = async () => {
     if (!email.trim()) {
       Alert.alert("Required", "Please enter your email address.");
@@ -64,6 +76,7 @@ export default function LoginScreen() {
       return;
     }
 
+    // Fixed email regex
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(email.trim())) {
@@ -113,11 +126,48 @@ export default function LoginScreen() {
   };
 
   // --------------------------------------------------
+  // GOOGLE LOGIN
+  // --------------------------------------------------
+  const handleGooglePress = async () => {
+    if (loading) return;
+    try {
+      const result = await googleLogin.promptAsync();
+      if (result?.success) {
+        router.replace("/(tabs)");
+      } else {
+        Alert.alert("Google Login", "Google login failed or was cancelled.");
+      }
+    } catch (error: any) {
+      console.error("Google Login Error:", error?.response?.data || error?.message || error);
+      Alert.alert("Google Login", "Something went wrong while logging in with Google.");
+    }
+  };
+
+  // --------------------------------------------------
+  // FACEBOOK LOGIN
+  // --------------------------------------------------
+  const handleFacebookPress = async () => {
+    if (loading) return;
+    try {
+      const result = await facebookLogin.promptAsync();
+      if (result?.success) {
+        router.replace("/(tabs)");
+      } else {
+        Alert.alert("Facebook Login", "Facebook login failed or was cancelled.");
+      }
+    } catch (error: any) {
+      console.error("Facebook Login Error:", error?.response?.data || error?.message || error);
+      Alert.alert("Facebook Login", "Something went wrong while logging in with Facebook.");
+    }
+  };
+
+  // --------------------------------------------------
   // RENDER
   // --------------------------------------------------
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.navy} />
 
       <KeyboardAvoidingView
         style={styles.container}
@@ -129,9 +179,10 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* ==========================================
+          {/* ==================================================
               HEADER
-          ========================================== */}
+          ================================================== */}
+
           <View style={styles.header}>
             <Image
               source={Logo}
@@ -146,12 +197,14 @@ export default function LoginScreen() {
             </Text>
           </View>
 
-          {/* ==========================================
-              LOGIN FORM
-          ========================================== */}
+          {/* ==================================================
+              LOGIN CARD
+          ================================================== */}
+
           <View style={styles.formWrapper}>
             <View style={styles.form}>
               {/* EMAIL */}
+
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Email Address</Text>
 
@@ -159,14 +212,14 @@ export default function LoginScreen() {
                   <Ionicons
                     name="mail-outline"
                     size={19}
-                    color="#64748B"
+                    color={COLORS.icon}
                     style={styles.inputIcon}
                   />
 
                   <TextInput
                     style={styles.input}
                     placeholder="Enter your email"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={COLORS.placeholder}
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -174,12 +227,13 @@ export default function LoginScreen() {
                     autoCorrect={false}
                     editable={!loading}
                     returnKeyType="next"
-                     showSoftInputOnFocus={true}
+                    showSoftInputOnFocus={true}
                   />
                 </View>
               </View>
 
               {/* PASSWORD */}
+
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Password</Text>
 
@@ -187,14 +241,14 @@ export default function LoginScreen() {
                   <Ionicons
                     name="lock-closed-outline"
                     size={19}
-                    color="#64748B"
+                    color={COLORS.icon}
                     style={styles.inputIcon}
                   />
 
                   <TextInput
                     style={styles.input}
                     placeholder="Enter your password"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={COLORS.placeholder}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
@@ -214,27 +268,25 @@ export default function LoginScreen() {
                     <Ionicons
                       name={showPassword ? "eye-outline" : "eye-off-outline"}
                       size={19}
-                      color="#64748B"
+                      color={COLORS.icon}
                     />
                   </TouchableOpacity>
                 </View>
               </View>
 
               {/* FORGOT PASSWORD */}
-         <TouchableOpacity
-  style={styles.forgotButton}
-  activeOpacity={0.7}
-  onPress={() => {
-    router.push("/(auth)/forgot-password");
-  }}
-  disabled={loading}
->
-  <Text style={styles.forgotText}>
-    Forgot Password?
-  </Text>
-</TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.forgotButton}
+                activeOpacity={0.7}
+                onPress={() => router.push("/(auth)/forgot-password")}
+                disabled={loading}
+              >
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+              </TouchableOpacity>
 
               {/* LOGIN BUTTON */}
+
               <TouchableOpacity
                 style={[styles.loginButton, loading && styles.disabledButton]}
                 onPress={handleLogin}
@@ -243,7 +295,7 @@ export default function LoginScreen() {
               >
                 {loading ? (
                   <View style={styles.loadingButtonContent}>
-                    <ActivityIndicator color="#0B0F14" size="small" />
+                    <ActivityIndicator color={COLORS.navy} size="small" />
 
                     <Text style={styles.loadingButtonText}>Signing In...</Text>
                   </View>
@@ -251,12 +303,17 @@ export default function LoginScreen() {
                   <>
                     <Text style={styles.loginButtonText}>Sign In</Text>
 
-                    <Ionicons name="arrow-forward" size={19} color="#0B0F14" />
+                    <Ionicons
+                      name="arrow-forward"
+                      size={19}
+                      color={COLORS.navy}
+                    />
                   </>
                 )}
               </TouchableOpacity>
 
               {/* DIVIDER */}
+
               <View style={styles.dividerContainer}>
                 <View style={styles.dividerLine} />
 
@@ -265,25 +322,27 @@ export default function LoginScreen() {
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* SOCIAL BUTTONS */}
+              {/* SOCIAL LOGIN */}
+
               <View style={styles.socialContainer}>
                 {/* GOOGLE */}
+
                 <TouchableOpacity
                   style={styles.socialButton}
                   activeOpacity={0.7}
-                  onPress={() =>
-                    Alert.alert(
-                      "Google Login",
-                      "Google login will be available soon.",
-                    )
-                  }
+                  onPress={handleGooglePress}
+                  disabled={loading}
                 >
-                  <Ionicons name="logo-google" size={19} color="#EA4335" />
+  <Image
+  source={require("../../../assets/images/google-logo.png")}
+  style={styles.googleLogo}
+/>
 
                   <Text style={styles.socialText}>Google</Text>
                 </TouchableOpacity>
 
                 {/* APPLE */}
+
                 <TouchableOpacity
                   style={styles.socialButton}
                   activeOpacity={0.7}
@@ -300,15 +359,12 @@ export default function LoginScreen() {
                 </TouchableOpacity>
 
                 {/* FACEBOOK */}
+
                 <TouchableOpacity
                   style={styles.socialButton}
                   activeOpacity={0.7}
-                  onPress={() =>
-                    Alert.alert(
-                      "Facebook Login",
-                      "Facebook login will be available soon.",
-                    )
-                  }
+                  onPress={handleFacebookPress}
+                  disabled={loading}
                 >
                   <Ionicons name="logo-facebook" size={19} color="#1877F2" />
 
@@ -317,6 +373,7 @@ export default function LoginScreen() {
               </View>
 
               {/* REGISTER */}
+
               <View style={styles.bottomRow}>
                 <Text style={styles.bottomText}>Don't have an account?</Text>
 
@@ -330,65 +387,64 @@ export default function LoginScreen() {
             </View>
           </View>
 
+          {/* ==================================================
+              PARTNER LOGIN
+          ================================================== */}
 
-          {/* PARTNER LOGIN */}
-<View style={styles.partnerSection}>
-  <View style={styles.partnerDivider}>
-    <View style={styles.dividerLine} />
-    <Text style={styles.partnerDividerText}>ARE YOU A PARTNER?</Text>
-    <View style={styles.dividerLine} />
-  </View>
+          <View style={styles.partnerSection}>
+            <View style={styles.partnerDivider}>
+              <View style={styles.dividerLine} />
 
-  {/* RESTAURANT LOGIN */}
-  <TouchableOpacity
-    style={styles.partnerButton}
-    activeOpacity={0.8}
-    onPress={() => router.push("/restaurant/login")}
-  >
-    <View style={styles.partnerIconContainer}>
-      <Ionicons name="restaurant-outline" size={22} color="#F5B82E" />
-    </View>
+              <Text style={styles.partnerDividerText}>ARE YOU A PARTNER?</Text>
 
-    <View style={styles.partnerTextContainer}>
-      <Text style={styles.partnerTitle}>Restaurant Partner</Text>
-      <Text style={styles.partnerSubtitle}>
-        Manage your restaurant and orders
-      </Text>
-    </View>
+              <View style={styles.dividerLine} />
+            </View>
 
-    <Ionicons
-      name="chevron-forward"
-      size={20}
-      color="#64748B"
-    />
-  </TouchableOpacity>
+            {/* RESTAURANT */}
 
-  {/* DELIVERY LOGIN */}
-  <TouchableOpacity
-    style={styles.partnerButton}
-    activeOpacity={0.8}
-    onPress={() => router.push("/delivery/login")}
-  >
-    <View style={styles.partnerIconContainer}>
-      <Ionicons name="bicycle-outline" size={22} color="#F5B82E" />
-    </View>
+            <TouchableOpacity
+              style={styles.partnerButton}
+              activeOpacity={0.8}
+              onPress={() => router.push("/restaurant/login")}
+            >
+              
 
-    <View style={styles.partnerTextContainer}>
-      <Text style={styles.partnerTitle}>Delivery Partner</Text>
-      <Text style={styles.partnerSubtitle}>
-        Sign in and start delivering orders
-      </Text>
-    </View>
+              <View style={styles.partnerTextContainer}>
+                <Text style={styles.partnerTitle}>Restaurant Partner</Text>
 
-    <Ionicons
-      name="chevron-forward"
-      size={20}
-      color="#64748B"
-    />
-  </TouchableOpacity>
-</View>
+                <Text style={styles.partnerSubtitle}>
+                  Manage your restaurant and orders
+                </Text>
+              </View>
 
-          {/* FOOTER */}
+              <Ionicons name="chevron-forward" size={20} color={COLORS.icon} />
+            </TouchableOpacity>
+
+            {/* DELIVERY */}
+
+            <TouchableOpacity
+              style={styles.partnerButton}
+              activeOpacity={0.8}
+              onPress={() => router.push("/delivery/login")}
+            >
+            
+
+              <View style={styles.partnerTextContainer}>
+                <Text style={styles.partnerTitle}>Delivery Partner</Text>
+
+                <Text style={styles.partnerSubtitle}>
+                  Sign in and start delivering orders
+                </Text>
+              </View>
+
+              <Ionicons name="chevron-forward" size={20} color={COLORS.icon} />
+            </TouchableOpacity>
+          </View>
+
+          {/* ==================================================
+              FOOTER
+          ================================================== */}
+
           <View style={styles.footer}>
             <View style={styles.footerLine} />
 
@@ -396,7 +452,7 @@ export default function LoginScreen() {
               <Ionicons
                 name="shield-checkmark-outline"
                 size={14}
-                color="#64748B"
+                color={COLORS.icon}
               />
 
               <Text style={styles.secureText}>Secure & private login</Text>
@@ -408,37 +464,65 @@ export default function LoginScreen() {
   );
 }
 
+// ==========================================================
+// COLORS
+// ==========================================================
+
+const COLORS = {
+  navy: "#081A33",
+  navyLight: "#183050",
+
+  orange: "#FF8500",
+
+  white: "#FFFFFF",
+  black: "#0B0F14",
+
+  inputBackground: "#F8FAFC",
+  inputBorder: "#E2E8F0",
+
+  icon: "#64748B",
+  placeholder: "#94A3B8",
+
+  divider: "#E2E6EB",
+};
+
+// ==========================================================
+// STYLES
+// ==========================================================
+
 const styles = StyleSheet.create({
-  // ==========================================
+  // ========================================================
   // MAIN
-  // ==========================================
+  // ========================================================
 
   safeArea: {
     flex: 1,
-    backgroundColor: "#081A33",
+    backgroundColor: COLORS.navy,
   },
 
   container: {
     flex: 1,
-    backgroundColor: "#081A33",
+    backgroundColor: COLORS.navy,
   },
 
   scrollContent: {
     flexGrow: 1,
+    width: "100%",
     paddingHorizontal: 20,
     paddingTop: 22,
     paddingBottom: 35,
     alignItems: "center",
   },
 
-  // ==========================================
+  // ========================================================
   // HEADER
-  // ==========================================
+  // ========================================================
 
   header: {
+    width: "100%",
+    maxWidth: 420,
     alignItems: "center",
     marginBottom: 26,
-    width: "100%",
   },
 
   logoImage: {
@@ -450,21 +534,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#FFFFFF",
+    color: COLORS.white,
     textAlign: "center",
     letterSpacing: 0.2,
   },
 
   subtitle: {
     fontSize: 14,
-    color: "#94A3B8",
+    color: COLORS.placeholder,
     textAlign: "center",
     marginTop: 6,
   },
 
-  // ==========================================
+  // ========================================================
   // FORM
-  // ==========================================
+  // ========================================================
 
   formWrapper: {
     width: "100%",
@@ -472,8 +556,10 @@ const styles = StyleSheet.create({
   },
 
   form: {
-    backgroundColor: "#FFFFFF",
+    width: "100%",
+    backgroundColor: COLORS.white,
     borderRadius: 22,
+
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 24,
@@ -485,12 +571,13 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.16,
     shadowRadius: 14,
+
     elevation: 9,
   },
 
-  // ==========================================
+  // ========================================================
   // INPUTS
-  // ==========================================
+  // ========================================================
 
   inputContainer: {
     marginBottom: 17,
@@ -499,20 +586,26 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#0B0F14",
+    color: COLORS.black,
     marginBottom: 7,
     marginLeft: 2,
   },
 
   inputWrapper: {
+    height: 50,
+
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+
+    backgroundColor: COLORS.inputBackground,
+
+    // Clean subtle border — NOT black
     borderWidth: 1,
-    borderColor: "#E2E6EB",
+    borderColor: COLORS.inputBorder,
+
     borderRadius: 12,
+
     paddingHorizontal: 14,
-    height: 50,
   },
 
   inputIcon: {
@@ -521,9 +614,22 @@ const styles = StyleSheet.create({
 
   input: {
     flex: 1,
+
+    height: "100%",
+
     fontSize: 14,
-    color: "#0B0F14",
+    color: COLORS.black,
+
     paddingVertical: 0,
+
+    // Important for React Native Web:
+    // removes browser black focus outline
+    outlineStyle: "none" as any,
+
+    borderWidth: 0,
+    borderColor: "transparent",
+
+    backgroundColor: "transparent",
   },
 
   eyeIcon: {
@@ -531,34 +637,41 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
 
-  // ==========================================
+  // ========================================================
   // FORGOT PASSWORD
-  // ==========================================
+  // ========================================================
 
   forgotButton: {
     alignSelf: "flex-end",
+
     marginTop: -4,
     marginBottom: 12,
+
     paddingVertical: 4,
   },
 
   forgotText: {
-    color: "#F5B82E",
+    color: COLORS.orange,
     fontSize: 13,
     fontWeight: "700",
   },
 
-  // ==========================================
+  // ========================================================
   // LOGIN BUTTON
-  // ==========================================
+  // ========================================================
 
   loginButton: {
     height: 52,
-    backgroundColor: "#F5B82E",
+
+    backgroundColor: COLORS.orange,
+
     borderRadius: 13,
+
     justifyContent: "center",
     alignItems: "center",
+
     marginTop: 4,
+
     flexDirection: "row",
     gap: 8,
   },
@@ -568,7 +681,7 @@ const styles = StyleSheet.create({
   },
 
   loginButtonText: {
-    color: "#0B0F14",
+    color: COLORS.navy,
     fontSize: 16,
     fontWeight: "800",
   },
@@ -580,14 +693,14 @@ const styles = StyleSheet.create({
   },
 
   loadingButtonText: {
-    color: "#0B0F14",
+    color: COLORS.navy,
     fontSize: 15,
     fontWeight: "700",
   },
 
-  // ==========================================
+  // ========================================================
   // DIVIDER
-  // ==========================================
+  // ========================================================
 
   dividerContainer: {
     flexDirection: "row",
@@ -598,21 +711,22 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#E2E6EB",
+    backgroundColor: COLORS.divider,
   },
 
   dividerText: {
     paddingHorizontal: 12,
-    color: "#64748B",
+    color: COLORS.icon,
     fontSize: 12,
     fontWeight: "500",
   },
 
-  // ==========================================
+  // ========================================================
   // SOCIAL BUTTONS
-  // ==========================================
+  // ========================================================
 
   socialContainer: {
+    width: "100%",
     flexDirection: "row",
     justifyContent: "center",
     gap: 9,
@@ -620,133 +734,168 @@ const styles = StyleSheet.create({
 
   socialButton: {
     flex: 1,
+
     minHeight: 42,
+
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+
     paddingHorizontal: 7,
+
     borderRadius: 11,
-    backgroundColor: "#F8FAFC",
+
+    backgroundColor: COLORS.inputBackground,
+
     borderWidth: 1,
-    borderColor: "#E2E6EB",
+    borderColor: COLORS.inputBorder,
+
     gap: 6,
   },
 
   socialText: {
-    color: "#0B0F14",
+    color: COLORS.black,
     fontSize: 12,
     fontWeight: "600",
   },
 
-  // ==========================================
+  // ========================================================
   // REGISTER LINK
-  // ==========================================
+  // ========================================================
 
   bottomRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+
     marginTop: 20,
   },
 
   bottomText: {
-    color: "#64748B",
+    color: COLORS.icon,
     fontSize: 13,
   },
 
   link: {
-    color: "#F5B82E",
+    color: COLORS.orange,
     fontSize: 13,
     fontWeight: "800",
   },
 
+  // ========================================================
+  // PARTNER LOGIN
+  // ========================================================
 
+  partnerSection: {
+    width: "100%",
+    maxWidth: 420,
 
-  // ==========================================
-// PARTNER LOGIN
-// ==========================================
+    marginTop: 24,
+  },
 
-partnerSection: {
-  marginTop: 24,
-},
+  partnerDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+  },
 
-partnerDivider: {
-  flexDirection: "row",
-  alignItems: "center",
-  marginBottom: 14,
-},
+  partnerDividerText: {
+    paddingHorizontal: 10,
 
-partnerDividerText: {
-  paddingHorizontal: 10,
-  fontSize: 10,
-  fontWeight: "800",
-  color: "#94A3B8",
-  letterSpacing: 0.8,
-},
+    fontSize: 10,
+    fontWeight: "800",
 
-partnerButton: {
-  flexDirection: "row",
-  alignItems: "center",
-  backgroundColor: "#F8FAFC",
-  borderWidth: 1,
-  borderColor: "#E2E6EB",
-  borderRadius: 14,
-  padding: 12,
-  marginBottom: 10,
-},
+    color: COLORS.placeholder,
 
-partnerIconContainer: {
-  width: 42,
-  height: 42,
-  borderRadius: 12,
-  backgroundColor: "#081A33",
-  justifyContent: "center",
-  alignItems: "center",
-  marginRight: 12,
-},
+    letterSpacing: 0.8,
+  },
 
-partnerTextContainer: {
-  flex: 1,
-},
+  partnerButton: {
+    width: "100%",
 
-partnerTitle: {
-  fontSize: 14,
-  fontWeight: "800",
-  color: "#0B0F14",
-},
+    flexDirection: "row",
+    alignItems: "center",
 
-partnerSubtitle: {
-  fontSize: 11,
-  color: "#64748B",
-  marginTop: 3,
-},
+    backgroundColor: COLORS.inputBackground,
 
-  // ==========================================
+    borderWidth: 1,
+    borderColor: COLORS.inputBorder,
+
+    borderRadius: 14,
+
+    padding: 12,
+
+    marginBottom: 10,
+  },
+
+  partnerIconContainer: {
+    width: 42,
+    height: 42,
+
+    borderRadius: 12,
+
+    backgroundColor: COLORS.navy,
+
+    justifyContent: "center",
+    alignItems: "center",
+
+    marginRight: 12,
+  },
+
+  partnerTextContainer: {
+    flex: 1,
+  },
+
+  partnerTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: COLORS.black,
+  },
+
+  partnerSubtitle: {
+    fontSize: 11,
+    color: COLORS.icon,
+    marginTop: 3,
+  },
+
+  // ========================================================
   // FOOTER
-  // ==========================================
+  // ========================================================
 
   footer: {
     width: "100%",
     maxWidth: 420,
+
     alignItems: "center",
+
     marginTop: 22,
   },
 
   footerLine: {
     width: "100%",
+
     height: 1,
-    backgroundColor: "#183050",
+
+    backgroundColor: COLORS.navyLight,
+
     marginBottom: 12,
   },
 
   secureRow: {
     flexDirection: "row",
     alignItems: "center",
+
     gap: 5,
   },
 
   secureText: {
-    color: "#64748B",
+    color: COLORS.icon,
     fontSize: 11,
   },
+
+  googleLogo: {
+  width: 19,
+  height: 19,
+  resizeMode: "contain",
+},
 });

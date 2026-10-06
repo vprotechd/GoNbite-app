@@ -1,3 +1,5 @@
+import { OAuth2Client } from "google-auth-library";
+
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -7,7 +9,9 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { Resend } from "resend";
 
+
 const resend = new Resend(process.env.RESEND_API_KEY);
+const googleClient = new OAuth2Client();
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -555,6 +559,313 @@ export const changePassword = async (req, res) => {
     res.status(500).json({
       message:
         "Failed to change password",
+    });
+  }
+};
+
+// =====================================================
+// GOOGLE OAUTH LOGIN
+// =====================================================
+
+export const googleOAuthLogin = async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+
+    if (!accessToken) {
+      return res.status(400).json({
+        message: "Google access token is required",
+      });
+    }
+
+    // -----------------------------------------------
+    // Get Google user information using access token
+    // -----------------------------------------------
+
+    const googleResponse = await fetch(
+      "https://www.googleapis.com/oauth2/v3/userinfo",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    if (!googleResponse.ok) {
+      return res.status(401).json({
+        message: "Invalid Google access token",
+      });
+    }
+
+    const googleUser = await googleResponse.json();
+
+    if (
+      !googleUser.sub ||
+      !googleUser.email
+    ) {
+      return res.status(401).json({
+        message: "Unable to verify Google account",
+      });
+    }
+
+    const googleId = googleUser.sub;
+    const email = googleUser.email
+      .trim()
+      .toLowerCase();
+
+    const name =
+      googleUser.name?.trim() ||
+      email.split("@")[0];
+
+    // -----------------------------------------------
+    // First find by Google ID
+    // -----------------------------------------------
+
+    let user = await User.findOne({
+      googleId,
+    });
+
+    // -----------------------------------------------
+    // If not found, check existing email
+    // -----------------------------------------------
+
+    if (!user) {
+      user = await User.findOne({
+        email,
+      });
+
+      if (user) {
+        // Link Google account to existing account
+        user.googleId = googleId;
+
+        // Google has verified the email
+        user.isVerified = true;
+
+        await user.save();
+      }
+    }
+
+    // -----------------------------------------------
+    // Create new user
+    // -----------------------------------------------
+
+    if (!user) {
+      const randomPassword =
+        crypto.randomBytes(32).toString("hex");
+
+      const hashedPassword =
+        await bcrypt.hash(randomPassword, 10);
+
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        googleId,
+        phone: "",
+        address: "",
+        role: "customer",
+        isVerified: true,
+      });
+    }
+
+    // -----------------------------------------------
+    // Check account status
+    // -----------------------------------------------
+
+    if (user.isActive === false) {
+      return res.status(403).json({
+        message: "Your account is inactive",
+      });
+    }
+
+    // -----------------------------------------------
+    // Generate GoNbite JWT
+    // -----------------------------------------------
+
+    const token = generateToken(user);
+
+    return res.status(200).json({
+      message: "Google login successful",
+      token,
+
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        address: user.address,
+        latitude: user.latitude,
+        longitude: user.longitude,
+        role: user.role,
+      },
+    });
+
+  } catch (error) {
+    console.error(
+      "GOOGLE OAUTH ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      message: "Google login failed",
+    });
+  }
+};
+
+
+// =====================================================
+// FACEBOOK OAUTH LOGIN
+// =====================================================
+
+export const facebookOAuthLogin = async (
+  req,
+  res
+) => {
+  try {
+    const { accessToken } = req.body;
+
+    if (!accessToken) {
+      return res.status(400).json({
+        message:
+          "Facebook access token is required",
+      });
+    }
+
+    // -----------------------------------------------
+    // Verify token + get Facebook user
+    // -----------------------------------------------
+
+    const facebookResponse = await fetch(
+      "https://graph.facebook.com/me?fields=id,name,email,picture&access_token=" +
+        encodeURIComponent(accessToken)
+    );
+
+    if (!facebookResponse.ok) {
+      return res.status(401).json({
+        message:
+          "Invalid Facebook access token",
+      });
+    }
+
+    const facebookUser =
+      await facebookResponse.json();
+
+    if (
+      !facebookUser.id ||
+      !facebookUser.email
+    ) {
+      return res.status(400).json({
+        message:
+          "Facebook account did not provide a valid email",
+      });
+    }
+
+    const facebookId =
+      facebookUser.id;
+
+    const email =
+      facebookUser.email
+        .trim()
+        .toLowerCase();
+
+    const name =
+      facebookUser.name?.trim() ||
+      email.split("@")[0];
+
+    // -----------------------------------------------
+    // Find by Facebook ID
+    // -----------------------------------------------
+
+    let user = await User.findOne({
+      facebookId,
+    });
+
+    // -----------------------------------------------
+    // Existing email account
+    // -----------------------------------------------
+
+    if (!user) {
+      user = await User.findOne({
+        email,
+      });
+
+      if (user) {
+        user.facebookId =
+          facebookId;
+
+        user.isVerified = true;
+
+        await user.save();
+      }
+    }
+
+    // -----------------------------------------------
+    // Create new user
+    // -----------------------------------------------
+
+    if (!user) {
+      const randomPassword =
+        crypto.randomBytes(32).toString("hex");
+
+      const hashedPassword =
+        await bcrypt.hash(
+          randomPassword,
+          10
+        );
+
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        facebookId,
+        phone: "",
+        address: "",
+        role: "customer",
+        isVerified: true,
+      });
+    }
+
+    // -----------------------------------------------
+    // Account status
+    // -----------------------------------------------
+
+    if (user.isActive === false) {
+      return res.status(403).json({
+        message: "Your account is inactive",
+      });
+    }
+
+    // -----------------------------------------------
+    // Generate GoNbite JWT
+    // -----------------------------------------------
+
+    const token = generateToken(user);
+
+    return res.status(200).json({
+      message:
+        "Facebook login successful",
+
+      token,
+
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        address: user.address,
+        latitude: user.latitude,
+        longitude: user.longitude,
+        role: user.role,
+      },
+    });
+
+  } catch (error) {
+    console.error(
+      "FACEBOOK OAUTH ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      message: "Facebook login failed",
     });
   }
 };

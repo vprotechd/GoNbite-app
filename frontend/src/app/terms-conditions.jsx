@@ -1,14 +1,13 @@
-
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import { useTheme } from "../context/ThemeContext";
@@ -163,11 +162,7 @@ export default function TermsConditionsScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Ionicons
-              name="arrow-back"
-              size={21}
-              color={theme.primary}
-            />
+            <Ionicons name="arrow-back" size={21} color={theme.primary} />
           </TouchableOpacity>
 
           <Text
@@ -209,11 +204,7 @@ export default function TermsConditionsScreen() {
                 },
               ]}
             >
-              <Ionicons
-                name="document-text-outline"
-                size={25}
-                color="#F5B82E"
-              />
+              <Ionicons name="document-text-outline" size={25} color="#FF8500" />
             </View>
 
             <Text
@@ -342,11 +333,7 @@ export default function TermsConditionsScreen() {
             </Text>
 
             <View style={styles.emailRow}>
-              <Ionicons
-                name="mail-outline"
-                size={17}
-                color="#F5B82E"
-              />
+              <Ionicons name="mail-outline" size={17} color="#FF8500" />
 
               <Text
                 style={[
@@ -371,11 +358,7 @@ export default function TermsConditionsScreen() {
               },
             ]}
           >
-            <Ionicons
-              name="checkmark-circle-outline"
-              size={22}
-              color="#F5B82E"
-            />
+            <Ionicons name="checkmark-circle-outline" size={22} color="#FF8500" />
 
             <View style={styles.acceptanceContent}>
               <Text
@@ -610,4 +593,3 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
 });
-

@@ -12,11 +12,12 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, router } from "expo-router";
 
 // ======================================================
 // API URL
@@ -129,6 +130,15 @@ export default function AdminOffers() {
   const [editingOffer, setEditingOffer] = useState(null);
 
   const [form, setForm] = useState(emptyForm);
+
+  // ======================================================
+  // RESPONSIVE DIMENSIONS
+  // ======================================================
+
+  const { width } = useWindowDimensions();
+
+  const isTablet = width >= 768;
+  const isDesktop = width >= 1100;
 
   // ======================================================
   // GET ADMIN TOKEN
@@ -445,10 +455,6 @@ export default function AdminOffers() {
   };
 
   // ======================================================
-  // TOGGLE STATUS
-  // ======================================================
-
-  // ======================================================
   // TOGGLE OFFER STATUS
   // ======================================================
 
@@ -509,7 +515,6 @@ export default function AdminOffers() {
         );
       }
 
-      // Update UI immediately
       setOffers((previousOffers) =>
         previousOffers.map((item) =>
           item._id === offer._id
@@ -536,6 +541,7 @@ export default function AdminOffers() {
       setSaving(false);
     }
   };
+
   // ======================================================
   // CONFIRM TOGGLE
   // ======================================================
@@ -622,7 +628,6 @@ export default function AdminOffers() {
         );
       }
 
-      // Remove immediately from UI
       setOffers((previousOffers) =>
         previousOffers.filter((item) => item._id !== offer._id),
       );
@@ -636,10 +641,6 @@ export default function AdminOffers() {
       setSaving(false);
     }
   };
-
-  // ======================================================
-  // CONFIRM DELETE
-  // ======================================================
 
   // ======================================================
   // CONFIRM DELETE
@@ -699,7 +700,13 @@ export default function AdminOffers() {
     const status = getOfferStatus(item);
 
     return (
-      <View style={styles.offerCard}>
+      <View
+        style={[
+          styles.offerCard,
+          isTablet && styles.offerCardTablet,
+          isDesktop && styles.offerCardDesktop,
+        ]}
+      >
         <View style={styles.offerHeader}>
           <View style={styles.offerTitleContainer}>
             <Text style={styles.offerName}>{item.name}</Text>
@@ -710,13 +717,9 @@ export default function AdminOffers() {
           <View
             style={[
               styles.statusBadge,
-
               status === "ACTIVE" && styles.activeBadge,
-
               status === "INACTIVE" && styles.inactiveBadge,
-
               status === "EXPIRED" && styles.expiredBadge,
-
               status === "UPCOMING" && styles.upcomingBadge,
             ]}
           >
@@ -725,7 +728,7 @@ export default function AdminOffers() {
         </View>
 
         <View style={styles.codeBox}>
-          <Ionicons name="pricetag-outline" size={18} color="#F5B82E" />
+          <Ionicons name="pricetag-outline" size={18} color="#FF6B35" />
 
           <Text style={styles.codeText}>{item.code}</Text>
         </View>
@@ -773,58 +776,52 @@ export default function AdminOffers() {
           </TouchableOpacity>
 
           {/* ACTIVATE / DEACTIVATE */}
-        <TouchableOpacity
-  style={[
-    styles.statusButton,
-    item.isActive
-      ? styles.deactivateButton
-      : styles.activateButton,
-  ]}
-  onPress={() => {
-    console.log("STATUS BUTTON CLICKED");
-    console.log("OFFER:", item._id);
-    console.log("IS ACTIVE:", item.isActive);
+          <TouchableOpacity
+            style={[
+              styles.statusButton,
+              item.isActive
+                ? styles.deactivateButton
+                : styles.activateButton,
+            ]}
+            onPress={() => {
+              console.log("STATUS BUTTON CLICKED");
+              console.log("OFFER:", item._id);
+              console.log("IS ACTIVE:", item.isActive);
 
-    toggleStatus(item);
-  }}
-  disabled={saving}
->
-  <Ionicons
-    name={
-      item.isActive
-        ? "pause-circle-outline"
-        : "play-circle-outline"
-    }
-    size={18}
-    color="#FFFFFF"
-  />
+              toggleStatus(item);
+            }}
+            disabled={saving}
+          >
+            <Ionicons
+              name={
+                item.isActive
+                  ? "pause-circle-outline"
+                  : "play-circle-outline"
+              }
+              size={18}
+              color="#FFFFFF"
+            />
 
-  <Text style={styles.actionText}>
-    {item.isActive ? "Deactivate" : "Activate"}
-  </Text>
-</TouchableOpacity>
+            <Text style={styles.actionText}>
+              {item.isActive ? "Deactivate" : "Activate"}
+            </Text>
+          </TouchableOpacity>
+
           {/* DELETE */}
           <TouchableOpacity
-  style={styles.deleteButton}
-  onPress={() => {
-    console.log("DELETE BUTTON CLICKED");
-    console.log("OFFER:", item._id);
+            style={styles.deleteButton}
+            onPress={() => {
+              console.log("DELETE BUTTON CLICKED");
+              console.log("OFFER:", item._id);
 
-    deleteOffer(item);
-  }}
-  disabled={saving}
->
-  <Ionicons
-    name="trash-outline"
-    size={18}
-    color="#FFFFFF"
-  />
+              deleteOffer(item);
+            }}
+            disabled={saving}
+          >
+            <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
 
-  <Text style={styles.actionText}>
-    Delete
-  </Text>
-</TouchableOpacity>
-
+            <Text style={styles.actionText}>Delete</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -838,36 +835,92 @@ export default function AdminOffers() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#081A33" />
 
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Festival Offers</Text>
+      {/* ================================================= */}
+      {/* RESPONSIVE HEADER */}
+      {/* ================================================= */}
 
-          <Text style={styles.headerSubtitle}>
-            Manage special & seasonal offers
-          </Text>
+      <View
+        style={[
+          styles.header,
+          isTablet && styles.headerTablet,
+          isDesktop && styles.headerDesktop,
+        ]}
+      >
+        <View style={styles.headerLeft}>
+          {/* BACK BUTTON */}
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons
+              name="arrow-back"
+              size={23}
+              color="#FFFFFF"
+            />
+          </TouchableOpacity>
+
+          <View style={styles.headerTextContainer}>
+            <Text
+              style={[
+                styles.headerTitle,
+                isTablet && styles.headerTitleTablet,
+              ]}
+              numberOfLines={1}
+            >
+              Festival Offers
+            </Text>
+
+            <Text style={styles.headerSubtitle}>
+              Manage special & seasonal offers
+            </Text>
+          </View>
         </View>
 
-        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+        <TouchableOpacity
+          style={[
+            styles.addButton,
+            isTablet && styles.addButtonTablet,
+          ]}
+          onPress={openAddModal}
+        >
           <Ionicons name="add" size={24} color="#0B0F14" />
         </TouchableOpacity>
       </View>
 
       {loading ? (
         <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#F5B82E" />
+          <ActivityIndicator size="large" color="#2563EB" />
 
           <Text style={styles.loadingText}>Loading offers...</Text>
         </View>
       ) : (
         <FlatList
+          key={isTablet ? "tablet-list" : "mobile-list"}
           data={offers}
           keyExtractor={(item) => item._id}
           renderItem={renderOffer}
-          contentContainerStyle={styles.list}
+          numColumns={isTablet ? 2 : 1}
+          columnWrapperStyle={
+            isTablet ? styles.columnWrapper : undefined
+          }
+          contentContainerStyle={[
+            styles.list,
+            isTablet && styles.listTablet,
+            isDesktop && styles.listDesktop,
+          ]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="pricetags-outline" size={60} color="#94A3B8" />
+            <View
+              style={[
+                styles.emptyContainer,
+                isTablet && styles.emptyContainerTablet,
+              ]}
+            >
+              <Ionicons
+                name="pricetags-outline"
+                size={60}
+                color="#94A3B8"
+              />
 
               <Text style={styles.emptyTitle}>No Offers Found</Text>
 
@@ -879,7 +932,9 @@ export default function AdminOffers() {
                 style={styles.emptyButton}
                 onPress={openAddModal}
               >
-                <Text style={styles.emptyButtonText}>Create Offer</Text>
+                <Text style={styles.emptyButtonText}>
+                  Create Offer
+                </Text>
               </TouchableOpacity>
             </View>
           }
@@ -896,191 +951,288 @@ export default function AdminOffers() {
         onRequestClose={closeModal}
       >
         <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {editingOffer ? "Edit Offer" : "Create Offer"}
-            </Text>
+          <View
+            style={[
+              styles.modalHeader,
+              isTablet && styles.modalHeaderTablet,
+            ]}
+          >
+            <View style={styles.modalHeaderLeft}>
+              {/* BACK BUTTON */}
+              <TouchableOpacity
+                style={styles.modalBackButton}
+                onPress={closeModal}
+                disabled={saving}
+              >
+                <Ionicons
+                  name="arrow-back"
+                  size={23}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
 
-            <TouchableOpacity onPress={closeModal} disabled={saving}>
-              <Ionicons name="close" size={28} color="#FFFFFF" />
+              <Text
+                style={[
+                  styles.modalTitle,
+                  isTablet && styles.modalTitleTablet,
+                ]}
+                numberOfLines={1}
+              >
+                {editingOffer ? "Edit Offer" : "Create Offer"}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={closeModal}
+              disabled={saving}
+              style={styles.closeButton}
+            >
+              <Ionicons
+                name="close"
+                size={28}
+                color="#FFFFFF"
+              />
             </TouchableOpacity>
           </View>
 
           <ScrollView
-            contentContainerStyle={styles.formContainer}
+            contentContainerStyle={[
+              styles.formContainer,
+              isTablet && styles.formContainerTablet,
+              isDesktop && styles.formContainerDesktop,
+            ]}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.label}>Offer Name *</Text>
+            <View
+              style={[
+                styles.formCard,
+                isTablet && styles.formCardTablet,
+              ]}
+            >
+              <Text style={styles.label}>Offer Name *</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Example: Diwali Special"
-              placeholderTextColor="#94A3B8"
-              value={form.name}
-              onChangeText={(value) => updateForm("name", value)}
-            />
+              <TextInput
+                style={styles.input}
+                placeholder="Example: Diwali Special"
+                placeholderTextColor="#94A3B8"
+                value={form.name}
+                onChangeText={(value) =>
+                  updateForm("name", value)
+                }
+              />
 
-            <Text style={styles.label}>Festival / Occasion *</Text>
+              <Text style={styles.label}>
+                Festival / Occasion *
+              </Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Example: Diwali"
-              placeholderTextColor="#94A3B8"
-              value={form.festival}
-              onChangeText={(value) => updateForm("festival", value)}
-            />
+              <TextInput
+                style={styles.input}
+                placeholder="Example: Diwali"
+                placeholderTextColor="#94A3B8"
+                value={form.festival}
+                onChangeText={(value) =>
+                  updateForm("festival", value)
+                }
+              />
 
-            <Text style={styles.label}>Offer Code *</Text>
+              <Text style={styles.label}>Offer Code *</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Example: DIWALI20"
-              placeholderTextColor="#94A3B8"
-              autoCapitalize="characters"
-              value={form.code}
-              onChangeText={(value) => updateForm("code", value.toUpperCase())}
-            />
+              <TextInput
+                style={styles.input}
+                placeholder="Example: DIWALI20"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="characters"
+                value={form.code}
+                onChangeText={(value) =>
+                  updateForm("code", value.toUpperCase())
+                }
+              />
 
-            <Text style={styles.label}>Discount Type *</Text>
+              <Text style={styles.label}>Discount Type *</Text>
 
-            <View style={styles.typeRow}>
-              <TouchableOpacity
-                style={[
-                  styles.typeButton,
-
-                  form.discountType === "percentage" && styles.selectedType,
-                ]}
-                onPress={() => updateForm("discountType", "percentage")}
-              >
-                <Text
+              <View style={styles.typeRow}>
+                <TouchableOpacity
                   style={[
-                    styles.typeText,
-
+                    styles.typeButton,
                     form.discountType === "percentage" &&
-                      styles.selectedTypeText,
+                      styles.selectedType,
                   ]}
+                  onPress={() =>
+                    updateForm(
+                      "discountType",
+                      "percentage",
+                    )
+                  }
                 >
-                  Percentage %
-                </Text>
-              </TouchableOpacity>
+                  <Text
+                    style={[
+                      styles.typeText,
+                      form.discountType === "percentage" &&
+                        styles.selectedTypeText,
+                    ]}
+                  >
+                    Percentage %
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.typeButton,
+                    form.discountType === "fixed" &&
+                      styles.selectedType,
+                  ]}
+                  onPress={() =>
+                    updateForm("discountType", "fixed")
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.typeText,
+                      form.discountType === "fixed" &&
+                        styles.selectedTypeText,
+                    ]}
+                  >
+                    Fixed ₹
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.label}>
+                Discount Value *
+              </Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder={
+                  form.discountType === "percentage"
+                    ? "Example: 20"
+                    : "Example: 100"
+                }
+                placeholderTextColor="#94A3B8"
+                keyboardType="numeric"
+                value={form.discountValue}
+                onChangeText={(value) =>
+                  updateForm(
+                    "discountValue",
+                    value.replace(/[^0-9.]/g, ""),
+                  )
+                }
+              />
+
+              <Text style={styles.label}>
+                Minimum Order
+              </Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Example: 299"
+                placeholderTextColor="#94A3B8"
+                keyboardType="numeric"
+                value={form.minimumOrder}
+                onChangeText={(value) =>
+                  updateForm(
+                    "minimumOrder",
+                    value.replace(/[^0-9]/g, ""),
+                  )
+                }
+              />
+
+              <Text style={styles.label}>
+                Maximum Discount
+              </Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Example: 150"
+                placeholderTextColor="#94A3B8"
+                keyboardType="numeric"
+                value={form.maximumDiscount}
+                onChangeText={(value) =>
+                  updateForm(
+                    "maximumDiscount",
+                    value.replace(/[^0-9]/g, ""),
+                  )
+                }
+              />
+
+              <Text style={styles.label}>Start Date *</Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#94A3B8"
+                value={form.startDate}
+                onChangeText={(value) =>
+                  updateForm("startDate", value)
+                }
+              />
+
+              <Text style={styles.dateHint}>
+                Example: 2026-10-20
+              </Text>
+
+              <Text style={styles.label}>End Date *</Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#94A3B8"
+                value={form.endDate}
+                onChangeText={(value) =>
+                  updateForm("endDate", value)
+                }
+              />
+
+              <Text style={styles.dateHint}>
+                Example: 2026-10-25
+              </Text>
+
+              <Text style={styles.label}>Description</Text>
+
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.textArea,
+                ]}
+                placeholder="Describe this special offer..."
+                placeholderTextColor="#94A3B8"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                value={form.description}
+                onChangeText={(value) =>
+                  updateForm("description", value)
+                }
+              />
 
               <TouchableOpacity
                 style={[
-                  styles.typeButton,
-
-                  form.discountType === "fixed" && styles.selectedType,
+                  styles.saveButton,
+                  saving && styles.disabledButton,
                 ]}
-                onPress={() => updateForm("discountType", "fixed")}
+                onPress={saveOffer}
+                disabled={saving}
               >
-                <Text
-                  style={[
-                    styles.typeText,
+                {saving ? (
+                  <ActivityIndicator color="#0B0F14" />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="save-outline"
+                      size={20}
+                      color="#0B0F14"
+                    />
 
-                    form.discountType === "fixed" && styles.selectedTypeText,
-                  ]}
-                >
-                  Fixed ₹
-                </Text>
+                    <Text style={styles.saveButtonText}>
+                      {editingOffer
+                        ? "Update Offer"
+                        : "Create Offer"}
+                    </Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
-
-            <Text style={styles.label}>Discount Value *</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder={
-                form.discountType === "percentage"
-                  ? "Example: 20"
-                  : "Example: 100"
-              }
-              placeholderTextColor="#94A3B8"
-              keyboardType="numeric"
-              value={form.discountValue}
-              onChangeText={(value) =>
-                updateForm("discountValue", value.replace(/[^0-9.]/g, ""))
-              }
-            />
-
-            <Text style={styles.label}>Minimum Order</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Example: 299"
-              placeholderTextColor="#94A3B8"
-              keyboardType="numeric"
-              value={form.minimumOrder}
-              onChangeText={(value) =>
-                updateForm("minimumOrder", value.replace(/[^0-9]/g, ""))
-              }
-            />
-
-            <Text style={styles.label}>Maximum Discount</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Example: 150"
-              placeholderTextColor="#94A3B8"
-              keyboardType="numeric"
-              value={form.maximumDiscount}
-              onChangeText={(value) =>
-                updateForm("maximumDiscount", value.replace(/[^0-9]/g, ""))
-              }
-            />
-
-            <Text style={styles.label}>Start Date *</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#94A3B8"
-              value={form.startDate}
-              onChangeText={(value) => updateForm("startDate", value)}
-            />
-
-            <Text style={styles.dateHint}>Example: 2026-10-20</Text>
-
-            <Text style={styles.label}>End Date *</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#94A3B8"
-              value={form.endDate}
-              onChangeText={(value) => updateForm("endDate", value)}
-            />
-
-            <Text style={styles.dateHint}>Example: 2026-10-25</Text>
-
-            <Text style={styles.label}>Description</Text>
-
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Describe this special offer..."
-              placeholderTextColor="#94A3B8"
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              value={form.description}
-              onChangeText={(value) => updateForm("description", value)}
-            />
-
-            <TouchableOpacity
-              style={[styles.saveButton, saving && styles.disabledButton]}
-              onPress={saveOffer}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#0B0F14" />
-              ) : (
-                <>
-                  <Ionicons name="save-outline" size={20} color="#0B0F14" />
-
-                  <Text style={styles.saveButtonText}>
-                    {editingOffer ? "Update Offer" : "Create Offer"}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -1125,6 +1277,10 @@ function formatDisplayDate(date) {
 // ======================================================
 
 const styles = StyleSheet.create({
+  // ======================================================
+  // SAFE AREA
+  // ======================================================
+
   safeArea: {
     flex: 1,
     backgroundColor: "#F8FAFC",
@@ -1136,17 +1292,53 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: "#1E3A5F",
-    paddingHorizontal: 20,
-    paddingVertical: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
 
+  headerTablet: {
+    paddingHorizontal: 26,
+    paddingVertical: 18,
+  },
+
+  headerDesktop: {
+    paddingHorizontal: 34,
+    paddingVertical: 20,
+  },
+
+  headerLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 0,
+  },
+
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+
+  headerTextContainer: {
+    flex: 1,
+    minWidth: 0,
+  },
+
   headerTitle: {
-    fontSize: 25,
+    fontSize: 22,
     fontWeight: "800",
     color: "#FFFFFF",
+  },
+
+  headerTitleTablet: {
+    fontSize: 26,
   },
 
   headerSubtitle: {
@@ -1162,6 +1354,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#2563EB",
     alignItems: "center",
     justifyContent: "center",
+    marginLeft: 12,
+  },
+
+  addButtonTablet: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
   },
 
   // ======================================================
@@ -1172,6 +1371,27 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
+
+  listTablet: {
+    padding: 22,
+    paddingBottom: 50,
+  },
+
+  listDesktop: {
+    width: "100%",
+    maxWidth: 1400,
+    alignSelf: "center",
+    paddingHorizontal: 30,
+  },
+
+  columnWrapper: {
+    justifyContent: "space-between",
+    width: "100%",
+  },
+
+  // ======================================================
+  // OFFER CARD
+  // ======================================================
 
   offerCard: {
     backgroundColor: "#FFFFFF",
@@ -1192,6 +1412,18 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
+  offerCardTablet: {
+    flex: 1,
+    marginHorizontal: 6,
+    maxWidth: "48.5%",
+    minWidth: 300,
+  },
+
+  offerCardDesktop: {
+    borderRadius: 16,
+    padding: 20,
+  },
+
   offerHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1201,6 +1433,7 @@ const styles = StyleSheet.create({
   offerTitleContainer: {
     flex: 1,
     paddingRight: 10,
+    minWidth: 0,
   },
 
   offerName: {
@@ -1389,6 +1622,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 100,
     paddingHorizontal: 30,
+    width: "100%",
+  },
+
+  emptyContainerTablet: {
+    paddingTop: 140,
   },
 
   emptyTitle: {
@@ -1403,6 +1641,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 8,
     lineHeight: 20,
+    maxWidth: 500,
   },
 
   emptyButton: {
@@ -1429,23 +1668,91 @@ const styles = StyleSheet.create({
 
   modalHeader: {
     backgroundColor: "#1E3A5F",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
 
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
 
+  modalHeaderTablet: {
+    paddingHorizontal: 28,
+    paddingVertical: 18,
+  },
+
+  modalHeaderLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 0,
+  },
+
+  modalBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+
   modalTitle: {
-    fontSize: 23,
+    fontSize: 21,
     fontWeight: "800",
     color: "#FFFFFF",
+    flex: 1,
+  },
+
+  modalTitleTablet: {
+    fontSize: 24,
+  },
+
+  closeButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8,
   },
 
   formContainer: {
-    padding: 20,
+    padding: 16,
     paddingBottom: 50,
+  },
+
+  formContainerTablet: {
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+  },
+
+  formContainerDesktop: {
+    width: "100%",
+    maxWidth: 1000,
+    alignSelf: "center",
+    paddingHorizontal: 30,
+  },
+
+  formCard: {
+    width: "100%",
+  },
+
+  formCardTablet: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+
+    shadowColor: "#0F172A",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
 
   // ======================================================
@@ -1473,6 +1780,8 @@ const styles = StyleSheet.create({
 
     fontSize: 15,
     color: "#0F172A",
+
+    width: "100%",
   },
 
   textArea: {
@@ -1540,6 +1849,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
 
     flexDirection: "row",
+
+    width: "100%",
   },
 
   saveButtonText: {

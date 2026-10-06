@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router } from "expo-router";
@@ -101,9 +102,114 @@ const [isOffersLoading, setIsOffersLoading] = useState(true);
   const [greeting, setGreeting] = useState("Good Morning");
 
   const [locationQuery, setLocationQuery] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+
+const [currentDeliveryLocation, setCurrentDeliveryLocation] = useState(null);
+
+const [deliveryAddress, setDeliveryAddress] = useState("");
+const [deliveryLatitude, setDeliveryLatitude] = useState(null);
+const [deliveryLongitude, setDeliveryLongitude] = useState(null);
+
+const [receiverName, setReceiverName] = useState("");
+const [receiverPhone, setReceiverPhone] = useState("");
+const [deliveryLandmark, setDeliveryLandmark] = useState("");
+
+
+const [searchQuery, setSearchQuery] = useState("");
 
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  // ======================================================
+// CURRENT LOCATION
+// ======================================================
+
+const getCurrentLocation = async () => {
+  setIsGettingLocation(true);
+
+  try {
+    const { status } =
+      await Location.requestForegroundPermissionsAsync();
+
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Denied",
+        "Please allow location access to use your exact delivery location."
+      );
+      return;
+    }
+
+    const location =
+      await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+    const { latitude, longitude } =
+      location.coords;
+
+    console.log("📍 EXACT GPS LOCATION:", {
+      latitude,
+      longitude,
+      accuracy: location.coords.accuracy,
+    });
+
+    // -------------------------------------------------
+    // GET GOOGLE ADDRESS FROM BACKEND
+    // -------------------------------------------------
+
+    const response = await api.get(
+      `/orders/reverse-geocode`,
+      {
+        params: {
+          lat: latitude,
+          lng: longitude,
+        },
+      }
+    );
+
+    console.log(
+      "🏠 GOOGLE ADDRESS RESPONSE:",
+      response.data
+    );
+
+    const exactAddress =
+      response.data?.address ||
+      `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+
+    // -------------------------------------------------
+    // SAVE LOCATION TEMPORARILY
+    // -------------------------------------------------
+
+    setCurrentDeliveryLocation({
+      latitude,
+      longitude,
+      address: exactAddress,
+    });
+
+    // -------------------------------------------------
+    // OPEN CONFIRM LOCATION SCREEN
+    // -------------------------------------------------
+
+    router.push({
+      pathname: "/confirm-location",
+      params: {
+        latitude: String(latitude),
+        longitude: String(longitude),
+        address: exactAddress,
+      },
+    });
+
+  } catch (error) {
+    console.error(
+      "❌ Location Error:",
+      error?.response?.data || error?.message || error
+    );
+
+    Alert.alert(
+      "Location Error",
+      "Failed to get your current address. Please try again."
+    );
+  } finally {
+    setIsGettingLocation(false);
+  }
+};
 
   const [selectedCategory, setSelectedCategory] = useState(null);
 
@@ -112,6 +218,54 @@ const [isOffersLoading, setIsOffersLoading] = useState(true);
   const [voiceModalVisible, setVoiceModalVisible] = useState(false);
 
   const [showAllRestaurants, setShowAllRestaurants] = useState(false);
+
+  useEffect(() => {
+  const loadSavedDeliveryAddress = async () => {
+    try {
+      const saved = await AsyncStorage.getItem(
+        "gonbite_delivery_address"
+      );
+
+      if (!saved) return;
+
+      const data = JSON.parse(saved);
+
+      console.log("📦 SAVED DELIVERY ADDRESS:", data);
+
+      setDeliveryAddress(data.address || "");
+      setLocationQuery(data.address || "");
+      
+
+      setDeliveryLatitude(
+        data.latitude !== undefined
+          ? Number(data.latitude)
+          : null
+      );
+      setDeliveryLongitude(
+        data.longitude !== undefined
+          ? Number(data.longitude)
+          : null
+      );
+
+      setReceiverName(data.receiverName || "");
+      setReceiverPhone(data.receiverPhone || "");
+      setDeliveryLandmark(data.landmark || "");
+
+      setCurrentDeliveryLocation({
+        latitude: Number(data.latitude),
+        longitude: Number(data.longitude),
+        address: data.address,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Failed to load saved delivery address:",
+        error
+      );
+    }
+  };
+
+  loadSavedDeliveryAddress();
+}, []);
 
   // ======================================================
   // ORDER FOUND
@@ -246,47 +400,6 @@ useEffect(() => {
   fetchOffers();
 }, []);
 
-  // ======================================================
-  // CURRENT LOCATION
-  // ======================================================
-
-  const getCurrentLocation = async () => {
-    setIsGettingLocation(true);
-
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Denied",
-          "Allow location access to find nearby restaurants.",
-        );
-
-        return;
-      }
-
-      const location = await Location.getCurrentPositionAsync({});
-
-      const geocode = await Location.reverseGeocodeAsync({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
-
-      if (geocode.length > 0) {
-        const { city, region, subregion } = geocode[0];
-
-        setLocationQuery(city || region || subregion || "Your Area");
-      } else {
-        setLocationQuery("Current Area");
-      }
-    } catch (error) {
-      console.error("Location Error:", error);
-
-      Alert.alert("Error", "Failed to get current location.");
-    } finally {
-      setIsGettingLocation(false);
-    }
-  };
 
   // ======================================================
   // FILTER RESTAURANTS
@@ -531,6 +644,8 @@ const handleOfferPress = (offer) => {
       </TouchableOpacity>
     )}
   </View>
+
+  
 
   {/* SEARCH */}
 

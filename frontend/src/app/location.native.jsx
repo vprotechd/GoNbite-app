@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import * as Location from "expo-location";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -7,7 +8,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as Location from "expo-location";
 
 import MapView, { Marker } from "react-native-maps";
 
@@ -24,13 +24,12 @@ export default function LocationScreen() {
       setLoading(true);
 
       // Ask for location permission
-      const { status } =
-        await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== "granted") {
         Alert.alert(
           "Location Permission",
-          "Please allow location permission to set your delivery location."
+          "Please allow location permission to set your delivery location.",
         );
 
         setLoading(false);
@@ -38,13 +37,11 @@ export default function LocationScreen() {
       }
 
       // Get current GPS location
-      const currentLocation =
-        await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
 
-      const { latitude, longitude } =
-        currentLocation.coords;
+      const { latitude, longitude } = currentLocation.coords;
 
       console.log("CURRENT LOCATION:");
       console.log("Latitude:", latitude);
@@ -55,15 +52,9 @@ export default function LocationScreen() {
         longitude,
       });
     } catch (error) {
-      console.error(
-        "LOCATION ERROR:",
-        error
-      );
+      console.error("LOCATION ERROR:", error);
 
-      Alert.alert(
-        "Location Error",
-        "Unable to get your current location."
-      );
+      Alert.alert("Location Error", "Unable to get your current location.");
     } finally {
       setLoading(false);
     }
@@ -72,14 +63,9 @@ export default function LocationScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator
-          size="large"
-          color="#F5B82E"
-        />
+        <ActivityIndicator size="large" color="#FF8500" />
 
-        <Text style={styles.loadingText}>
-          Getting your location...
-        </Text>
+        <Text style={styles.loadingText}>Getting your location...</Text>
       </View>
     );
   }
@@ -87,21 +73,14 @@ export default function LocationScreen() {
   if (!location) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorTitle}>
-          Location unavailable
-        </Text>
+        <Text style={styles.errorTitle}>Location unavailable</Text>
 
         <Text style={styles.errorText}>
           We couldn't get your current location.
         </Text>
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={getCurrentLocation}
-        >
-          <Text style={styles.buttonText}>
-            Try Again
-          </Text>
+        <TouchableOpacity style={styles.button} onPress={getCurrentLocation}>
+          <Text style={styles.buttonText}>Try Again</Text>
         </TouchableOpacity>
       </View>
     );
@@ -109,7 +88,6 @@ export default function LocationScreen() {
 
   return (
     <View style={styles.container}>
-
       {/* MAP */}
 
       <MapView
@@ -136,10 +114,7 @@ export default function LocationScreen() {
       {/* BOTTOM PANEL */}
 
       <View style={styles.bottomPanel}>
-
-        <Text style={styles.title}>
-          Set Delivery Location
-        </Text>
+        <Text style={styles.title}>Set Delivery Location</Text>
 
         <Text style={styles.subtitle}>
           Your current location has been detected.
@@ -158,31 +133,23 @@ export default function LocationScreen() {
         <TouchableOpacity
           style={styles.confirmButton}
           onPress={() => {
-            console.log(
-              "CONFIRMED LOCATION:",
-              location
-            );
+            console.log("CONFIRMED LOCATION:", location);
 
             Alert.alert(
               "Location Selected",
-              "Your current location has been selected."
+              "Your current location has been selected.",
             );
           }}
         >
-          <Text style={styles.confirmButtonText}>
-            Confirm Location
-          </Text>
+          <Text style={styles.confirmButtonText}>Confirm Location</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.refreshButton}
           onPress={getCurrentLocation}
         >
-          <Text style={styles.refreshButtonText}>
-            📍 Use Current Location
-          </Text>
+          <Text style={styles.refreshButtonText}>📍 Use Current Location</Text>
         </TouchableOpacity>
-
       </View>
     </View>
   );
@@ -233,7 +200,7 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     paddingHorizontal: 24,
     paddingVertical: 13,
     borderRadius: 10,
@@ -281,7 +248,7 @@ const styles = StyleSheet.create({
 
   confirmButton: {
     marginTop: 15,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     paddingVertical: 15,
     borderRadius: 12,
     alignItems: "center",

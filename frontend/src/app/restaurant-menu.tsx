@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
 import {
   Image,
   SafeAreaView,
@@ -11,6 +12,58 @@ import {
   View,
 } from "react-native";
 import { useCart } from "../context/CartContext";
+import api from "../services/api";
+
+const getImageUri = (imageUrl?: string | string[]) => {
+  const image = Array.isArray(imageUrl) ? imageUrl[0] : imageUrl;
+
+  if (!image) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(image)) {
+    return image;
+  }
+
+  const origin = (api.defaults?.baseURL || "")
+    .replace(/\/api\/?$/i, "")
+    .replace(/\/$/, "");
+
+  return origin
+    ? `${origin}${image.startsWith("/") ? image : `/${image}`}`
+    : image;
+};
+
+function RemoteImage({
+  imageUrl,
+  style,
+}: {
+  imageUrl?: string | string[];
+  style: any;
+}) {
+  const [hasError, setHasError] = useState(false);
+  const imageUri = getImageUri(imageUrl);
+
+  if (!imageUri || hasError) {
+    return (
+      <View style={[style, styles.imagePlaceholder]}>
+        <Ionicons name="image-outline" size={28} color="#64748B" />
+        <Text style={styles.imagePlaceholderText}>Image unavailable</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{
+        uri: imageUri,
+      }}
+      style={style}
+      resizeMode="cover"
+      onError={() => setHasError(true)}
+    />
+  );
+}
 
 // Define the shape of a cart item
 interface CartItem {
@@ -73,15 +126,7 @@ export default function RestaurantMenuScreen() {
           {/* --- RESTAURANT DETAILS SECTION (Image + Info) --- */}
           <View style={styles.restaurantHeader}>
             {/* Cover Image */}
-            <Image
-              source={{
-                uri: imageUrl
-                  ? `http://localhost:5000${imageUrl}`
-                  : "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=900",
-              }}
-              style={styles.coverImage}
-              resizeMode="cover"
-            />
+            <RemoteImage imageUrl={imageUrl} style={styles.coverImage} />
 
             {/* Info Overlay */}
             <View style={styles.restaurantInfoOverlay}>
@@ -123,12 +168,8 @@ export default function RestaurantMenuScreen() {
                   style={styles.menuCard}
                   activeOpacity={0.9}
                 >
-                  <Image
-                    source={{
-                      uri: item.imageUrl
-                        ? `http://localhost:5000${item.imageUrl}`
-                        : "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500",
-                    }}
+                  <RemoteImage
+                    imageUrl={item.imageUrl}
                     style={styles.menuImage}
                   />
                   <View style={styles.menuInfo}>
@@ -150,7 +191,7 @@ export default function RestaurantMenuScreen() {
                               <Ionicons
                                 name="remove"
                                 size={16}
-                                color="#F5B82E"
+                                color="#FF8500"
                               />
                             </TouchableOpacity>
                             <Text style={styles.qtyText}>{currentQty}</Text>
@@ -158,7 +199,7 @@ export default function RestaurantMenuScreen() {
                               style={styles.qtyBtn}
                               onPress={() => updateQuantity(item._id, 1)}
                             >
-                              <Ionicons name="add" size={16} color="#F5B82E" />
+                              <Ionicons name="add" size={16} color="#FF8500" />
                             </TouchableOpacity>
                           </>
                         ) : (
@@ -169,7 +210,7 @@ export default function RestaurantMenuScreen() {
                             <Ionicons
                               name="add-circle"
                               size={28}
-                              color="#F5B82E"
+                              color="#FF8500"
                             />
                           </TouchableOpacity>
                         )}
@@ -209,7 +250,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: -4,
     top: -4,
-    backgroundColor: "#FF5252",
+    backgroundColor: "#FF8500",
     borderRadius: 10,
     minWidth: 18,
     height: 18,
@@ -246,7 +287,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     marginBottom: 4,
   },
-  cuisineText: { fontSize: 14, color: "#F5B82E", fontWeight: "600" },
+  cuisineText: { fontSize: 14, color: "#FF8500", fontWeight: "600" },
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -306,7 +347,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 6,
   },
-  menuPrice: { fontSize: 16, fontWeight: "700", color: "#F5B82E" },
+  menuPrice: { fontSize: 16, fontWeight: "700", color: "#FF8500" },
 
   /* --- QUANTITY CONTROLS --- */
   quantityContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -318,7 +359,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#F5B82E",
+    borderColor: "#FF8500",
   },
   qtyText: {
     fontSize: 16,
@@ -328,4 +369,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   addToCartBtn: { padding: 2 },
+  imagePlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F5F7FA",
+  },
+
+  imagePlaceholderText: {
+    color: "#64748B",
+    fontSize: 12,
+  },
+
 });

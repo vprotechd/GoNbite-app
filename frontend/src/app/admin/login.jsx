@@ -3,19 +3,19 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import api from "../../services/api";
@@ -29,79 +29,82 @@ export default function AdminLoginScreen() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (Platform.OS === "web") {
-      setTimeout(() => {
-        const inputs = document.querySelectorAll("input");
+  if (Platform.OS === "web") {
+    setTimeout(() => {
+      const inputs = document.querySelectorAll("input");
 
-        inputs.forEach((input) => {
-          input.setAttribute("autocomplete", "off");
-          input.setAttribute("autocorrect", "off");
-          input.setAttribute("spellcheck", "false");
-          input.setAttribute("data-lpignore", "true");
-          input.setAttribute("data-form-type", "other");
-        });
-      }, 100);
-    }
-  }, []);
+      inputs.forEach((input) => {
+        input.setAttribute("autocomplete", "off");
+        input.setAttribute("autocorrect", "off");
+        input.setAttribute("spellcheck", "false");
+        input.setAttribute("data-lpignore", "true");
+        input.setAttribute("data-form-type", "other");
+
+        // Remove browser black focus outline
+        input.style.outline = "none";
+        input.style.boxShadow = "none";
+      });
+    }, 100);
+  }
+}, []);
 
   const handleAdminLogin = async () => {
-  console.log("🔥🔥 ADMIN LOGIN BUTTON CLICKED 🔥🔥");
+    console.log("🔥🔥 ADMIN LOGIN BUTTON CLICKED 🔥🔥");
 
-  console.log("Email:", email);
-  console.log("Password entered:", password ? "YES" : "NO");
+    console.log("Email:", email);
+    console.log("Password entered:", password ? "YES" : "NO");
 
-  if (!email.trim()) {
-    console.log("❌ Email is empty");
-    Alert.alert("Required", "Please enter admin email.");
-    return;
-  }
-
-  if (!password) {
-    console.log("❌ Password is empty");
-    Alert.alert("Required", "Please enter admin password.");
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    console.log("📤 Sending request to backend...");
-    console.log("API URL:", api.defaults.baseURL);
-    console.log("Endpoint:", "/admin/login");
-
-    const response = await api.post("/admin/login", {
-      email: email.trim().toLowerCase(),
-      password,
-    });
-
-    console.log("✅ BACKEND RESPONSE:", response.data);
-
-    const { token } = response.data;
-
-    if (!token) {
-      console.log("❌ No token received");
-      Alert.alert("Login Error", "Admin token was not received.");
+    if (!email.trim()) {
+      console.log("❌ Email is empty");
+      Alert.alert("Required", "Please enter admin email.");
       return;
     }
 
-    await AsyncStorage.setItem("adminToken", token);
+    if (!password) {
+      console.log("❌ Password is empty");
+      Alert.alert("Required", "Please enter admin password.");
+      return;
+    }
 
-    await AsyncStorage.removeItem("token");
-    await AsyncStorage.removeItem("user");
+    try {
+      setLoading(true);
 
-    console.log("✅ Admin token stored");
+      console.log("📤 Sending request to backend...");
+      console.log("API URL:", api.defaults.baseURL);
+      console.log("Endpoint:", "/admin/login");
 
-    router.replace("/admin");
+      const response = await api.post("/admin/login", {
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
-  } catch (error) {
-    console.log("❌ ADMIN LOGIN ERROR");
-    console.log("Message:", error?.message);
-    console.log("Status:", error?.response?.status);
-    console.log("Response:", error?.response?.data);
-  } finally {
-    setLoading(false);
-  }
-};
+      console.log("✅ BACKEND RESPONSE:", response.data);
+
+      const { token } = response.data;
+
+      if (!token) {
+        console.log("❌ No token received");
+        Alert.alert("Login Error", "Admin token was not received.");
+        return;
+      }
+
+      await AsyncStorage.setItem("adminToken", token);
+
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
+
+      console.log("✅ Admin token stored");
+
+      router.replace("/admin");
+    } catch (error) {
+      console.log("❌ ADMIN LOGIN ERROR");
+      console.log("Message:", error?.message);
+      console.log("Status:", error?.response?.status);
+      console.log("Response:", error?.response?.data);
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#081A33" />
@@ -124,11 +127,7 @@ export default function AdminLoginScreen() {
             />
 
             <View style={styles.adminIconCircle}>
-              <Ionicons
-                name="shield-checkmark"
-                size={34}
-                color="#F5B82E"
-              />
+              <Ionicons name="shield-checkmark" size={34} color="#FF6B35" />
             </View>
 
             <Text style={styles.title}>Admin Login</Text>
@@ -190,16 +189,10 @@ export default function AdminLoginScreen() {
 
                   <TouchableOpacity
                     style={styles.eyeButton}
-                    onPress={() =>
-                      setShowPassword((previous) => !previous)
-                    }
+                    onPress={() => setShowPassword((previous) => !previous)}
                   >
                     <Ionicons
-                      name={
-                        showPassword
-                          ? "eye-outline"
-                          : "eye-off-outline"
-                      }
+                      name={showPassword ? "eye-outline" : "eye-off-outline"}
                       size={19}
                       color="#64748B"
                     />
@@ -209,11 +202,7 @@ export default function AdminLoginScreen() {
 
               {/* SECURITY */}
               <View style={styles.securityBox}>
-                <Ionicons
-                  name="shield-checkmark-outline"
-                  size={18}
-                  color="#F5B82E"
-                />
+                <Ionicons name="shield-checkmark-outline" size={18} color="#FF6B35" />
 
                 <Text style={styles.securityText}>
                   This is a secure administrator-only login.
@@ -222,30 +211,18 @@ export default function AdminLoginScreen() {
 
               {/* LOGIN */}
               <TouchableOpacity
-                style={[
-                  styles.loginButton,
-                  loading && styles.disabledButton,
-                ]}
+                style={[styles.loginButton, loading && styles.disabledButton]}
                 onPress={handleAdminLogin}
                 disabled={loading}
                 activeOpacity={0.85}
               >
                 {loading ? (
-                  <ActivityIndicator
-                    color="#0B0F14"
-                    size="small"
-                  />
+                  <ActivityIndicator color="#0B0F14" size="small" />
                 ) : (
                   <>
-                    <Ionicons
-                      name="log-in-outline"
-                      size={20}
-                      color="#0B0F14"
-                    />
+                    <Ionicons name="log-in-outline" size={20} color="#0B0F14" />
 
-                    <Text style={styles.loginButtonText}>
-                      Admin Sign In
-                    </Text>
+                    <Text style={styles.loginButtonText}>Admin Sign In</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -256,15 +233,9 @@ export default function AdminLoginScreen() {
                 onPress={() => router.replace("/(auth)/login")}
                 activeOpacity={0.7}
               >
-                <Ionicons
-                  name="arrow-back"
-                  size={16}
-                  color="#64748B"
-                />
+                <Ionicons name="arrow-back" size={16} color="#64748B" />
 
-                <Text style={styles.backToLoginText}>
-                  Back to User Login
-                </Text>
+                <Text style={styles.backToLoginText}>Back to User Login</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -313,7 +284,7 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     backgroundColor: "#10284A",
     borderWidth: 2,
-    borderColor: "#F5B82E",
+    borderColor: "#FF6B35",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
@@ -397,7 +368,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#FFF9E8",
     borderWidth: 1,
-    borderColor: "#F5B82E",
+    borderColor: "#FF6B35",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -414,7 +385,7 @@ const styles = StyleSheet.create({
 
   loginButton: {
     height: 52,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF6B35",
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",

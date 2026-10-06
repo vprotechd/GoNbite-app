@@ -1,1127 +1,1739 @@
-import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Location from "expo-location";
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+
+import React, {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
   Linking,
-  Platform,
   SafeAreaView,
-  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
+  Platform,
   View,
 } from "react-native";
+import {
+  Ionicons,
+} from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
+import { router } from "expo-router";
 import { io, Socket } from "socket.io-client";
 
-import api from "../../services/api";
+import api from "../../../src/services/api";
 import PlatformMap from "../../components/PlatformMap";
 
-// =====================================================
-// TYPES
-// =====================================================
+/*
+ * =========================================================
+ * SOCKET URL
+ * =========================================================
+ */
 
-type OrderStatus =
-  | "Pending"
-  | "Accepted"
-  | "Preparing"
-  | "Accepted by Delivery"
-  | "Out for Delivery"
-  | "Delivered"
-  | "Cancelled";
+const SOCKET_URL = "http://192.168.1.20:5000";
+
+/*
+ * =========================================================
+ * TYPES
+ * =========================================================
+ */
 
 interface LocationCoords {
   latitude: number;
   longitude: number;
-  updatedAt?: string | null;
+  updatedAt?: string;
 }
 
-interface OrderItem {
-  foodItemId?: string;
-  name: string;
-  quantity: number;
-  price: number;
-}
-
-interface DeliveryPartner {
-  id: string;
-  name: string;
-  phone: string;
-  vehicleType: string;
-}
-
-interface Restaurant {
-  id: string;
-  name: string;
+interface RestaurantInfo {
+  _id?: string;
+  id?: string;
+  restaurantName?: string;
+  name?: string;
   address?: string;
   phone?: string;
-  latitude?: number | null;
-  longitude?: number | null;
+  latitude?: number;
+  longitude?: number;
 }
 
-interface TrackResponse {
-  success: boolean;
+interface DeliveryPartnerInfo {
+  id?: string;
+  name?: string;
+  phone?: string;
+  vehicleType?: string;
+}
 
-  order: {
-    id: string;
-    status: OrderStatus;
-    customerName: string;
-    customerPhone: string;
-    deliveryAddress: string;
-    items: OrderItem[];
-    totalAmount: number;
-    paymentMethod: string;
-    paymentStatus: string;
-    deliveryOtp?: string | null;
-    createdAt?: string;
-    updatedAt?: string;
+interface ActiveOrder {
+  _id: string;
+  status: string;
+
+  deliveryAddress?: string;
+
+  restaurantId?: RestaurantInfo;
+
+  deliveryPartnerLocation?:
+    | LocationCoords
+    | null;
+
+  customerLocation?:
+    | LocationCoords
+    | null;
+}
+
+interface DeliveryDashboardResponse {
+  success?: boolean;
+
+  activeOrder?: ActiveOrder | null;
+}
+
+interface TrackOrderResponse {
+  success?: boolean;
+
+  order?: {
+    id?: string;
+    status?: string;
+    customerName?: string;
+    customerPhone?: string;
+    deliveryAddress?: string;
   };
 
-  restaurant: Restaurant | null;
+  restaurant?: {
+    id?: string;
+    name?: string;
+    address?: string;
+    phone?: string;
+    latitude?: number;
+    longitude?: number;
+  } | null;
 
-  customerLocation:
+  customerLocation?:
     | LocationCoords
     | null;
 
-  restaurantLocation:
+  restaurantLocation?:
     | LocationCoords
     | null;
 
-  deliveryPartner: DeliveryPartner | null;
+  deliveryPartner?:
+    | DeliveryPartnerInfo
+    | null;
 
-  deliveryPartnerLocation:
+  deliveryPartnerLocation?:
     | LocationCoords
     | null;
 }
 
-// =====================================================
-// SOCKET URL
-// =====================================================
+interface RouteResponse {
+  success?: boolean;
 
-const SOCKET_URL =
-  process.env.EXPO_PUBLIC_SOCKET_URL ||
-  process.env.EXPO_PUBLIC_API_URL?.replace(
-    /\/api\/?$/,
-    ""
-  ) ||
-  "http://192.168.1.10:5000";
+  routeCoordinates?: LocationCoords[];
 
-// =====================================================
-// SCREEN
-// =====================================================
+  encodedPolyline?: string;
+
+  distance?: number;
+
+  duration?: number;
+}
+
+/*
+ * =========================================================
+ * POLYLINE DECODER
+ * =========================================================
+ */
+
+function decodePolyline(
+  encoded: string
+): LocationCoords[] {
+  const points: LocationCoords[] = [];
+
+  let index = 0;
+  let latitude = 0;
+  let longitude = 0;
+
+  try {
+    while (
+      index < encoded.length
+    ) {
+      let shift = 0;
+      let result = 0;
+      let byte: number;
+
+      do {
+        byte =
+          encoded.charCodeAt(index++) -
+          63;
+
+        result |=
+          (byte & 0x1f) <<
+          shift;
+
+        shift += 5;
+      } while (
+        byte >= 0x20 &&
+        index < encoded.length
+      );
+
+      const deltaLatitude =
+        result & 1
+          ? ~(result >> 1)
+          : result >> 1;
+
+      latitude +=
+        deltaLatitude;
+
+      shift = 0;
+      result = 0;
+
+      do {
+        byte =
+          encoded.charCodeAt(index++) -
+          63;
+
+        result |=
+          (byte & 0x1f) <<
+          shift;
+
+        shift += 5;
+      } while (
+        byte >= 0x20 &&
+        index < encoded.length
+      );
+
+      const deltaLongitude =
+        result & 1
+          ? ~(result >> 1)
+          : result >> 1;
+
+      longitude +=
+        deltaLongitude;
+
+      points.push({
+        latitude:
+          latitude / 1e5,
+
+        longitude:
+          longitude / 1e5,
+      });
+    }
+  } catch (error) {
+    console.error(
+      "❌ POLYLINE DECODE ERROR:",
+      error
+    );
+  }
+
+  return points;
+}
+
+/*
+ * =========================================================
+ * MAIN SCREEN
+ * =========================================================
+ */
 
 export default function ActiveOrderScreen() {
-  // ===================================================
-  // ROUTE PARAM
-  // ===================================================
-
-  const params = useLocalSearchParams<{
-    orderId?: string | string[];
-  }>();
-
-  const rawOrderId = params?.orderId;
-
-  const orderId = Array.isArray(rawOrderId)
-    ? rawOrderId[0]
-    : rawOrderId;
-
-  console.log(
-    "🔥 CUSTOMER ACTIVE ORDER PARAMS:",
-    params
-  );
-
-  console.log(
-    "🆔 CUSTOMER FINAL ORDER ID:",
-    orderId
-  );
-
-  // ===================================================
-  // STATE
-  // ===================================================
-
   const [loading, setLoading] =
     useState(true);
 
-  const [refreshing, setRefreshing] =
+  const [delivering, setDelivering] =
     useState(false);
 
-  const [orderStatus, setOrderStatus] =
-    useState<OrderStatus>("Pending");
-
-  const [restaurant, setRestaurant] =
-    useState<Restaurant | null>(null);
-
-  const [deliveryPartner, setDeliveryPartner] =
-    useState<DeliveryPartner | null>(null);
-
-  const [customerLocation, setCustomerLocation] =
-    useState<LocationCoords | null>(null);
-
-    const [customerCurrentLocation, setCustomerCurrentLocation] =
-  useState<LocationCoords | null>(null);
-
-  const [restaurantLocation, setRestaurantLocation] =
-    useState<LocationCoords | null>(null);
-
-  const [deliveryAddress, setDeliveryAddress] =
-    useState("");
-
-  const [items, setItems] =
-    useState<OrderItem[]>([]);
-
-  const [totalAmount, setTotalAmount] =
-    useState(0);
-
-  const [paymentMethod, setPaymentMethod] =
-    useState("");
-
-  const [paymentStatus, setPaymentStatus] =
-    useState("");
-
-  const [deliveryOtp, setDeliveryOtp] =
+  const [orderId, setOrderId] =
     useState<string | null>(null);
 
+  const [orderStatus, setOrderStatus] =
+    useState<string>("");
+
   const [
-    deliveryPartnerLocation,
-    setDeliveryPartnerLocation,
+    deliveryAddress,
+    setDeliveryAddress,
+  ] = useState<string>("");
+
+  const [
+    restaurantName,
+    setRestaurantName,
+  ] = useState<string>("");
+
+  const [
+    restaurantAddress,
+    setRestaurantAddress,
+  ] = useState<string>("");
+
+  /*
+   * =========================================================
+   * RESTAURANT PHONE
+   * =========================================================
+   */
+
+  const [
+    restaurantPhone,
+    setRestaurantPhone,
+  ] = useState<string>("");
+
+  /*
+   * =========================================================
+   * DELIVERY PARTNER PROFILE
+   * =========================================================
+   */
+
+  const [
+    deliveryPartner,
+    setDeliveryPartner,
+  ] =
+    useState<DeliveryPartnerInfo | null>(
+      null
+    );
+
+  const [
+    restaurantLocation,
+    setRestaurantLocation,
   ] = useState<LocationCoords | null>(
     null
   );
 
+  /*
+   * Delivery partner live location
+   */
+
   const [
-    isSocketConnected,
-    setIsSocketConnected,
+    deliveryPartnerLocation,
+    setDeliveryPartnerLocation,
+  ] =
+    useState<LocationCoords | null>(
+      null
+    );
+
+  /*
+   * Customer fixed/saved location
+   */
+
+  const [
+    customerLocation,
+    setCustomerLocation,
+  ] = useState<LocationCoords | null>(
+    null
+  );
+
+  /*
+   * Customer's own current live GPS
+   */
+
+  const [
+    customerCurrentLocation,
+    setCustomerCurrentLocation,
+  ] =
+    useState<LocationCoords | null>(
+      null
+    );
+
+  /*
+   * =====================================================
+   * ROAD ROUTE
+   * =====================================================
+   */
+
+  const [
+    routeCoordinates,
+    setRouteCoordinates,
+  ] = useState<LocationCoords[]>(
+    []
+  );
+
+  const [
+    routeLoading,
+    setRouteLoading,
   ] = useState(false);
 
-  // ===================================================
-  // REFS
-  // ===================================================
+  const [
+    routeError,
+    setRouteError,
+  ] = useState<string | null>(
+    null
+  );
+
+  /*
+   * Socket
+   */
+
+  const [
+    socketConnected,
+    setSocketConnected,
+  ] = useState(false);
 
   const socketRef =
     useRef<Socket | null>(null);
 
-  const customerLocationSubscriptionRef =
+  /*
+   * Customer location watcher
+   */
+
+  const locationWatchRef =
     useRef<Location.LocationSubscription | null>(
       null
     );
 
-  const customerLiveLocationRef =
-    useRef<LocationCoords | null>(null);
+  const webWatchIdRef =
+    useRef<number | null>(null);
 
-  // ===================================================
-  // FETCH ORDER TRACKING DATA
-  // ===================================================
+  /*
+   * Prevent multiple GPS watchers
+   */
 
-  const fetchOrder = async (
-    showLoader = true
-  ) => {
-    if (!orderId) {
-      console.log(
-        "⏳ Waiting for customer order ID..."
-      );
-      return;
-    }
+  const trackingStartedRef =
+    useRef(false);
 
-    try {
-      if (showLoader) {
-        setLoading(true);
-      } else {
-        setRefreshing(true);
-      }
+  /*
+   * =========================================================
+   * CALL PHONE
+   * =========================================================
+   */
 
-      console.log(
-        "📦 Fetching tracking:",
-        orderId
-      );
-
-      const response =
-        await api.get<TrackResponse>(
-          `/orders/${orderId}/track`
-        );
-
-      const data =
-        response.data;
-
-      console.log(
-        "✅ Tracking response:",
-        data
-      );
-
-      if (!data.success) {
-        throw new Error(
-          "Tracking information unavailable"
-        );
-      }
-
-      // =============================================
-      // ORDER
-      // =============================================
-
-      setOrderStatus(
-        data.order.status
-      );
-
-      setDeliveryAddress(
-        data.order.deliveryAddress || ""
-      );
-
-      setItems(
-        data.order.items || []
-      );
-
-      setTotalAmount(
-        data.order.totalAmount || 0
-      );
-
-      setPaymentMethod(
-        data.order.paymentMethod || ""
-      );
-
-      setPaymentStatus(
-        data.order.paymentStatus || ""
-      );
-
-      setDeliveryOtp(
-        data.order.deliveryOtp || null
-      );
-
-      // =============================================
-      // RESTAURANT
-      // =============================================
-
-      setRestaurant(
-        data.restaurant || null
-      );
-
-      // =============================================
-      // RESTAURANT LOCATION
-      // =============================================
-
-      if (
-        data.restaurantLocation &&
-        typeof data.restaurantLocation.latitude ===
-          "number" &&
-        typeof data.restaurantLocation.longitude ===
-          "number"
-      ) {
-        setRestaurantLocation(
-          data.restaurantLocation
-        );
-
-        console.log(
-          "🏪 RESTAURANT LOCATION:",
-          data.restaurantLocation
-        );
-      } else {
-        setRestaurantLocation(null);
-
-        console.log(
-          "⚠️ Restaurant location not available"
-        );
-      }
-
-      // =============================================
-      // CUSTOMER LOCATION
-      // =============================================
-
-      if (
-        data.customerLocation &&
-        typeof data.customerLocation.latitude ===
-          "number" &&
-        typeof data.customerLocation.longitude ===
-          "number"
-      ) {
-        setCustomerLocation(
-          data.customerLocation
-        );
-
-        customerLiveLocationRef.current =
-          data.customerLocation;
-
-        console.log(
-          "📍 CUSTOMER LOCATION:",
-          data.customerLocation
-        );
-      } else {
-        console.log(
-          "⚠️ Customer location not available yet"
-        );
-      }
-
-      // =============================================
-      // DELIVERY PARTNER
-      // =============================================
-
-      setDeliveryPartner(
-        data.deliveryPartner || null
-      );
-
-      // =============================================
-      // INITIAL DELIVERY PARTNER LOCATION
-      // =============================================
-
-      if (
-        data.deliveryPartnerLocation &&
-        typeof data.deliveryPartnerLocation.latitude ===
-          "number" &&
-        typeof data.deliveryPartnerLocation.longitude ===
-          "number"
-      ) {
-        setDeliveryPartnerLocation(
-          data.deliveryPartnerLocation
-        );
-
-        console.log(
-          "🚴 DELIVERY PARTNER LOCATION:",
-          data.deliveryPartnerLocation
-        );
-      } else {
-        console.log(
-          "⚠️ Delivery partner location not available yet"
-        );
-      }
-    } catch (error: any) {
-      console.log(
-        "❌ TRACK ORDER ERROR:",
-        error?.response?.data ||
-          error?.message ||
-          error
-      );
-
-      if (showLoader) {
-        Alert.alert(
-          "Error",
-          error?.response?.data
-            ?.error ||
-            "Failed to load active order."
-        );
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  // ===================================================
-  // SEND CUSTOMER LOCATION
-  // ===================================================
-
-  const sendCustomerLocation = (
-    socket: Socket,
-    coords: LocationCoords
-  ) => {
-    if (!orderId) {
-      console.log(
-        "⚠️ Cannot send customer location: orderId missing"
-      );
-      return;
-    }
-
-    if (!socket.connected) {
-      console.log(
-        "⚠️ Cannot send customer location: socket disconnected"
-      );
-      return;
-    }
-
-    socket.emit(
-      "customerLocationUpdate",
-      {
-        orderId: String(orderId),
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-      }
-    );
-
-    console.log(
-      "📡 CUSTOMER LOCATION SENT:",
-      {
-        orderId: String(orderId),
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-      }
-    );
-  };
-
-  // ===================================================
-  // START CUSTOMER LIVE LOCATION
-  // ===================================================
-
-  const startCustomerLiveLocation = async (
-    socket: Socket
+  const callPhoneNumber = async (
+    phone: string,
+    personName: string
   ) => {
     try {
-      console.log(
-        "📍 Starting customer live GPS..."
-      );
-
-      // =============================================
-      // PERMISSION
-      // =============================================
-
-      const {
-        status,
-      } =
-        await Location.requestForegroundPermissionsAsync();
-
-      if (status !== "granted") {
-        console.log(
-          "❌ Customer location permission denied"
-        );
-
+      if (!phone) {
         Alert.alert(
-          "Location Permission",
-          "Please allow location access so your delivery location can be tracked."
+          "Phone number unavailable",
+          `${personName}'s phone number is not available.`
         );
 
         return;
       }
 
-      console.log(
-        "✅ Customer location permission granted"
-      );
+      /*
+       * Remove spaces and common
+       * formatting characters.
+       */
 
-      // =============================================
-      // INITIAL LOCATION
-      // =============================================
-
-      const current =
-        await Location.getCurrentPositionAsync(
-          {
-            accuracy:
-              Location.Accuracy.High,
-          }
+      const cleanPhone =
+        phone.replace(
+          /[\s()-]/g,
+          ""
         );
 
-      const initialLocation: LocationCoords = {
-        latitude:
-          current.coords.latitude,
-        longitude:
-          current.coords.longitude,
-        updatedAt:
-          new Date().toISOString(),
-      };
+      const phoneUrl =
+        `tel:${cleanPhone}`;
 
-      customerLiveLocationRef.current =
-        initialLocation;
+      const supported =
+        await Linking.canOpenURL(
+          phoneUrl
+        );
 
-      setCustomerLocation(
-        initialLocation
-      );
+      if (!supported) {
+        Alert.alert(
+          "Cannot make call",
+          "Phone calling is not available on this device."
+        );
 
-      console.log(
-        "📍 CUSTOMER INITIAL GPS:",
-        initialLocation
-      );
-
-      // =============================================
-      // SEND INITIAL LOCATION
-      // =============================================
-
-      sendCustomerLocation(
-        socket,
-        initialLocation
-      );
-
-      // =============================================
-      // REMOVE OLD WATCHER
-      // =============================================
-
-      if (
-        customerLocationSubscriptionRef.current
-      ) {
-        customerLocationSubscriptionRef.current.remove();
-
-        customerLocationSubscriptionRef.current =
-          null;
+        return;
       }
 
-      // =============================================
-      // CONTINUOUS GPS WATCH
-      // =============================================
-
-      customerLocationSubscriptionRef.current =
-        await Location.watchPositionAsync(
-          {
-            accuracy:
-              Location.Accuracy.High,
-
-            timeInterval: 5000,
-
-            distanceInterval: 10,
-          },
-          (location) => {
-            const coords: LocationCoords = {
-              latitude:
-                location.coords.latitude,
-              longitude:
-                location.coords.longitude,
-              updatedAt:
-                new Date().toISOString(),
-            };
-
-            customerLiveLocationRef.current =
-              coords;
-
-            setCustomerLocation(
-              coords
-            );
-
-            console.log(
-              "📍 CUSTOMER LIVE GPS:",
-              coords
-            );
-
-            sendCustomerLocation(
-              socket,
-              coords
-            );
-          }
-        );
-
-      console.log(
-        "🟢 Customer GPS watcher started"
+      await Linking.openURL(
+        phoneUrl
       );
     } catch (error) {
-      console.log(
-        "❌ CUSTOMER GPS ERROR:",
+      console.error(
+        "❌ CALL PHONE ERROR:",
         error
+      );
+
+      Alert.alert(
+        "Call failed",
+        `Unable to call ${personName}.`
       );
     }
   };
 
-  // ===================================================
-  // INITIAL LOAD
-  // ===================================================
+  /*
+   * =========================================================
+   * FETCH DETAILED TRACKING
+   * =========================================================
+   *
+   * Gets restaurant and delivery partner
+   * profile information from backend.
+   */
 
-  useEffect(() => {
-    fetchOrder(true);
-  }, [orderId]);
+  const fetchDetailedTracking =
+    async (
+      currentOrderId: string
+    ) => {
+      try {
+        console.log(
+          "📍 FETCHING DETAILED TRACKING:",
+          currentOrderId
+        );
 
-  // ===================================================
-  // SOCKET.IO + CUSTOMER GPS
-  // ===================================================
+        const response =
+          await api.get<TrackOrderResponse>(
+            `/orders/${currentOrderId}/track`
+          );
+
+        const data =
+          response.data;
+
+        console.log(
+          "📍 DETAILED TRACKING RESPONSE:",
+          data
+        );
+
+        /*
+         * =================================================
+         * ORDER
+         * =================================================
+         */
+
+        if (
+          data?.order?.status
+        ) {
+          setOrderStatus(
+            data.order.status
+          );
+        }
+
+        if (
+          data?.order?.deliveryAddress
+        ) {
+          setDeliveryAddress(
+            data.order.deliveryAddress
+          );
+        }
+
+        /*
+         * =================================================
+         * RESTAURANT PROFILE
+         * =================================================
+         */
+
+        if (data?.restaurant) {
+          setRestaurantName(
+            data.restaurant.name ||
+              "Restaurant"
+          );
+
+          setRestaurantAddress(
+            data.restaurant.address ||
+              ""
+          );
+
+          setRestaurantPhone(
+            data.restaurant.phone ||
+              ""
+          );
+
+          if (
+            typeof data.restaurant
+              .latitude ===
+              "number" &&
+            typeof data.restaurant
+              .longitude ===
+              "number"
+          ) {
+            setRestaurantLocation({
+              latitude:
+                data.restaurant.latitude,
+
+              longitude:
+                data.restaurant.longitude,
+            });
+          }
+        } else {
+          setRestaurantName(
+            "Restaurant"
+          );
+
+          setRestaurantAddress(
+            ""
+          );
+
+          setRestaurantPhone(
+            ""
+          );
+
+          setRestaurantLocation(
+            null
+          );
+        }
+
+        /*
+         * =================================================
+         * DELIVERY PARTNER PROFILE
+         * =================================================
+         */
+
+        if (
+          data?.deliveryPartner
+        ) {
+          console.log(
+            "🛵 DELIVERY PARTNER PROFILE:",
+            data.deliveryPartner
+          );
+
+          setDeliveryPartner(
+            data.deliveryPartner
+          );
+        } else {
+          console.log(
+            "ℹ️ DELIVERY PARTNER PROFILE NOT AVAILABLE"
+          );
+
+          setDeliveryPartner(
+            null
+          );
+        }
+
+        /*
+         * =================================================
+         * DELIVERY PARTNER LOCATION
+         * =================================================
+         */
+
+        if (
+          data?.deliveryPartnerLocation &&
+          typeof data
+            .deliveryPartnerLocation
+            .latitude === "number" &&
+          typeof data
+            .deliveryPartnerLocation
+            .longitude === "number"
+        ) {
+          setDeliveryPartnerLocation(
+            data.deliveryPartnerLocation
+          );
+        }
+
+        /*
+         * =================================================
+         * CUSTOMER LOCATION
+         * =================================================
+         */
+
+        if (
+          data?.customerLocation &&
+          typeof data
+            .customerLocation
+            .latitude === "number" &&
+          typeof data
+            .customerLocation
+            .longitude === "number"
+        ) {
+          setCustomerLocation(
+            data.customerLocation
+          );
+        }
+
+        /*
+         * =================================================
+         * RESTAURANT LOCATION
+         * =================================================
+         */
+
+        if (
+          data?.restaurantLocation &&
+          typeof data
+            .restaurantLocation
+            .latitude === "number" &&
+          typeof data
+            .restaurantLocation
+            .longitude === "number"
+        ) {
+          setRestaurantLocation(
+            data.restaurantLocation
+          );
+        }
+      } catch (error: any) {
+        console.error(
+          "❌ DETAILED TRACKING ERROR:",
+          error?.response?.data ||
+            error?.message ||
+            error
+        );
+      }
+    };
+
+  /*
+   * =========================================================
+   * FETCH ACTIVE ORDER
+   * =========================================================
+   */
+
+  const fetchOrderTracking =
+    async () => {
+      try {
+        setLoading(true);
+
+        console.log(
+          "📦 Fetching customer active order..."
+        );
+
+        const response =
+          await api.get<DeliveryDashboardResponse>(
+            "/delivery/dashboard"
+          );
+
+        const data =
+          response.data;
+
+        console.log(
+          "📦 ACTIVE ORDER RESPONSE:",
+          data
+        );
+
+        const activeOrder =
+          data?.activeOrder;
+
+        if (!activeOrder) {
+          console.log(
+            "ℹ️ No active order"
+          );
+
+          setOrderId(null);
+          setOrderStatus("");
+
+          setDeliveryPartnerLocation(
+            null
+          );
+
+          setCustomerLocation(null);
+
+          setRouteCoordinates([]);
+
+          setDeliveryPartner(null);
+
+          setRestaurantPhone("");
+
+          return;
+        }
+
+        /*
+         * ORDER ID
+         */
+
+        setOrderId(
+          activeOrder._id
+        );
+
+        /*
+         * STATUS
+         */
+
+        setOrderStatus(
+          activeOrder.status
+        );
+
+        /*
+         * DELIVERY ADDRESS
+         */
+
+        setDeliveryAddress(
+          activeOrder.deliveryAddress ||
+            "Customer location"
+        );
+
+        /*
+         * =================================================
+         * RESTAURANT
+         * =================================================
+         */
+
+        const restaurant =
+          activeOrder.restaurantId;
+
+        if (restaurant) {
+          setRestaurantName(
+            restaurant.restaurantName ||
+              restaurant.name ||
+              "Restaurant"
+          );
+
+          setRestaurantAddress(
+            restaurant.address || ""
+          );
+
+          /*
+           * Existing dashboard data may
+           * already contain phone.
+           */
+
+          setRestaurantPhone(
+            restaurant.phone || ""
+          );
+
+          if (
+            typeof restaurant.latitude ===
+              "number" &&
+            typeof restaurant.longitude ===
+              "number"
+          ) {
+            setRestaurantLocation({
+              latitude:
+                restaurant.latitude,
+
+              longitude:
+                restaurant.longitude,
+            });
+          } else {
+            console.log(
+              "⚠️ Restaurant coordinates unavailable"
+            );
+
+            setRestaurantLocation(
+              null
+            );
+          }
+        } else {
+          setRestaurantName(
+            "Restaurant"
+          );
+
+          setRestaurantAddress(
+            ""
+          );
+
+          setRestaurantPhone(
+            ""
+          );
+
+          setRestaurantLocation(
+            null
+          );
+        }
+
+        /*
+         * =================================================
+         * DELIVERY PARTNER LOCATION
+         * =================================================
+         */
+
+        if (
+          activeOrder.deliveryPartnerLocation &&
+          typeof activeOrder
+            .deliveryPartnerLocation
+            .latitude === "number" &&
+          typeof activeOrder
+            .deliveryPartnerLocation
+            .longitude === "number"
+        ) {
+          console.log(
+            "📍 SAVED DELIVERY PARTNER LOCATION:",
+            activeOrder.deliveryPartnerLocation
+          );
+
+          setDeliveryPartnerLocation(
+            activeOrder.deliveryPartnerLocation
+          );
+        }
+
+        /*
+         * =================================================
+         * CUSTOMER LOCATION
+         * =================================================
+         */
+
+        if (
+          activeOrder.customerLocation &&
+          typeof activeOrder
+            .customerLocation
+            .latitude === "number" &&
+          typeof activeOrder
+            .customerLocation
+            .longitude === "number"
+        ) {
+          console.log(
+            "👤 SAVED CUSTOMER LOCATION:",
+            activeOrder.customerLocation
+          );
+
+          setCustomerLocation(
+            activeOrder.customerLocation
+          );
+        }
+
+        /*
+         * =================================================
+         * FETCH RESTAURANT + DELIVERY PARTNER PROFILE
+         * =================================================
+         */
+
+        await fetchDetailedTracking(
+          activeOrder._id
+        );
+      } catch (error: any) {
+        console.error(
+          "❌ FETCH ACTIVE ORDER ERROR:",
+          error?.response?.data ||
+            error?.message ||
+            error
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  /*
+   * =========================================================
+   * LOAD ROAD ROUTE
+   * =========================================================
+   */
+
+  const loadRoute =
+    async () => {
+      if (!orderId) {
+        return;
+      }
+
+      try {
+        setRouteLoading(true);
+        setRouteError(null);
+
+        console.log(
+          "🛣️ FETCHING ROAD ROUTE:",
+          orderId
+        );
+
+        const response =
+          await api.get<RouteResponse>(
+            `/orders/${orderId}/route`
+          );
+
+        const data =
+          response.data;
+
+        console.log(
+          "🛣️ ROUTE RESPONSE:",
+          data
+        );
+
+        /*
+         * OPTION 1
+         */
+
+        if (
+          Array.isArray(
+            data?.routeCoordinates
+          ) &&
+          data.routeCoordinates.length >
+            0
+        ) {
+          const validCoordinates =
+            data.routeCoordinates
+              .filter(
+                (point) =>
+                  point &&
+                  typeof point.latitude ===
+                    "number" &&
+                  typeof point.longitude ===
+                    "number" &&
+                  Number.isFinite(
+                    point.latitude
+                  ) &&
+                  Number.isFinite(
+                    point.longitude
+                  )
+              );
+
+          if (
+            validCoordinates.length >= 2
+          ) {
+            console.log(
+              "🛣️ ROAD ROUTE LOADED:",
+              validCoordinates.length,
+              "points"
+            );
+
+            setRouteCoordinates(
+              validCoordinates
+            );
+
+            return;
+          }
+        }
+
+        /*
+         * OPTION 2
+         */
+
+        if (
+          typeof data?.encodedPolyline ===
+            "string" &&
+          data.encodedPolyline.length >
+            0
+        ) {
+          console.log(
+            "🛣️ DECODING GOOGLE POLYLINE..."
+          );
+
+          const decodedPoints =
+            decodePolyline(
+              data.encodedPolyline
+            );
+
+          if (
+            decodedPoints.length >= 2
+          ) {
+            console.log(
+              "🛣️ DECODED ROAD ROUTE:",
+              decodedPoints.length,
+              "points"
+            );
+
+            setRouteCoordinates(
+              decodedPoints
+            );
+
+            return;
+          }
+        }
+
+        console.log(
+          "⚠️ Backend returned no usable road route"
+        );
+
+        setRouteCoordinates([]);
+      } catch (error: any) {
+        console.error(
+          "❌ ROUTE LOAD ERROR:",
+          error?.response?.data ||
+            error?.message ||
+            error
+        );
+
+        setRouteError(
+          error?.response?.data
+            ?.message ||
+            error?.message ||
+            "Unable to load route"
+        );
+      } finally {
+        setRouteLoading(false);
+      }
+    };
+
+  /*
+   * =========================================================
+   * ROUTE AUTO REFRESH
+   * =========================================================
+   */
 
   useEffect(() => {
     if (!orderId) {
       return;
     }
 
-    let mounted = true;
+    console.log(
+      "🔄 STARTING ROUTE REFRESH:",
+      orderId,
+      orderStatus
+    );
 
-    const connectSocket =
-      async () => {
-        try {
-          // ==========================================
-          // GET JWT
-          // ==========================================
+    loadRoute();
 
-          const token =
-            await AsyncStorage.getItem(
-              "token"
-            );
+    const routeInterval =
+      setInterval(() => {
+        loadRoute();
+      }, 5000);
 
-          if (!token) {
+    return () => {
+      console.log(
+        "🛑 STOPPING ROUTE REFRESH"
+      );
+
+      clearInterval(
+        routeInterval
+      );
+    };
+  }, [
+    orderId,
+    orderStatus,
+  ]);
+
+  /*
+   * =========================================================
+   * CUSTOMER CURRENT LOCATION
+   * =========================================================
+   */
+
+  const startCustomerLiveLocation =
+    async () => {
+      try {
+        /*
+         * WEB
+         */
+
+        if (Platform.OS === "web") {
+          if (
+            !navigator.geolocation
+          ) {
             console.log(
-              "❌ Customer socket: token missing"
+              "❌ Browser geolocation unavailable"
             );
 
             return;
           }
 
-          console.log(
-            "🔌 Customer connecting Socket.IO:",
-            SOCKET_URL
-          );
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const location: LocationCoords =
+                {
+                  latitude:
+                    position.coords
+                      .latitude,
 
-          // ==========================================
-          // CONNECT
-          // ==========================================
+                  longitude:
+                    position.coords
+                      .longitude,
 
-          const socket =
-            io(SOCKET_URL, {
-              transports: [
-                "polling",
-                "websocket",
-              ],
-
-              reconnection: true,
-
-              reconnectionAttempts:
-                Infinity,
-
-              reconnectionDelay: 1000,
-
-              timeout: 20000,
-
-              auth: {
-                token,
-              },
-            });
-
-          socketRef.current =
-            socket;
-
-          // ==========================================
-          // CONNECTED
-          // ==========================================
-
-          socket.on(
-            "connect",
-            () => {
-              if (!mounted) {
-                return;
-              }
+                  updatedAt:
+                    new Date().toISOString(),
+                };
 
               console.log(
-                "🟢 Customer Socket connected:",
-                socket.id
+                "👤 INITIAL CUSTOMER WEB LOCATION:",
+                location
               );
 
-              setIsSocketConnected(
-                true
+              setCustomerCurrentLocation(
+                location
               );
 
-              // ====================================
-              // JOIN ORDER ROOM
-              // ====================================
-
-              socket.emit(
-                "joinOrder",
-                String(orderId)
+              sendCustomerLocation(
+                location
               );
-
-              console.log(
-                "📦 Customer joined:",
-                `order:${orderId}`
-              );
-
-              // ====================================
-              // START CUSTOMER GPS
-              // ====================================
-
-              startCustomerLiveLocation(
-                socket
-              );
-            }
-          );
-
-          // ==========================================
-          // DISCONNECTED
-          // ==========================================
-
-          socket.on(
-            "disconnect",
-            (reason) => {
-              if (!mounted) {
-                return;
-              }
-
-              console.log(
-                "🔴 Customer socket disconnected:",
-                reason
-              );
-
-              setIsSocketConnected(
-                false
-              );
-            }
-          );
-
-          // ==========================================
-          // CONNECTION ERROR
-          // ==========================================
-
-          socket.on(
-            "connect_error",
+            },
             (error) => {
-              if (!mounted) {
-                return;
-              }
-
-              console.log(
-                "❌ Customer socket error:",
-                error.message
+              console.error(
+                "❌ CUSTOMER WEB LOCATION ERROR:",
+                error
               );
+            },
+            {
+              enableHighAccuracy:
+                true,
 
-              setIsSocketConnected(
-                false
-              );
+              maximumAge: 3000,
+
+              timeout: 15000,
             }
           );
 
-          // ==========================================
-          // LIVE DELIVERY PARTNER LOCATION
-          // ==========================================
-
-          socket.on(
-            "deliveryLocationUpdate",
-            (data) => {
-              if (!mounted) {
-                return;
-              }
-
-              console.log(
-                "📍 LIVE DELIVERY LOCATION:",
-                data
-              );
-
-              if (
-                data?.orderId &&
-                String(data.orderId) !==
-                  String(orderId)
-              ) {
-                return;
-              }
-
-              if (
-                typeof data?.latitude ===
-                  "number" &&
-                typeof data?.longitude ===
-                  "number"
-              ) {
-                const liveLocation: LocationCoords =
+          const watchId =
+            navigator.geolocation.watchPosition(
+              (position) => {
+                const location: LocationCoords =
                   {
                     latitude:
-                      Number(
-                        data.latitude
-                      ),
+                      position.coords
+                        .latitude,
 
                     longitude:
-                      Number(
-                        data.longitude
-                      ),
+                      position.coords
+                        .longitude,
 
                     updatedAt:
-                      data.updatedAt ||
-                      null,
+                      new Date().toISOString(),
                   };
 
-                setDeliveryPartnerLocation(
-                  liveLocation
-                );
-
                 console.log(
-                  "🚴 CUSTOMER MAP DELIVERY LOCATION:",
-                  liveLocation
-                );
-              }
-            }
-          );
-
-          // ==========================================
-          // LIVE CUSTOMER LOCATION
-          // ==========================================
-
-          socket.on(
-            "customerLocationUpdate",
-            (data) => {
-              if (!mounted) {
-                return;
-              }
-
-              console.log(
-                "📍 CUSTOMER LOCATION UPDATE:",
-                data
-              );
-
-              if (
-                data?.orderId &&
-                String(data.orderId) !==
-                  String(orderId)
-              ) {
-                return;
-              }
-
-              if (
-                typeof data?.latitude ===
-                  "number" &&
-                typeof data?.longitude ===
-                  "number"
-              ) {
-                const liveCustomerLocation: LocationCoords =
-                  {
-                    latitude:
-                      Number(
-                        data.latitude
-                      ),
-
-                    longitude:
-                      Number(
-                        data.longitude
-                      ),
-
-                    updatedAt:
-                      data.updatedAt ||
-                      null,
-                  };
-
-                customerLiveLocationRef.current =
-                  liveCustomerLocation;
-
-                setCustomerLocation(
-                  liveCustomerLocation
+                  "👤 LIVE CUSTOMER WEB LOCATION:",
+                  location
                 );
 
-                console.log(
-                  "📍 CUSTOMER MAP LOCATION:",
-                  liveCustomerLocation
+                setCustomerCurrentLocation(
+                  location
                 );
+
+                sendCustomerLocation(
+                  location
+                );
+              },
+              (error) => {
+                console.error(
+                  "❌ CUSTOMER WEB WATCH ERROR:",
+                  error
+                );
+              },
+              {
+                enableHighAccuracy:
+                  true,
+
+                maximumAge: 3000,
+
+                timeout: 15000,
               }
-            }
-          );
+            );
 
-          // ==========================================
-          // LIVE MESSAGE
-          // ==========================================
+          webWatchIdRef.current =
+            watchId;
 
-          socket.on(
-            "receiveMessage",
-            (data) => {
-              console.log(
-                "💬 New order message:",
-                data
-              );
-            }
-          );
-        } catch (error) {
-          console.log(
-            "❌ Customer socket setup error:",
-            error
-          );
+          return;
         }
-      };
 
-    connectSocket();
+        /*
+         * MOBILE
+         */
 
-    // ================================================
-    // CLEANUP
-    // ================================================
+        const permission =
+          await Location.requestForegroundPermissionsAsync();
 
-    return () => {
-      mounted = false;
+        if (
+          permission.status !==
+          Location.PermissionStatus.GRANTED
+        ) {
+          console.log(
+            "❌ CUSTOMER LOCATION PERMISSION DENIED"
+          );
 
-      console.log(
-        "🧹 Cleaning customer socket..."
-      );
+          return;
+        }
 
-      // =============================================
-      // STOP CUSTOMER GPS
-      // =============================================
+        /*
+         * Initial location
+         */
+
+        const initial =
+          await Location.getCurrentPositionAsync(
+            {
+              accuracy:
+                Location.Accuracy.High,
+            }
+          );
+
+        const initialLocation: LocationCoords =
+          {
+            latitude:
+              initial.coords.latitude,
+
+            longitude:
+              initial.coords.longitude,
+
+            updatedAt:
+              new Date().toISOString(),
+          };
+
+        console.log(
+          "👤 INITIAL CUSTOMER LOCATION:",
+          initialLocation
+        );
+
+        setCustomerCurrentLocation(
+          initialLocation
+        );
+
+        sendCustomerLocation(
+          initialLocation
+        );
+
+        /*
+         * Continuous tracking
+         */
+
+        locationWatchRef.current =
+          await Location.watchPositionAsync(
+            {
+              accuracy:
+                Location.Accuracy.High,
+
+              timeInterval: 5000,
+
+              distanceInterval: 10,
+            },
+            (location) => {
+              const liveLocation: LocationCoords =
+                {
+                  latitude:
+                    location.coords
+                      .latitude,
+
+                  longitude:
+                    location.coords
+                      .longitude,
+
+                  updatedAt:
+                    new Date().toISOString(),
+                };
+
+              console.log(
+                "👤 LIVE CUSTOMER LOCATION:",
+                liveLocation
+              );
+
+              setCustomerCurrentLocation(
+                liveLocation
+              );
+
+              sendCustomerLocation(
+                liveLocation
+              );
+            }
+          );
+      } catch (error) {
+        console.error(
+          "❌ START CUSTOMER LOCATION ERROR:",
+          error
+        );
+      }
+    };
+
+  /*
+   * =========================================================
+   * SEND CUSTOMER LOCATION
+   * =========================================================
+   */
+
+  const sendCustomerLocation =
+    (
+      location: LocationCoords
+    ) => {
+      const socket =
+        socketRef.current;
 
       if (
-        customerLocationSubscriptionRef.current
+        !socket ||
+        !socket.connected ||
+        !orderId
       ) {
-        customerLocationSubscriptionRef.current.remove();
-
-        customerLocationSubscriptionRef.current =
-          null;
+        return;
       }
 
-      // =============================================
-      // DISCONNECT SOCKET
-      // =============================================
+      console.log(
+        "👤 SENDING CUSTOMER LOCATION:",
+        location
+      );
+
+      socket.emit(
+        "customerLocationUpdate",
+        {
+          orderId,
+
+          latitude:
+            location.latitude,
+
+          longitude:
+            location.longitude,
+
+          updatedAt:
+            location.updatedAt ||
+            new Date().toISOString(),
+        }
+      );
+    };
+
+  /*
+   * =========================================================
+   * STOP CUSTOMER LOCATION
+   * =========================================================
+   */
+
+  const stopCustomerLiveLocation =
+    () => {
+      try {
+        if (
+          locationWatchRef.current
+        ) {
+          locationWatchRef.current.remove();
+
+          locationWatchRef.current =
+            null;
+        }
+
+        if (
+          webWatchIdRef.current !==
+            null &&
+          Platform.OS === "web"
+        ) {
+          navigator.geolocation.clearWatch(
+            webWatchIdRef.current
+          );
+
+          webWatchIdRef.current =
+            null;
+        }
+
+        trackingStartedRef.current =
+          false;
+
+        console.log(
+          "🛑 CUSTOMER LOCATION TRACKING STOPPED"
+        );
+      } catch (error) {
+        console.error(
+          "❌ STOP CUSTOMER LOCATION ERROR:",
+          error
+        );
+      }
+    };
+
+  /*
+   * =========================================================
+   * SOCKET SETUP
+   * =========================================================
+   */
+
+  const connectSocket =
+    async (
+      currentOrderId: string
+    ) => {
+      try {
+        const token =
+          await AsyncStorage.getItem(
+            "token"
+          );
+
+        if (!token) {
+          console.log(
+            "❌ No customer token found"
+          );
+
+          return;
+        }
+
+        console.log(
+          "🔌 CUSTOMER SOCKET URL:",
+          SOCKET_URL
+        );
+
+        /*
+         * Cleanup existing socket
+         */
+
+        if (
+          socketRef.current
+        ) {
+          socketRef.current.disconnect();
+
+          socketRef.current =
+            null;
+        }
+
+        const socket =
+          io(SOCKET_URL, {
+            transports: [
+              "polling",
+              "websocket",
+            ],
+
+            upgrade: true,
+
+            reconnection: true,
+
+            reconnectionAttempts:
+              Infinity,
+
+            reconnectionDelay: 1000,
+
+            reconnectionDelayMax:
+              5000,
+
+            timeout: 20000,
+
+            forceNew: true,
+
+            auth: {
+              token,
+            },
+          });
+
+        socketRef.current =
+          socket;
+
+        /*
+         * CONNECT
+         */
+
+        socket.on(
+          "connect",
+          () => {
+            console.log(
+              "🟢 CUSTOMER SOCKET CONNECTED:",
+              socket.id
+            );
+
+            setSocketConnected(
+              true
+            );
+
+            console.log(
+              "📦 JOINING ORDER ROOM:",
+              currentOrderId
+            );
+
+            socket.emit(
+              "joinOrder",
+              currentOrderId
+            );
+
+            if (
+              customerCurrentLocation
+            ) {
+              socket.emit(
+                "customerLocationUpdate",
+                {
+                  orderId:
+                    currentOrderId,
+
+                  latitude:
+                    customerCurrentLocation.latitude,
+
+                  longitude:
+                    customerCurrentLocation.longitude,
+
+                  updatedAt:
+                    new Date().toISOString(),
+                }
+              );
+            }
+          }
+        );
+
+        /*
+         * DISCONNECT
+         */
+
+        socket.on(
+          "disconnect",
+          (reason) => {
+            console.log(
+              "🔴 CUSTOMER SOCKET DISCONNECTED:",
+              reason
+            );
+
+            setSocketConnected(
+              false
+            );
+          }
+        );
+
+        /*
+         * CONNECT ERROR
+         */
+
+        socket.on(
+          "connect_error",
+          (error) => {
+            console.error(
+              "❌ CUSTOMER SOCKET ERROR:",
+              error.message
+            );
+
+            setSocketConnected(
+              false
+            );
+          }
+        );
+
+        /*
+         * LIVE DELIVERY PARTNER LOCATION
+         */
+
+        socket.on(
+          "deliveryLocationUpdate",
+          (data) => {
+            console.log(
+              "📍 LIVE DELIVERY PARTNER LOCATION:",
+              data
+            );
+
+            if (
+              data?.orderId ===
+                currentOrderId &&
+              typeof data.latitude ===
+                "number" &&
+              typeof data.longitude ===
+                "number"
+            ) {
+              setDeliveryPartnerLocation(
+                {
+                  latitude:
+                    data.latitude,
+
+                  longitude:
+                    data.longitude,
+
+                  updatedAt:
+                    data.updatedAt ||
+                    new Date().toISOString(),
+                }
+              );
+            }
+          }
+        );
+
+        /*
+         * LIVE CUSTOMER LOCATION
+         */
+
+        socket.on(
+          "customerLocationUpdate",
+          (data) => {
+            console.log(
+              "👤 LIVE CUSTOMER LOCATION:",
+              data
+            );
+
+            if (
+              data?.orderId ===
+                currentOrderId &&
+              typeof data.latitude ===
+                "number" &&
+              typeof data.longitude ===
+                "number"
+            ) {
+              setCustomerCurrentLocation(
+                {
+                  latitude:
+                    data.latitude,
+
+                  longitude:
+                    data.longitude,
+
+                  updatedAt:
+                    data.updatedAt ||
+                    new Date().toISOString(),
+                }
+              );
+            }
+          }
+        );
+      } catch (error) {
+        console.error(
+          "❌ CONNECT CUSTOMER SOCKET ERROR:",
+          error
+        );
+      }
+    };
+
+  /*
+   * =========================================================
+   * INITIAL FETCH
+   * =========================================================
+   */
+
+  useEffect(() => {
+    fetchOrderTracking();
+  }, []);
+
+  /*
+   * =========================================================
+   * SOCKET EFFECT
+   * =========================================================
+   */
+
+  useEffect(() => {
+    if (!orderId) {
+      return;
+    }
+
+    console.log(
+      "📦 CUSTOMER ORDER ID READY:",
+      orderId
+    );
+
+    connectSocket(
+      orderId
+    );
+
+    return () => {
+      console.log(
+        "🧹 CLEANING CUSTOMER SOCKET"
+      );
 
       if (
         socketRef.current
       ) {
-        socketRef.current.emit(
-          "leaveOrder",
-          String(orderId)
+        socketRef.current.off(
+          "deliveryLocationUpdate"
+        );
+
+        socketRef.current.off(
+          "customerLocationUpdate"
+        );
+
+        socketRef.current.off(
+          "connect"
+        );
+
+        socketRef.current.off(
+          "disconnect"
+        );
+
+        socketRef.current.off(
+          "connect_error"
         );
 
         socketRef.current.disconnect();
 
-        socketRef.current = null;
+        socketRef.current =
+          null;
       }
 
-      setIsSocketConnected(
+      setSocketConnected(
         false
       );
     };
   }, [orderId]);
 
-  // ===================================================
-  // OPEN PHONE
-  // ===================================================
+  /*
+   * =========================================================
+   * START CUSTOMER GPS
+   * =========================================================
+   */
 
-  const callDeliveryPartner = () => {
-    if (
-      !deliveryPartner?.phone
-    ) {
-      Alert.alert(
-        "Unavailable",
-        "Delivery partner phone number is not available."
-      );
-
+  useEffect(() => {
+    if (!orderId) {
       return;
     }
-
-    Linking.openURL(
-      `tel:${deliveryPartner.phone}`
-    ).catch(() => {
-      Alert.alert(
-        "Error",
-        "Could not open phone dialer."
-      );
-    });
-  };
-
-  // ===================================================
-  // OPEN RESTAURANT
-  // ===================================================
-
-  const callRestaurant = () => {
-    if (!restaurant?.phone) {
-      Alert.alert(
-        "Unavailable",
-        "Restaurant phone number is not available."
-      );
-
-      return;
-    }
-
-    Linking.openURL(
-      `tel:${restaurant.phone}`
-    ).catch(() => {
-      Alert.alert(
-        "Error",
-        "Could not open phone dialer."
-      );
-    });
-  };
-
-  // ===================================================
-  // OPEN ADDRESS IN MAPS
-  // ===================================================
-
-  const openMaps = (
-    address: string
-  ) => {
-    if (!address) {
-      Alert.alert(
-        "Error",
-        "Address is not available."
-      );
-
-      return;
-    }
-
-    let url = "";
 
     if (
-      Platform.OS === "ios"
+      orderStatus ===
+        "Delivered" ||
+      orderStatus ===
+        "Cancelled"
     ) {
-      url =
-        `http://maps.apple.com/?q=` +
-        encodeURIComponent(
-          address
-        );
-    } else if (
-      Platform.OS === "android"
-    ) {
-      url =
-        `geo:0,0?q=` +
-        encodeURIComponent(
-          address
-        );
-    } else {
-      url =
-        `https://www.google.com/maps/search/?api=1&query=` +
-        encodeURIComponent(
-          address
-        );
+      stopCustomerLiveLocation();
+
+      return;
     }
 
-    Linking.openURL(url).catch(
-      () => {
-        Alert.alert(
-          "Error",
-          "Could not open maps."
-        );
-      }
-    );
-  };
-
-  // ===================================================
-  // STATUS HELPERS
-  // ===================================================
-
-  const statusIndex = (
-    statusValue: OrderStatus
-  ) => {
-    const statuses: OrderStatus[] = [
-      "Pending",
-      "Preparing",
-      "Accepted by Delivery",
-      "Out for Delivery",
-      "Delivered",
-    ];
-
-    return statuses.indexOf(
-      statusValue
-    );
-  };
-
-  const currentStatusIndex =
-    statusIndex(orderStatus);
-
-  const isCompleted = (
-    index: number
-  ) => {
-    return (
-      currentStatusIndex >= index
-    );
-  };
-
-  // ===================================================
-  // STATUS TEXT
-  // ===================================================
-
-  const getStatusTitle = () => {
-    switch (orderStatus) {
-      case "Pending":
-        return "Order placed";
-
-      case "Accepted":
-        return "Order accepted";
-
-      case "Preparing":
-        return "Restaurant is preparing your order";
-
-      case "Accepted by Delivery":
-        return "Delivery partner accepted";
-
-      case "Out for Delivery":
-        return "On the way to you";
-
-      case "Delivered":
-        return "Delivered";
-
-      case "Cancelled":
-        return "Order cancelled";
-
-      default:
-        return "Order status";
+    if (
+      trackingStartedRef.current
+    ) {
+      return;
     }
-  };
 
-  // ===================================================
-  // LOADING
-  // ===================================================
+    trackingStartedRef.current =
+      true;
+
+    console.log(
+      "📍 STARTING CUSTOMER LIVE GPS"
+    );
+
+    startCustomerLiveLocation();
+
+    return () => {
+      stopCustomerLiveLocation();
+    };
+  }, [
+    orderId,
+    orderStatus,
+  ]);
+
+  /*
+   * =========================================================
+   * LOADING
+   * =========================================================
+   */
 
   if (loading) {
     return (
       <SafeAreaView
-        style={styles.safeArea}
+        style={styles.container}
       >
         <StatusBar
-          barStyle="light-content"
-          backgroundColor="#081A33"
+          barStyle="dark-content"
+          backgroundColor="#FFFFFF"
         />
 
         <View
@@ -1131,7 +1743,7 @@ export default function ActiveOrderScreen() {
         >
           <ActivityIndicator
             size="large"
-            color="#F5B82E"
+            color="#EF2C1E"
           />
 
           <Text
@@ -1139,95 +1751,52 @@ export default function ActiveOrderScreen() {
               styles.loadingText
             }
           >
-            Loading your order...
+            Loading active order...
           </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // ===================================================
-  // NO ORDER
-  // ===================================================
+  /*
+   * =========================================================
+   * NO ACTIVE ORDER
+   * =========================================================
+   */
 
   if (!orderId) {
     return (
       <SafeAreaView
-        style={styles.safeArea}
-      >
-        <View
-          style={
-            styles.emptyContainer
-          }
-        >
-          <Ionicons
-            name="receipt-outline"
-            size={55}
-            color="#F5B82E"
-          />
-
-          <Text
-            style={
-              styles.emptyTitle
-            }
-          >
-            No active order
-          </Text>
-
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() =>
-              router.back()
-            }
-          >
-            <Text
-              style={
-                styles.primaryButtonText
-              }
-            >
-              Go Back
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // ===================================================
-  // RENDER
-  // ===================================================
-
-  return (
-    <SafeAreaView
-      style={styles.safeArea}
-    >
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#081A33"
-      />
-
-      <View
         style={styles.container}
       >
-        {/* ==========================================
-            HEADER
-        ========================================== */}
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor="#FFFFFF"
+        />
 
         <View
           style={styles.header}
         >
           <TouchableOpacity
+            onPress={() => {
+              if (
+                router.canGoBack()
+              ) {
+                router.back();
+              } else {
+                router.replace(
+                  "/"
+                );
+              }
+            }}
             style={
-              styles.headerButton
-            }
-            onPress={() =>
-              router.back()
+              styles.backButton
             }
           >
             <Ionicons
               name="arrow-back"
               size={24}
-              color="#FFFFFF"
+              color="#111827"
             />
           </TouchableOpacity>
 
@@ -1236,1832 +1805,1493 @@ export default function ActiveOrderScreen() {
               styles.headerTitle
             }
           >
-            Track Order
+            Active Order
+          </Text>
+
+          <View
+            style={{
+              width: 40,
+            }}
+          />
+        </View>
+
+        <View
+          style={
+            styles.emptyContainer
+          }
+        >
+          <View
+            style={
+              styles.emptyIcon
+            }
+          >
+            <Ionicons
+              name="bicycle-outline"
+              size={48}
+              color="#EF2C1E"
+            />
+          </View>
+
+          <Text
+            style={
+              styles.emptyTitle
+            }
+          >
+            No Active Order
+          </Text>
+
+          <Text
+            style={
+              styles.emptySubtitle
+            }
+          >
+            You currently don't have
+            any active delivery.
           </Text>
 
           <TouchableOpacity
             style={
-              styles.headerButton
+              styles.backDashboardButton
             }
-            onPress={() =>
-              fetchOrder(false)
+            onPress={() => {
+              if (
+                router.canGoBack()
+              ) {
+                router.back();
+              } else {
+                router.replace(
+                  "/"
+                );
+              }
+            }}
+          >
+            <Text
+              style={
+                styles.backDashboardText
+              }
+            >
+              Back to Dashboard
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  /*
+   * =========================================================
+   * STATUS
+   * =========================================================
+   */
+
+  const isDelivered =
+    orderStatus ===
+    "Delivered";
+
+  const isAccepted =
+    orderStatus ===
+    "Accepted by Delivery";
+
+  const isOutForDelivery =
+    orderStatus ===
+    "Out for Delivery";
+
+  /*
+   * =========================================================
+   * MAIN UI
+   * =========================================================
+   */
+
+  return (
+    <SafeAreaView
+      style={styles.container}
+    >
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="#FFFFFF"
+      />
+
+      {/* =================================================
+          HEADER
+      ================================================= */}
+
+      <View
+        style={styles.header}
+      >
+        <TouchableOpacity
+          onPress={() => {
+            if (
+              router.canGoBack()
+            ) {
+              router.back();
+            } else {
+              router.replace(
+                "/"
+              );
+            }
+          }}
+          style={
+            styles.backButton
+          }
+        >
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color="#111827"
+          />
+        </TouchableOpacity>
+
+        <View
+          style={
+            styles.headerCenter
+          }
+        >
+          <Text
+            style={
+              styles.headerTitle
+            }
+          >
+            Active Order
+          </Text>
+
+          <Text
+            style={styles.orderRef}
+          >
+            #
+            {orderId
+              .slice(-6)
+              .toUpperCase()}
+          </Text>
+        </View>
+
+        <View
+          style={
+            styles.socketStatusContainer
+          }
+        >
+          <View
+            style={[
+              styles.socketDot,
+              {
+                backgroundColor:
+                  socketConnected
+                    ? "#16A34A"
+                    : "#9CA3AF",
+              },
+            ]}
+          />
+
+          <Text
+            style={
+              styles.socketStatusText
+            }
+          >
+            {socketConnected
+              ? "LIVE"
+              : "OFFLINE"}
+          </Text>
+        </View>
+      </View>
+
+      {/* =================================================
+          INFO
+      ================================================= */}
+
+      <View
+        style={
+          styles.infoSection
+        }
+      >
+        {/* STATUS CARD */}
+
+        <View
+          style={
+            styles.statusCard
+          }
+        >
+          <View
+            style={
+              styles.statusIconContainer
             }
           >
             <Ionicons
-              name="refresh"
-              size={23}
-              color="#FFFFFF"
+              name={
+                isDelivered
+                  ? "checkmark-circle"
+                  : isOutForDelivery
+                  ? "bicycle"
+                  : "time"
+              }
+              size={24}
+              color="#EF2C1E"
             />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          showsVerticalScrollIndicator={
-            false
-          }
-          contentContainerStyle={
-            styles.scrollContent
-          }
-        >
-          {/* ========================================
-              LIVE STATUS
-          ======================================== */}
-
-          <View
-            style={
-              styles.liveStatusCard
-            }
-          >
-            <View
-              style={
-                styles.liveIconCircle
-              }
-            >
-              <Ionicons
-                name={
-                  orderStatus ===
-                  "Delivered"
-                    ? "checkmark"
-                    : "bicycle"
-                }
-                size={25}
-                color="#0B0F14"
-              />
-            </View>
-
-            <View
-              style={
-                styles.liveStatusContent
-              }
-            >
-              <Text
-                style={
-                  styles.liveStatusTitle
-                }
-              >
-                {getStatusTitle()}
-              </Text>
-
-              <Text
-                style={
-                  styles.liveStatusSubtitle
-                }
-              >
-                {orderStatus ===
-                "Out for Delivery"
-                  ? "Your delivery partner is on the way"
-                  : orderStatus ===
-                    "Delivered"
-                  ? "Enjoy your meal!"
-                  : "We'll keep you updated"}
-              </Text>
-            </View>
-
-            <View
-              style={
-                styles.liveIndicator
-              }
-            >
-              <View
-                style={[
-                  styles.liveDot,
-                  {
-                    backgroundColor:
-                      isSocketConnected
-                        ? "#4CAF50"
-                        : "#F5B82E",
-                  },
-                ]}
-              />
-
-              <Text
-                style={
-                  styles.liveText
-                }
-              >
-                {isSocketConnected
-                  ? "LIVE"
-                  : "CONNECTING"}
-              </Text>
-            </View>
           </View>
 
-          {/* ========================================
-              MAP
-          ======================================== */}
-
           <View
             style={
-              styles.mapCard
-            }
-          >
-            <View
-              style={
-                styles.mapHeader
-              }
-            >
-              <View>
-                <Text
-                  style={
-                    styles.mapTitle
-                  }
-                >
-                  Live delivery tracking
-                </Text>
-
-                <Text
-                  style={
-                    styles.mapSubtitle
-                  }
-                >
-                  {deliveryPartnerLocation
-                    ? "Delivery partner location updated"
-                    : orderStatus ===
-                      "Out for Delivery"
-                    ? "Waiting for delivery partner location..."
-                    : "Live tracking starts when your order is on the way"}
-                </Text>
-              </View>
-
-              <View
-                style={
-                  styles.mapIcon
-                }
-              >
-                <Ionicons
-                  name="navigate"
-                  size={20}
-                  color="#F5B82E"
-                />
-              </View>
-            </View>
-
-            <View
-              style={
-                styles.mapContainer
-              }
-            >
-             <PlatformMap
-  currentLocation={deliveryPartnerLocation}
-  restaurantLocation={restaurantLocation}
-  customerLocation={customerLocation}
-  customerCurrentLocation={customerCurrentLocation}
-/>
-
-              {!deliveryPartnerLocation &&
-                orderStatus !==
-                  "Out for Delivery" && (
-                  <View
-                    style={
-                      styles.mapOverlay
-                    }
-                  >
-                    <Ionicons
-                      name="map-outline"
-                      size={35}
-                      color="#64748B"
-                    />
-
-                    <Text
-                      style={
-                        styles.mapOverlayText
-                      }
-                    >
-                      Live location will
-                      appear here
-                    </Text>
-                  </View>
-                )}
-            </View>
-          </View>
-
-          {/* ========================================
-              ORDER STATUS TIMELINE
-          ======================================== */}
-
-          <View
-            style={
-              styles.card
+              styles.statusContent
             }
           >
             <Text
               style={
-                styles.sectionTitle
+                styles.cardLabel
               }
             >
-              Order status
+              Order Status
             </Text>
 
-            {/* ORDER PLACED */}
-
-            <View
+            <Text
               style={
-                styles.timelineRow
+                styles.statusValue
               }
             >
-              <View
-                style={
-                  styles.timelineIndicator
-                }
-              >
-                <View
-                  style={[
-                    styles.timelineCircle,
-                    isCompleted(0) &&
-                      styles.completedCircle,
-                  ]}
-                >
-                  {isCompleted(0) && (
-                    <Ionicons
-                      name="checkmark"
-                      size={13}
-                      color="#FFFFFF"
-                    />
-                  )}
-                </View>
+              {orderStatus ||
+                "Processing"}
+            </Text>
+          </View>
 
-                <View
-                  style={[
-                    styles.timelineLine,
-                    isCompleted(1) &&
-                      styles.completedLine,
-                  ]}
-                />
-              </View>
-
-              <View
-                style={
-                  styles.timelineContent
-                }
-              >
-                <Text
-                  style={
-                    styles.timelineTitle
-                  }
-                >
-                  Order placed
-                </Text>
-
-                <Text
-                  style={
-                    styles.timelineSubtitle
-                  }
-                >
-                  Your order has been received
-                </Text>
-              </View>
-            </View>
-
-            {/* PREPARING */}
-
-            <View
-              style={
-                styles.timelineRow
-              }
-            >
-              <View
-                style={
-                  styles.timelineIndicator
-                }
-              >
-                <View
-                  style={[
-                    styles.timelineCircle,
-                    isCompleted(1) &&
-                      styles.completedCircle,
-                  ]}
-                >
-                  {isCompleted(1) && (
-                    <Ionicons
-                      name="checkmark"
-                      size={13}
-                      color="#FFFFFF"
-                    />
-                  )}
-                </View>
-
-                <View
-                  style={[
-                    styles.timelineLine,
-                    isCompleted(2) &&
-                      styles.completedLine,
-                  ]}
-                />
-              </View>
-
-              <View
-                style={
-                  styles.timelineContent
-                }
-              >
-                <Text
-                  style={
-                    styles.timelineTitle
-                  }
-                >
-                  Preparing
-                </Text>
-
-                <Text
-                  style={
-                    styles.timelineSubtitle
-                  }
-                >
-                  Restaurant is preparing your food
-                </Text>
-              </View>
-            </View>
-
-            {/* DELIVERY PARTNER */}
-
-            <View
-              style={
-                styles.timelineRow
-              }
-            >
-              <View
-                style={
-                  styles.timelineIndicator
-                }
-              >
-                <View
-                  style={[
-                    styles.timelineCircle,
-                    isCompleted(2) &&
-                      styles.completedCircle,
-                  ]}
-                >
-                  {isCompleted(2) && (
-                    <Ionicons
-                      name="checkmark"
-                      size={13}
-                      color="#FFFFFF"
-                    />
-                  )}
-                </View>
-
-                <View
-                  style={[
-                    styles.timelineLine,
-                    isCompleted(3) &&
-                      styles.completedLine,
-                  ]}
-                />
-              </View>
-
-              <View
-                style={
-                  styles.timelineContent
-                }
-              >
-                <Text
-                  style={
-                    styles.timelineTitle
-                  }
-                >
-                  Delivery partner assigned
-                </Text>
-
-                <Text
-                  style={
-                    styles.timelineSubtitle
-                  }
-                >
-                  {deliveryPartner
-                    ? `${deliveryPartner.name} is delivering your order`
-                    : "Finding a delivery partner"}
-                </Text>
-              </View>
-            </View>
-
-            {/* OUT FOR DELIVERY */}
-
-            <View
-              style={
-                styles.timelineRow
-              }
-            >
-              <View
-                style={
-                  styles.timelineIndicator
-                }
-              >
-                <View
-                  style={[
-                    styles.timelineCircle,
-                    isCompleted(3) &&
-                      styles.completedCircle,
-                  ]}
-                >
-                  {isCompleted(3) && (
-                    <Ionicons
-                      name="checkmark"
-                      size={13}
-                      color="#FFFFFF"
-                    />
-                  )}
-                </View>
-
-                <View
-                  style={[
-                    styles.timelineLine,
-                    isCompleted(4) &&
-                      styles.completedLine,
-                  ]}
-                />
-              </View>
-
-              <View
-                style={
-                  styles.timelineContent
-                }
-              >
-                <Text
-                  style={
-                    styles.timelineTitle
-                  }
-                >
-                  Out for delivery
-                </Text>
-
-                <Text
-                  style={
-                    styles.timelineSubtitle
-                  }
-                >
-                  Your order is on the way
-                </Text>
-              </View>
-            </View>
-
-            {/* DELIVERED */}
-
-            <View
+          <View
+            style={[
+              styles.statusBadge,
+              {
+                backgroundColor:
+                  isDelivered
+                    ? "#DCFCE7"
+                    : isOutForDelivery
+                    ? "#FEF3C7"
+                    : "#FEE2E2",
+              },
+            ]}
+          >
+            <Text
               style={[
-                styles.timelineRow,
+                styles.statusBadgeText,
                 {
-                  minHeight: 45,
+                  color:
+                    isDelivered
+                      ? "#15803D"
+                      : isOutForDelivery
+                      ? "#B45309"
+                      : "#DC2626",
                 },
               ]}
             >
-              <View
-                style={
-                  styles.timelineIndicator
-                }
-              >
-                <View
-                  style={[
-                    styles.timelineCircle,
-                    isCompleted(4) &&
-                      styles.completedCircle,
-                  ]}
-                >
-                  {isCompleted(4) && (
-                    <Ionicons
-                      name="checkmark"
-                      size={13}
-                      color="#FFFFFF"
-                    />
-                  )}
-                </View>
-              </View>
-
-              <View
-                style={
-                  styles.timelineContent
-                }
-              >
-                <Text
-                  style={
-                    styles.timelineTitle
-                  }
-                >
-                  Delivered
-                </Text>
-
-                <Text
-                  style={
-                    styles.timelineSubtitle
-                  }
-                >
-                  Enjoy your food!
-                </Text>
-              </View>
-            </View>
+              {isDelivered
+                ? "COMPLETED"
+                : isOutForDelivery
+                ? "ON THE WAY"
+                : "ACCEPTED"}
+            </Text>
           </View>
+        </View>
 
-          {/* ========================================
-              DELIVERY PARTNER
-          ======================================== */}
+        {/* =================================================
+            LOCATION CARDS
+        ================================================= */}
 
-          {deliveryPartner && (
+        <View
+          style={
+            styles.locationRow
+          }
+        >
+          {/* RESTAURANT */}
+
+          <View
+            style={
+              styles.locationCard
+            }
+          >
+            <View
+              style={[
+                styles.locationIcon,
+                {
+                  backgroundColor:
+                    "#DBEAFE",
+                },
+              ]}
+            >
+              <Text
+                style={
+                  styles.locationEmoji
+                }
+              >
+                🏪
+              </Text>
+            </View>
+
             <View
               style={
-                styles.card
+                styles.locationContent
               }
             >
               <Text
                 style={
-                  styles.sectionTitle
+                  styles.cardLabel
                 }
               >
-                Your delivery partner
+                Pickup From
               </Text>
 
-              <View
+              <Text
                 style={
-                  styles.partnerRow
+                  styles.locationTitle
                 }
+                numberOfLines={1}
               >
-                <View
-                  style={
-                    styles.partnerAvatar
-                  }
-                >
-                  <Ionicons
-                    name="person"
-                    size={28}
-                    color="#F5B82E"
-                  />
-                </View>
+                {restaurantName ||
+                  "Restaurant"}
+              </Text>
 
-                <View
-                  style={
-                    styles.partnerInfo
-                  }
-                >
-                  <Text
-                    style={
-                      styles.partnerName
-                    }
-                  >
-                    {deliveryPartner.name}
-                  </Text>
+              <Text
+                style={
+                  styles.locationAddress
+                }
+                numberOfLines={1}
+              >
+                {restaurantAddress ||
+                  "Restaurant address"}
+              </Text>
 
-                  <Text
-                    style={
-                      styles.partnerVehicle
-                    }
-                  >
-                    {deliveryPartner.vehicleType ||
-                      "Delivery Partner"}
-                  </Text>
+              {/* CALL RESTAURANT */}
 
-                  <View
-                    style={
-                      styles.ratingRow
-                    }
-                  >
-                    <Ionicons
-                      name="star"
-                      size={15}
-                      color="#F5B82E"
-                    />
-
-                    <Text
-                      style={
-                        styles.ratingText
-                      }
-                    >
-                      4.8
-                    </Text>
-                  </View>
-                </View>
-
+              {restaurantPhone ? (
                 <TouchableOpacity
                   style={
                     styles.callButton
                   }
-                  onPress={
-                    callDeliveryPartner
-                  }
-                >
-                  <Ionicons
-                    name="call"
-                    size={20}
-                    color="#FFFFFF"
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={
-                    styles.chatButton
-                  }
                   onPress={() =>
-                    Alert.alert(
-                      "Chat",
-                      "Live chat screen will be connected next."
+                    callPhoneNumber(
+                      restaurantPhone,
+                      restaurantName ||
+                        "restaurant"
                     )
                   }
                 >
                   <Ionicons
-                    name="chatbubble"
-                    size={20}
-                    color="#0B0F14"
+                    name="call"
+                    size={12}
+                    color="#FFFFFF"
                   />
-                </TouchableOpacity>
-              </View>
-
-              {/* LIVE LOCATION STATUS */}
-
-              <View
-                style={
-                  styles.partnerLiveStatus
-                }
-              >
-                <View
-                  style={[
-                    styles.partnerLiveDot,
-                    {
-                      backgroundColor:
-                        deliveryPartnerLocation
-                          ? "#4CAF50"
-                          : "#F5B82E",
-                    },
-                  ]}
-                />
-
-                <Text
-                  style={
-                    styles.partnerLiveText
-                  }
-                >
-                  {deliveryPartnerLocation
-                    ? "Delivery partner location is live"
-                    : "Waiting for live location"}
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {/* ========================================
-              DELIVERY OTP
-          ======================================== */}
-
-          {deliveryOtp &&
-            orderStatus !==
-              "Delivered" && (
-              <View
-                style={
-                  styles.otpCard
-                }
-              >
-                <View
-                  style={
-                    styles.otpIcon
-                  }
-                >
-                  <Ionicons
-                    name="shield-checkmark"
-                    size={26}
-                    color="#0B0F14"
-                  />
-                </View>
-
-                <View
-                  style={
-                    styles.otpContent
-                  }
-                >
-                  <Text
-                    style={
-                      styles.otpTitle
-                    }
-                  >
-                    Delivery OTP
-                  </Text>
 
                   <Text
                     style={
-                      styles.otpSubtitle
+                      styles.callButtonText
                     }
                   >
-                    Share this OTP with the delivery partner when your order arrives.
-                  </Text>
-
-                  <Text
-                    style={
-                      styles.otpValue
-                    }
-                  >
-                    {deliveryOtp}
-                  </Text>
-                </View>
-              </View>
-            )}
-
-          {/* ========================================
-              RESTAURANT
-          ======================================== */}
-
-          {restaurant && (
-            <View
-              style={
-                styles.card
-              }
-            >
-              <View
-                style={
-                  styles.restaurantHeader
-                }
-              >
-                <View
-                  style={
-                    styles.restaurantIcon
-                  }
-                >
-                  <Ionicons
-                    name="restaurant"
-                    size={23}
-                    color="#F5B82E"
-                  />
-                </View>
-
-                <View
-                  style={
-                    styles.restaurantInfo
-                  }
-                >
-                  <Text
-                    style={
-                      styles.restaurantName
-                    }
-                  >
-                    {restaurant.name}
-                  </Text>
-
-                  <Text
-                    style={
-                      styles.restaurantAddress
-                    }
-                  >
-                    {restaurant.address ||
-                      "Restaurant address unavailable"}
-                  </Text>
-                </View>
-
-                {restaurant.phone && (
-                  <TouchableOpacity
-                    style={
-                      styles.smallCallButton
-                    }
-                    onPress={
-                      callRestaurant
-                    }
-                  >
-                    <Ionicons
-                      name="call-outline"
-                      size={19}
-                      color="#0B0F14"
-                    />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* ========================================
-              DELIVERY ADDRESS
-          ======================================== */}
-
-          <View
-            style={
-              styles.card
-            }
-          >
-            <Text
-              style={
-                styles.sectionTitle
-              }
-            >
-              Delivering to
-            </Text>
-
-            <TouchableOpacity
-              style={
-                styles.addressRow
-              }
-              onPress={() =>
-                openMaps(
-                  deliveryAddress
-                )
-              }
-            >
-              <View
-                style={
-                  styles.addressIcon
-                }
-              >
-                <Ionicons
-                  name="location"
-                  size={21}
-                  color="#F5B82E"
-                />
-              </View>
-
-              <View
-                style={
-                  styles.addressContent
-                }
-              >
-                <Text
-                  style={
-                    styles.addressTitle
-                  }
-                >
-                  Delivery address
-                </Text>
-
-                <Text
-                  style={
-                    styles.addressValue
-                  }
-                >
-                  {deliveryAddress ||
-                    "Address unavailable"}
-                </Text>
-              </View>
-
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color="#94A3B8"
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* ========================================
-              ORDER ITEMS
-          ======================================== */}
-
-          <View
-            style={
-              styles.card
-            }
-          >
-            <View
-              style={
-                styles.itemsHeader
-              }
-            >
-              <Text
-                style={
-                  styles.sectionTitle
-                }
-              >
-                Your order
-              </Text>
-
-              {orderStatus !==
-                "Delivered" && (
-                <TouchableOpacity
-                  onPress={() =>
-                    router.back()
-                  }
-                >
-                  <Text
-                    style={
-                      styles.addMoreText
-                    }
-                  >
-                    Add more
+                    Call
                   </Text>
                 </TouchableOpacity>
-              )}
-            </View>
-
-            {items.length === 0 ? (
-              <Text
-                style={
-                  styles.noItemsText
-                }
-              >
-                No items found.
-              </Text>
-            ) : (
-              items.map(
-                (
-                  item,
-                  index
-                ) => (
-                  <View
-                    key={`${item.foodItemId || item.name}-${index}`}
-                    style={
-                      styles.itemRow
-                    }
-                  >
-                    <View
-                      style={
-                        styles.quantityBox
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.quantityText
-                        }
-                      >
-                        {item.quantity}
-                      </Text>
-                    </View>
-
-                    <Text
-                      style={
-                        styles.itemName
-                      }
-                    >
-                      {item.name}
-                    </Text>
-
-                    <Text
-                      style={
-                        styles.itemPrice
-                      }
-                    >
-                      ₹
-                      {(
-                        item.price *
-                        item.quantity
-                      ).toFixed(2)}
-                    </Text>
-                  </View>
-                )
-              )
-            )}
-
-            <View
-              style={
-                styles.divider
-              }
-            />
-
-            {/* TOTAL */}
-
-            <View
-              style={
-                styles.totalRow
-              }
-            >
-              <Text
-                style={
-                  styles.totalLabel
-                }
-              >
-                Total
-              </Text>
-
-              <Text
-                style={
-                  styles.totalValue
-                }
-              >
-                ₹
-                {Number(
-                  totalAmount
-                ).toFixed(2)}
-              </Text>
-            </View>
-
-            {/* PAYMENT */}
-
-            <View
-              style={
-                styles.paymentRow
-              }
-            >
-              <View
-                style={
-                  styles.paymentLeft
-                }
-              >
-                <Ionicons
-                  name={
-                    paymentMethod
-                      ?.toLowerCase()
-                      .includes(
-                        "cash"
-                      )
-                      ? "cash-outline"
-                      : "card-outline"
-                  }
-                  size={18}
-                  color="#64748B"
-                />
-
-                <Text
-                  style={
-                    styles.paymentText
-                  }
-                >
-                  {paymentMethod ||
-                    "Payment"}
-                </Text>
-              </View>
-
-              <Text
-                style={[
-                  styles.paymentStatus,
-                  {
-                    color:
-                      paymentStatus ===
-                      "Paid"
-                        ? "#4CAF50"
-                        : "#F5B82E",
-                  },
-                ]}
-              >
-                {paymentStatus ||
-                  "Pending"}
-              </Text>
+              ) : null}
             </View>
           </View>
 
-          {/* ========================================
-              HELP
-          ======================================== */}
-
-          <TouchableOpacity
-            style={
-              styles.helpCard
-            }
-            onPress={() =>
-              Alert.alert(
-                "Need Help?",
-                "Support and order chat will be connected here."
-              )
-            }
-          >
-            <View
-              style={
-                styles.helpIcon
-              }
-            >
-              <Ionicons
-                name="help-circle-outline"
-                size={25}
-                color="#F5B82E"
-              />
-            </View>
-
-            <View
-              style={
-                styles.helpContent
-              }
-            >
-              <Text
-                style={
-                  styles.helpTitle
-                }
-              >
-                Need help?
-              </Text>
-
-              <Text
-                style={
-                  styles.helpSubtitle
-                }
-              >
-                Get help with your order
-              </Text>
-            </View>
-
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color="#94A3B8"
-            />
-          </TouchableOpacity>
-
-          {/* ========================================
-              SOCKET INFO
-          ======================================== */}
+          {/* CUSTOMER */}
 
           <View
             style={
-              styles.connectionStatus
+              styles.locationCard
             }
           >
             <View
               style={[
-                styles.connectionDot,
+                styles.locationIcon,
                 {
                   backgroundColor:
-                    isSocketConnected
-                      ? "#4CAF50"
-                      : "#F5B82E",
+                    "#DCFCE7",
+                },
+              ]}
+            >
+              <Text
+                style={
+                  styles.locationEmoji
+                }
+              >
+                🏠
+              </Text>
+            </View>
+
+            <View
+              style={
+                styles.locationContent
+              }
+            >
+              <Text
+                style={
+                  styles.cardLabel
+                }
+              >
+                Deliver To
+              </Text>
+
+              <Text
+                style={
+                  styles.locationTitle
+                }
+                numberOfLines={1}
+              >
+                You
+              </Text>
+
+              <Text
+                style={
+                  styles.locationAddress
+                }
+                numberOfLines={2}
+              >
+                {deliveryAddress ||
+                  "Customer address"}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* =================================================
+            DELIVERY PARTNER CARD
+        ================================================= */}
+
+        {deliveryPartner && (
+          <View
+            style={
+              styles.deliveryPartnerCard
+            }
+          >
+            <View
+              style={
+                styles.deliveryPartnerIcon
+              }
+            >
+              <Ionicons
+                name="bicycle"
+                size={22}
+                color="#EF2C1E"
+              />
+            </View>
+
+            <View
+              style={
+                styles.deliveryPartnerInfo
+              }
+            >
+              <Text
+                style={
+                  styles.cardLabel
+                }
+              >
+                DELIVERY PARTNER
+              </Text>
+
+              <Text
+                style={
+                  styles.deliveryPartnerName
+                }
+                numberOfLines={1}
+              >
+                {deliveryPartner.name ||
+                  "Delivery Partner"}
+              </Text>
+
+              <Text
+                style={
+                  styles.deliveryPartnerVehicle
+                }
+              >
+                {deliveryPartner.vehicleType ||
+                  "Delivery Partner"}
+              </Text>
+            </View>
+
+            {deliveryPartner.phone ? (
+              <TouchableOpacity
+                style={
+                  styles.partnerCallButton
+                }
+                onPress={() =>
+                  callPhoneNumber(
+                    deliveryPartner.phone ||
+                      "",
+                    deliveryPartner.name ||
+                      "delivery partner"
+                  )
+                }
+              >
+                <Ionicons
+                  name="call"
+                  size={15}
+                  color="#FFFFFF"
+                />
+
+                <Text
+                  style={
+                    styles.partnerCallButtonText
+                  }
+                >
+                  Call
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        )}
+      </View>
+
+      {/* =================================================
+          MAP
+      ================================================= */}
+
+      <View
+        style={
+          styles.mapContainer
+        }
+      >
+        <PlatformMap
+          currentLocation={
+            deliveryPartnerLocation
+          }
+          restaurantLocation={
+            restaurantLocation
+          }
+          customerLocation={
+            customerLocation
+          }
+          customerCurrentLocation={
+            customerCurrentLocation
+          }
+          routeCoordinates={
+            routeCoordinates
+          }
+        />
+
+        {/* ROUTE STATUS */}
+
+        {!isDelivered &&
+          routeLoading && (
+            <View
+              style={
+                styles.routeLoadingBadge
+              }
+            >
+              <ActivityIndicator
+                size="small"
+                color="#EF2C1E"
+              />
+
+              <Text
+                style={
+                  styles.routeLoadingText
+                }
+              >
+                Updating route...
+              </Text>
+            </View>
+          )}
+
+        {/* LIVE BADGE */}
+
+        {!isDelivered && (
+          <View
+            style={
+              styles.liveTrackingBadge
+            }
+          >
+            <View
+              style={
+                styles.livePulse
+              }
+            />
+
+            <Text
+              style={
+                styles.liveTrackingText
+              }
+            >
+              LIVE TRACKING
+            </Text>
+          </View>
+        )}
+
+        {/* LEGEND */}
+
+        <View
+          style={styles.legend}
+        >
+          <View
+            style={
+              styles.legendItem
+            }
+          >
+            <View
+              style={[
+                styles.legendDot,
+                {
+                  backgroundColor:
+                    "#2563EB",
                 },
               ]}
             />
 
             <Text
               style={
-                styles.connectionText
+                styles.legendText
               }
             >
-              {isSocketConnected
-                ? "Live tracking connected"
-                : "Connecting to live tracking..."}
+              Restaurant
             </Text>
           </View>
-        </ScrollView>
+
+          <View
+            style={
+              styles.legendItem
+            }
+          >
+            <View
+              style={[
+                styles.legendDot,
+                {
+                  backgroundColor:
+                    "#16A34A",
+                },
+              ]}
+            />
+
+            <Text
+              style={
+                styles.legendText
+              }
+            >
+              Customer
+            </Text>
+          </View>
+
+          <View
+            style={
+              styles.legendItem
+            }
+          >
+            <View
+              style={[
+                styles.legendDot,
+                {
+                  backgroundColor:
+                    "#EF2C1E",
+                },
+              ]}
+            />
+
+            <Text
+              style={
+                styles.legendText
+              }
+            >
+              Delivery Partner
+            </Text>
+          </View>
+        </View>
+
+        {/* LOCATION STATUS */}
+
+        {!isDelivered && (
+          <View
+            style={
+              styles.locationStatus
+            }
+          >
+            <Ionicons
+              name="navigate"
+              size={15}
+              color="#16A34A"
+            />
+
+            <Text
+              style={
+                styles.locationStatusText
+              }
+            >
+              {deliveryPartnerLocation
+                ? "Delivery partner is live"
+                : "Waiting for delivery partner..."}
+            </Text>
+          </View>
+        )}
+
+        {/* ROUTE ERROR */}
+
+        {!isDelivered &&
+          routeError &&
+          routeCoordinates.length ===
+            0 && (
+            <View
+              style={
+                styles.routeErrorBadge
+              }
+            >
+              <Ionicons
+                name="warning-outline"
+                size={15}
+                color="#B45309"
+              />
+
+              <Text
+                style={
+                  styles.routeErrorText
+                }
+              >
+                Road route unavailable
+              </Text>
+            </View>
+          )}
       </View>
+
+      {/* =================================================
+          ACCEPTED BANNER
+      ================================================= */}
+
+      {isAccepted && (
+        <View
+          style={
+            styles.waitingBanner
+          }
+        >
+          <Ionicons
+            name="information-circle"
+            size={20}
+            color="#B45309"
+          />
+
+          <Text
+            style={
+              styles.waitingBannerText
+            }
+          >
+            Your order has been accepted
+            by the delivery partner.
+            Waiting for the order to be
+            picked up.
+          </Text>
+        </View>
+      )}
+
+      {/* =================================================
+          OUT FOR DELIVERY BANNER
+      ================================================= */}
+
+      {isOutForDelivery && (
+        <View
+          style={
+            styles.deliveryBanner
+          }
+        >
+          <Ionicons
+            name="bicycle"
+            size={20}
+            color="#B45309"
+          />
+
+          <Text
+            style={
+              styles.deliveryBannerText
+            }
+          >
+            Your order is on the way.
+            You can track the delivery
+            partner live on the map.
+          </Text>
+        </View>
+      )}
+
+      {/* =================================================
+          DELIVERED
+      ================================================= */}
+
+      {isDelivered && (
+        <View
+          style={
+            styles.deliveredBanner
+          }
+        >
+          <Ionicons
+            name="checkmark-circle"
+            size={22}
+            color="#15803D"
+          />
+
+          <Text
+            style={
+              styles.deliveredBannerText
+            }
+          >
+            Order Delivered Successfully
+          </Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
-// =====================================================
-// STYLES
-// =====================================================
+/*
+ * =========================================================
+ * STYLES
+ * =========================================================
+ */
 
 const styles = StyleSheet.create({
-  // ===================================================
-  // MAIN
-  // ===================================================
-
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#081A33",
-  },
-
   container: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor:
+      "#F8FAFC",
   },
 
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 45,
-  },
-
-  // ===================================================
-  // LOADING
-  // ===================================================
+  /*
+   * LOADING
+   */
 
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    justifyContent:
+      "center",
     alignItems: "center",
-    justifyContent: "center",
+    backgroundColor:
+      "#FFFFFF",
   },
 
   loadingText: {
-    marginTop: 14,
+    marginTop: 12,
     fontSize: 15,
-    color: "#64748B",
-    fontWeight: "600",
+    color: "#6B7280",
   },
 
-  // ===================================================
-  // EMPTY
-  // ===================================================
-
-  emptyContainer: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 25,
-  },
-
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#0B0F14",
-    marginTop: 15,
-    marginBottom: 20,
-  },
-
-  primaryButton: {
-    backgroundColor: "#F5B82E",
-    borderRadius: 13,
-    paddingHorizontal: 30,
-    paddingVertical: 14,
-  },
-
-  primaryButtonText: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#0B0F14",
-  },
-
-  // ===================================================
-  // HEADER
-  // ===================================================
+  /*
+   * HEADER
+   */
 
   header: {
-    height: 70,
-    backgroundColor: "#081A33",
+    height: 64,
+    backgroundColor:
+      "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor:
+      "#E5E7EB",
   },
 
-  headerButton: {
-    width: 42,
-    height: 42,
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent:
+      "center",
     alignItems: "center",
-    justifyContent: "center",
+  },
+
+  headerCenter: {
+    flex: 1,
+    alignItems:
+      "center",
   },
 
   headerTitle: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "800",
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
   },
 
-  // ===================================================
-  // LIVE STATUS
-  // ===================================================
-
-  liveStatusCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#E2E6EB",
+  orderRef: {
+    marginTop: 2,
+    fontSize: 11,
+    color: "#6B7280",
+    fontWeight: "600",
+    letterSpacing: 0.5,
   },
 
-  liveIconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#F5B82E",
-    alignItems: "center",
-    justifyContent: "center",
+  socketStatusContainer: {
+    width: 58,
+    alignItems:
+      "center",
+    justifyContent:
+      "center",
   },
 
-  liveStatusContent: {
-    flex: 1,
-    marginLeft: 13,
-  },
-
-  liveStatusTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#0B0F14",
-  },
-
-  liveStatusSubtitle: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 4,
-    lineHeight: 17,
-  },
-
-  liveIndicator: {
-    alignItems: "center",
-    marginLeft: 8,
-  },
-
-  liveDot: {
+  socketDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginBottom: 4,
+    marginBottom: 3,
   },
 
-  liveText: {
-    fontSize: 9,
+  socketStatusText: {
+    fontSize: 8,
     fontWeight: "800",
-    color: "#64748B",
+    color: "#6B7280",
   },
 
-  // ===================================================
-  // MAP
-  // ===================================================
+  /*
+   * INFO
+   */
 
-  mapCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    overflow: "hidden",
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#E2E6EB",
-  },
-
-  mapHeader: {
-    padding: 15,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  mapTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#0B0F14",
-  },
-
-  mapSubtitle: {
-    fontSize: 11,
-    color: "#64748B",
-    marginTop: 3,
-  },
-
-  mapIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "#FFF6D8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  mapContainer: {
-    height: 250,
-    backgroundColor: "#E2E6EB",
-    position: "relative",
-  },
-
-  mapOverlay: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    alignItems: "center",
-    justifyContent: "center",
+  infoSection: {
     backgroundColor:
-      "rgba(245,247,250,0.88)",
+      "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
 
-  mapOverlayText: {
-    fontSize: 13,
-    color: "#64748B",
-    fontWeight: "600",
-    marginTop: 8,
-  },
-
-  // ===================================================
-  // CARD
-  // ===================================================
-
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 17,
-    marginBottom: 14,
+  statusCard: {
+    minHeight: 58,
     borderWidth: 1,
-    borderColor: "#E2E6EB",
+    borderColor:
+      "#E5E7EB",
+    borderRadius: 12,
+    flexDirection:
+      "row",
+    alignItems:
+      "center",
+    paddingHorizontal: 12,
+    backgroundColor:
+      "#FFFFFF",
   },
 
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#0B0F14",
-    marginBottom: 15,
-  },
-
-  // ===================================================
-  // TIMELINE
-  // ===================================================
-
-  timelineRow: {
-    flexDirection: "row",
-    minHeight: 66,
-  },
-
-  timelineIndicator: {
-    width: 28,
-    alignItems: "center",
-  },
-
-  timelineCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: "#CBD5E1",
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  completedCircle: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#4CAF50",
-  },
-
-  timelineLine: {
-    flex: 1,
-    width: 2,
-    backgroundColor: "#E2E8F0",
-    marginTop: 3,
-    marginBottom: 2,
-  },
-
-  completedLine: {
-    backgroundColor: "#4CAF50",
-  },
-
-  timelineContent: {
-    flex: 1,
-    paddingLeft: 10,
-    paddingBottom: 12,
-  },
-
-  timelineTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#0B0F14",
-  },
-
-  timelineSubtitle: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 3,
-    lineHeight: 17,
-  },
-
-  // ===================================================
-  // PARTNER
-  // ===================================================
-
-  partnerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  partnerAvatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: "#FFF6D8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  partnerInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-
-  partnerName: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#0B0F14",
-  },
-
-  partnerVehicle: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 3,
-  },
-
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 3,
-  },
-
-  ratingText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#475569",
-    marginLeft: 4,
-  },
-
-  callButton: {
+  statusIconContainer: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "#4CAF50",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 7,
+    backgroundColor:
+      "#FEF2F2",
+    justifyContent:
+      "center",
+    alignItems:
+      "center",
   },
 
-  chatButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "#F5B82E",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 7,
-  },
-
-  partnerLiveStatus: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 15,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#EEF2F6",
-  },
-
-  partnerLiveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 7,
-  },
-
-  partnerLiveText: {
-    fontSize: 12,
-    color: "#64748B",
-    fontWeight: "600",
-  },
-
-  // ===================================================
-  // OTP
-  // ===================================================
-
-  otpCard: {
-    backgroundColor: "#F5B82E",
-    borderRadius: 18,
-    padding: 17,
-    marginBottom: 14,
-    flexDirection: "row",
-  },
-
-  otpIcon: {
-    width: 45,
-    height: 45,
-    borderRadius: 23,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  otpContent: {
+  statusContent: {
     flex: 1,
-    marginLeft: 12,
-  },
-
-  otpTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#0B0F14",
-  },
-
-  otpSubtitle: {
-    fontSize: 11,
-    color: "#334155",
-    marginTop: 3,
-    lineHeight: 16,
-  },
-
-  otpValue: {
-    fontSize: 28,
-    fontWeight: "900",
-    letterSpacing: 5,
-    color: "#0B0F14",
-    marginTop: 8,
-  },
-
-  // ===================================================
-  // RESTAURANT
-  // ===================================================
-
-  restaurantHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  restaurantIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "#FFF6D8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  restaurantInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-
-  restaurantName: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#0B0F14",
-  },
-
-  restaurantAddress: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 3,
-    lineHeight: 17,
-  },
-
-  smallCallButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F5B82E",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  // ===================================================
-  // ADDRESS
-  // ===================================================
-
-  addressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  addressIcon: {
-    width: 43,
-    height: 43,
-    borderRadius: 22,
-    backgroundColor: "#FFF6D8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  addressContent: {
-    flex: 1,
-    marginLeft: 11,
-    marginRight: 8,
-  },
-
-  addressTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#0B0F14",
-  },
-
-  addressValue: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 3,
-    lineHeight: 17,
-  },
-
-  // ===================================================
-  // ITEMS
-  // ===================================================
-
-  itemsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  addMoreText: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#F5B82E",
-  },
-
-  noItemsText: {
-    fontSize: 13,
-    color: "#64748B",
-  },
-
-  itemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 9,
-  },
-
-  quantityBox: {
-    width: 28,
-    height: 28,
-    borderRadius: 7,
-    backgroundColor: "#F1F5F9",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  quantityText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#475569",
-  },
-
-  itemName: {
-    flex: 1,
-    fontSize: 14,
-    color: "#334155",
-    fontWeight: "600",
     marginLeft: 10,
   },
 
-  itemPrice: {
-    fontSize: 14,
-    color: "#0B0F14",
+  cardLabel: {
+    fontSize: 10,
     fontWeight: "700",
+    color: "#9CA3AF",
+    textTransform:
+      "uppercase",
+    letterSpacing: 0.5,
   },
 
-  divider: {
-    height: 1,
-    backgroundColor: "#E2E8F0",
-    marginVertical: 10,
-  },
-
-  totalRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#0B0F14",
-  },
-
-  totalValue: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: "#0B0F14",
-  },
-
-  paymentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 12,
-  },
-
-  paymentLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  paymentText: {
-    fontSize: 12,
-    color: "#64748B",
-    marginLeft: 7,
-  },
-
-  paymentStatus: {
-    fontSize: 12,
-    fontWeight: "800",
-  },
-
-  // ===================================================
-  // HELP
-  // ===================================================
-
-  helpCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E2E6EB",
-  },
-
-  helpIcon: {
-    width: 45,
-    height: 45,
-    borderRadius: 23,
-    backgroundColor: "#FFF6D8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  helpContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-
-  helpTitle: {
+  statusValue: {
+    marginTop: 2,
     fontSize: 14,
+    fontWeight: "700",
+    color: "#111827",
+  },
+
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+
+  statusBadgeText: {
+    fontSize: 8,
     fontWeight: "800",
-    color: "#0B0F14",
   },
 
-  helpSubtitle: {
+  /*
+   * LOCATION CARDS
+   */
+
+  locationRow: {
+    flexDirection:
+      "row",
+    gap: 8,
+    marginTop: 8,
+  },
+
+  locationCard: {
+    flex: 1,
+    minHeight: 78,
+    borderWidth: 1,
+    borderColor:
+      "#E5E7EB",
+    borderRadius: 12,
+    padding: 9,
+    flexDirection:
+      "row",
+    alignItems:
+      "flex-start",
+    backgroundColor:
+      "#FFFFFF",
+  },
+
+  locationIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent:
+      "center",
+    alignItems:
+      "center",
+  },
+
+  locationEmoji: {
+    fontSize: 18,
+  },
+
+  locationContent: {
+    flex: 1,
+    marginLeft: 8,
+    minWidth: 0,
+  },
+
+  locationTitle: {
+    marginTop: 2,
     fontSize: 12,
-    color: "#64748B",
-    marginTop: 3,
+    fontWeight: "700",
+    color: "#111827",
   },
 
-  // ===================================================
-  // CONNECTION
-  // ===================================================
-
-  connectionStatus: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 4,
-    marginBottom: 15,
+  locationAddress: {
+    marginTop: 2,
+    fontSize: 9,
+    color: "#6B7280",
   },
 
-  connectionDot: {
-    width: 7,
-    height: 7,
+  /*
+   * CALL RESTAURANT BUTTON
+   */
+
+  callButton: {
+    marginTop: 5,
+    alignSelf: "flex-start",
+    flexDirection:
+      "row",
+    alignItems:
+      "center",
+    backgroundColor:
+      "#EF2C1E",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 7,
+  },
+
+  callButtonText: {
+    marginLeft: 4,
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "800",
+  },
+
+  /*
+   * DELIVERY PARTNER
+   */
+
+  deliveryPartnerCard: {
+    marginTop: 8,
+    minHeight: 58,
+    borderWidth: 1,
+    borderColor:
+      "#E5E7EB",
+    borderRadius: 12,
+    padding: 9,
+    flexDirection:
+      "row",
+    alignItems:
+      "center",
+    backgroundColor:
+      "#FFFFFF",
+  },
+
+  deliveryPartnerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor:
+      "#FEF2F2",
+    justifyContent:
+      "center",
+    alignItems:
+      "center",
+  },
+
+  deliveryPartnerInfo: {
+    flex: 1,
+    marginLeft: 9,
+    minWidth: 0,
+  },
+
+  deliveryPartnerName: {
+    marginTop: 2,
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#111827",
+  },
+
+  deliveryPartnerVehicle: {
+    marginTop: 2,
+    fontSize: 10,
+    color: "#6B7280",
+    fontWeight: "600",
+    textTransform:
+      "capitalize",
+  },
+
+  partnerCallButton: {
+    flexDirection:
+      "row",
+    alignItems:
+      "center",
+    justifyContent:
+      "center",
+    backgroundColor:
+      "#16A34A",
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 9,
+  },
+
+  partnerCallButtonText: {
+    marginLeft: 5,
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
+  },
+
+  /*
+   * MAP
+   */
+
+  mapContainer: {
+    flex: 1,
+    position:
+      "relative",
+    overflow:
+      "hidden",
+  },
+
+  /*
+   * ROUTE LOADING
+   */
+
+  routeLoadingBadge: {
+    position:
+      "absolute",
+    top: 12,
+    right: 12,
+    flexDirection:
+      "row",
+    alignItems:
+      "center",
+    backgroundColor:
+      "#FFFFFF",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 20,
+    elevation: 4,
+    shadowColor:
+      "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+  },
+
+  routeLoadingText: {
+    marginLeft: 6,
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#374151",
+  },
+
+  /*
+   * LIVE
+   */
+
+  liveTrackingBadge: {
+    position:
+      "absolute",
+    top: 12,
+    left: 12,
+    flexDirection:
+      "row",
+    alignItems:
+      "center",
+    backgroundColor:
+      "#FFFFFF",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 20,
+    elevation: 4,
+    shadowColor:
+      "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+  },
+
+  livePulse: {
+    width: 8,
+    height: 8,
     borderRadius: 4,
+    backgroundColor:
+      "#EF2C1E",
     marginRight: 6,
   },
 
-  connectionText: {
-    fontSize: 11,
-    color: "#64748B",
+  liveTrackingText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#111827",
+  },
+
+  /*
+   * LEGEND
+   */
+
+  legend: {
+    position:
+      "absolute",
+    bottom: 12,
+    left: 12,
+    backgroundColor:
+      "#FFFFFF",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    elevation: 4,
+    shadowColor:
+      "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+  },
+
+  legendItem: {
+    flexDirection:
+      "row",
+    alignItems:
+      "center",
+    marginVertical: 2,
+  },
+
+  legendDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    marginRight: 7,
+  },
+
+  legendText: {
+    fontSize: 9,
+    fontWeight: "600",
+    color: "#374151",
+  },
+
+  /*
+   * LOCATION STATUS
+   */
+
+  locationStatus: {
+    position:
+      "absolute",
+    bottom: 12,
+    right: 12,
+    flexDirection:
+      "row",
+    alignItems:
+      "center",
+    backgroundColor:
+      "#FFFFFF",
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    borderRadius: 20,
+    elevation: 4,
+    shadowColor:
+      "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+  },
+
+  locationStatusText: {
+    marginLeft: 5,
+    fontSize: 9,
+    fontWeight: "600",
+    color: "#374151",
+  },
+
+  /*
+   * ROUTE ERROR
+   */
+
+  routeErrorBadge: {
+    position:
+      "absolute",
+    top: 52,
+    right: 12,
+    flexDirection:
+      "row",
+    alignItems:
+      "center",
+    backgroundColor:
+      "#FFFBEB",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 20,
+    elevation: 3,
+  },
+
+  routeErrorText: {
+    marginLeft: 5,
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#92400E",
+  },
+
+  /*
+   * WAITING BANNER
+   */
+
+  waitingBanner: {
+    backgroundColor:
+      "#FFFBEB",
+    borderTopWidth: 1,
+    borderTopColor:
+      "#FDE68A",
+    minHeight: 52,
+    paddingHorizontal: 14,
+    flexDirection:
+      "row",
+    alignItems:
+      "center",
+  },
+
+  waitingBannerText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#92400E",
     fontWeight: "600",
   },
-});
 
+  /*
+   * DELIVERY BANNER
+   */
+
+  deliveryBanner: {
+    backgroundColor:
+      "#FFFBEB",
+    borderTopWidth: 1,
+    borderTopColor:
+      "#FDE68A",
+    minHeight: 52,
+    paddingHorizontal: 14,
+    flexDirection:
+      "row",
+    alignItems:
+      "center",
+  },
+
+  deliveryBannerText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#92400E",
+    fontWeight: "600",
+  },
+
+  /*
+   * DELIVERED
+   */
+
+  deliveredBanner: {
+    backgroundColor:
+      "#F0FDF4",
+    borderTopWidth: 1,
+    borderTopColor:
+      "#BBF7D0",
+    minHeight: 52,
+    paddingHorizontal: 14,
+    flexDirection:
+      "row",
+    alignItems:
+      "center",
+    justifyContent:
+      "center",
+  },
+
+  deliveredBannerText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#15803D",
+    fontWeight: "800",
+  },
+
+  /*
+   * EMPTY
+   */
+
+  emptyContainer: {
+    flex: 1,
+    justifyContent:
+      "center",
+    alignItems:
+      "center",
+    paddingHorizontal: 30,
+    backgroundColor:
+      "#FFFFFF",
+  },
+
+  emptyIcon: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor:
+      "#FEF2F2",
+    justifyContent:
+      "center",
+    alignItems:
+      "center",
+    marginBottom: 20,
+  },
+
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#111827",
+  },
+
+  emptySubtitle: {
+    marginTop: 8,
+    textAlign:
+      "center",
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#6B7280",
+  },
+
+  backDashboardButton: {
+    marginTop: 22,
+    backgroundColor:
+      "#EF2C1E",
+    paddingHorizontal: 24,
+    paddingVertical: 13,
+    borderRadius: 10,
+  },
+
+  backDashboardText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+});

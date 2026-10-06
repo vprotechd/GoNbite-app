@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 import api from "../../services/api";
 
 // =====================================================
@@ -34,10 +35,21 @@ interface DashboardStats {
 interface AvailableOrder {
   _id: string;
   totalAmount: number;
+
   restaurantId?: {
     restaurantName: string;
     address: string;
+    latitude?: number;
+    longitude?: number;
   };
+
+  deliveryLocation?: {
+    latitude?: number;
+    longitude?: number;
+  };
+
+  restaurantDistanceKm?: number | null;
+  customerDistanceKm?: number | null;
 }
 
 // =====================================================
@@ -65,15 +77,183 @@ export default function DeliveryDashboard() {
     fetchData();
   }, []);
 
+  // =====================================================
+  // CALCULATE DISTANCE
+  // =====================================================
+
+  const calculateDistanceKm = (
+    latitude1: number,
+    longitude1: number,
+    latitude2: number,
+    longitude2: number
+  ) => {
+    const earthRadiusKm = 6371;
+
+    const dLatitude =
+      ((latitude2 - latitude1) * Math.PI) / 180;
+
+    const dLongitude =
+      ((longitude2 - longitude1) * Math.PI) / 180;
+
+    const lat1 =
+      (latitude1 * Math.PI) / 180;
+
+    const lat2 =
+      (latitude2 * Math.PI) / 180;
+
+    const a =
+      Math.sin(dLatitude / 2) ** 2 +
+      Math.cos(lat1) *
+        Math.cos(lat2) *
+        Math.sin(dLongitude / 2) ** 2;
+
+    const c =
+      2 *
+      Math.atan2(
+        Math.sqrt(a),
+        Math.sqrt(1 - a)
+      );
+
+    return earthRadiusKm * c;
+  };
+
+  // =====================================================
+  // GET CURRENT DELIVERY PARTNER LOCATION
+  // =====================================================
+
+  const getCurrentPartnerLocation = async () => {
+    try {
+      const { status } =
+        await Location.requestForegroundPermissionsAsync();
+
+      if (status !== "granted") {
+        console.log(
+          "Delivery partner location permission not granted."
+        );
+
+        return null;
+      }
+
+      const location =
+        await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+      return {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+    } catch (error) {
+      console.error(
+        "GET PARTNER LOCATION ERROR:",
+        error
+      );
+
+      return null;
+    }
+  };
+
+  // =====================================================
+  // ADD BOTH DISTANCES TO AVAILABLE ORDERS
+  // =====================================================
+
+  const addDistancesToOrders = async (
+    availableOrders: AvailableOrder[]
+  ) => {
+    // Get partner's current location ONCE
+    const partnerLocation =
+      await getCurrentPartnerLocation();
+
+    // If location unavailable
+    if (!partnerLocation) {
+      return availableOrders.map((order) => ({
+        ...order,
+        restaurantDistanceKm: null,
+        customerDistanceKm: null,
+      }));
+    }
+
+    return availableOrders.map((order) => {
+      let restaurantDistanceKm:
+        | number
+        | null = null;
+
+      let customerDistanceKm:
+        | number
+        | null = null;
+
+      // =================================================
+      // PARTNER → RESTAURANT
+      // =================================================
+
+      const restaurantLatitude =
+        order.restaurantId?.latitude;
+
+      const restaurantLongitude =
+        order.restaurantId?.longitude;
+
+      if (
+        typeof restaurantLatitude === "number" &&
+        typeof restaurantLongitude === "number"
+      ) {
+        restaurantDistanceKm =
+          calculateDistanceKm(
+            partnerLocation.latitude,
+            partnerLocation.longitude,
+            restaurantLatitude,
+            restaurantLongitude
+          );
+      }
+
+      // =================================================
+      // PARTNER → CUSTOMER
+      // =================================================
+
+      const customerLatitude =
+        order.deliveryLocation?.latitude;
+
+      const customerLongitude =
+        order.deliveryLocation?.longitude;
+
+      if (
+        typeof customerLatitude === "number" &&
+        typeof customerLongitude === "number"
+      ) {
+        customerDistanceKm =
+          calculateDistanceKm(
+            partnerLocation.latitude,
+            partnerLocation.longitude,
+            customerLatitude,
+            customerLongitude
+          );
+      }
+
+      return {
+        ...order,
+        restaurantDistanceKm,
+        customerDistanceKm,
+      };
+    });
+  };
+
+  // =====================================================
+  // FETCH DATA
+  // =====================================================
+
   const fetchData = async () => {
     try {
       setIsLoading(true);
 
       // Fetch profile first
-      const profileRes = await api.get("/delivery/profile");
+      const profileRes = await api.get(
+        "/delivery/profile"
+      );
 
       // Check if delivery partner is verified
-      if (!profileRes.data || !profileRes.data.isVerified) {
+      if (
+        !profileRes.data ||
+        !profileRes.data.isVerified
+      ) {
         setIsApproved(false);
         setIsLoading(false);
         return;
@@ -82,7 +262,9 @@ export default function DeliveryDashboard() {
       setIsApproved(true);
 
       // Fetch dashboard stats
-      const dashboardRes = await api.get("/delivery/dashboard");
+      const dashboardRes = await api.get(
+        "/delivery/dashboard"
+      );
 
       setStats(dashboardRes.data);
 
@@ -91,9 +273,21 @@ export default function DeliveryDashboard() {
         "/delivery/available-orders"
       );
 
-      setOrders(ordersRes.data);
+      // =================================================
+      // CALCULATE BOTH DISTANCES
+      // =================================================
+
+      const ordersWithDistances =
+        await addDistancesToOrders(
+          ordersRes.data
+        );
+
+      setOrders(ordersWithDistances);
     } catch (error: any) {
-      console.error("DELIVERY DASHBOARD ERROR:", error);
+      console.error(
+        "DELIVERY DASHBOARD ERROR:",
+        error
+      );
 
       // If API returns 403, driver is not approved
       if (error.response?.status === 403) {
@@ -123,6 +317,10 @@ export default function DeliveryDashboard() {
         ...prev,
         isOnline: response.data.isOnline,
       }));
+
+      // Refresh available orders after
+      // online/offline change
+      await fetchData();
     } catch (error: any) {
       Alert.alert(
         "Toggle Online Error",
@@ -138,37 +336,38 @@ export default function DeliveryDashboard() {
   // ACCEPT ORDER
   // =====================================================
 
-const acceptOrder = async (
-  id: string,
-  restaurantName: string,
-  restaurantAddress: string,
-  deliveryAddress: string
-) => {
-  try {
-    await api.put(
-      `/delivery/accept-order/${id}`
-    );
+  const acceptOrder = async (
+    id: string,
+    restaurantName: string,
+    restaurantAddress: string,
+    deliveryAddress: string
+  ) => {
+    try {
+      await api.put(
+        `/delivery/accept-order/${id}`
+      );
 
-    // Refresh dashboard data
-    await fetchData();
+      // Refresh dashboard data
+      await fetchData();
 
-    // Navigate to Active Order screen
-    router.push({
-      pathname: "/delivery/active-order",
-      params: {
-        orderId: id,
-        restaurantName,
-        restaurantAddress,
-        deliveryAddress,
-      },
-    });
-  } catch (error) {
-    Alert.alert(
-      "Error",
-      "Failed to accept order."
-    );
-  }
-};
+      // Navigate to Active Order screen
+      router.push({
+        pathname: "/delivery/active-order",
+        params: {
+          orderId: id,
+          restaurantName,
+          restaurantAddress,
+          deliveryAddress,
+        },
+      });
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        "Failed to accept order."
+      );
+    }
+  };
+
   // =====================================================
   // UPDATE ORDER STATUS
   // =====================================================
@@ -273,7 +472,7 @@ const acceptOrder = async (
         <View style={styles.loadingContainer}>
           <ActivityIndicator
             size="large"
-            color="#F5B82E"
+            color="#FF8500"
           />
         </View>
       </SafeAreaView>
@@ -294,11 +493,10 @@ const acceptOrder = async (
 
         <View style={styles.container}>
           <View style={styles.approvalContainer}>
-
             <Ionicons
               name="time-outline"
               size={80}
-              color="#F5B82E"
+              color="#FF8500"
             />
 
             <Text style={styles.approvalTitle}>
@@ -330,7 +528,6 @@ const acceptOrder = async (
                 Logout
               </Text>
             </TouchableOpacity>
-
           </View>
         </View>
       </SafeAreaView>
@@ -349,45 +546,56 @@ const acceptOrder = async (
       />
 
       <View style={styles.container}>
-
         {/* =================================================
             HEADER
         ================================================= */}
 
         <View style={styles.header}>
-
           <Text style={styles.headerTitle}>
             Delivery Dashboard
           </Text>
 
-          <TouchableOpacity
-            onPress={toggleOnline}
-            style={[
-              styles.statusBtn,
-              stats.isOnline
-                ? styles.onlineBtn
-                : styles.offlineBtn,
-            ]}
-          >
-            <Text style={styles.statusText}>
-              {stats.isOnline
-                ? "Online"
-                : "Offline"}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            {/* REFRESH */}
+            <TouchableOpacity
+              style={styles.refreshBtn}
+              onPress={fetchData}
+              disabled={isLoading}
+            >
+              <Ionicons
+                name="refresh"
+                size={22}
+                color="#0B0F14"
+              />
+            </TouchableOpacity>
 
+            {/* ONLINE / OFFLINE */}
+            <TouchableOpacity
+              onPress={toggleOnline}
+              style={[
+                styles.statusBtn,
+                stats.isOnline
+                  ? styles.onlineBtn
+                  : styles.offlineBtn,
+              ]}
+            >
+              <Text style={styles.statusText}>
+                {stats.isOnline
+                  ? "Online"
+                  : "Offline"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
         >
-
           {/* =================================================
               STATS
           ================================================= */}
 
           <View style={styles.statsRow}>
-
             <View style={styles.statCard}>
               <Text style={styles.statValue}>
                 ₹{stats.walletBalance}
@@ -417,7 +625,6 @@ const acceptOrder = async (
                 Earnings
               </Text>
             </View>
-
           </View>
 
           {/* =================================================
@@ -425,66 +632,133 @@ const acceptOrder = async (
           ================================================= */}
 
           {stats.activeOrder && (
-            <View style={styles.activeCard}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={styles.activeCard}
+              onPress={() => {
+                router.push({
+                  pathname:
+                    "/delivery/active-order",
+                  params: {
+                    orderId:
+                      stats.activeOrder._id,
+                  },
+                });
+              }}
+            >
+              <View
+                style={
+                  styles.activeHeaderRow
+                }
+              >
+                <View>
+                  <Text
+                    style={
+                      styles.activeTitle
+                    }
+                  >
+                    Active Order
+                  </Text>
 
-              <Text style={styles.activeTitle}>
-                Active Order
-              </Text>
+                  <Text
+                    style={
+                      styles.activeText
+                    }
+                  >
+                    Order #
+                    {stats.activeOrder._id.slice(
+                      -6
+                    )}
+                  </Text>
 
-              <Text style={styles.activeText}>
-                Order #
-                {stats.activeOrder._id.slice(-6)}
-              </Text>
+                  <Text
+                    style={
+                      styles.activeText
+                    }
+                  >
+                    Status:{" "}
+                    {stats.activeOrder.status}
+                  </Text>
+                </View>
 
-              <Text style={styles.activeText}>
-                Status:{" "}
-                {stats.activeOrder.status}
-              </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={26}
+                  color="#FF8500"
+                />
+              </View>
 
-            {stats.activeOrder.status === "Out for Delivery" && (
-  <TouchableOpacity
-    style={styles.deliveredBtn}
-    onPress={() =>
-      updateStatus(
-        stats.activeOrder._id,
-        "Delivered"
-      )
-    }
-  >
-    <Text style={styles.deliveredBtnText}>
-      Mark as Delivered
-    </Text>
-  </TouchableOpacity>
-)}
+              <View
+                style={styles.trackButton}
+              >
+                <Ionicons
+                  name="navigate-outline"
+                  size={20}
+                  color="#0B0F14"
+                />
 
-            </View>
+                <Text
+                  style={
+                    styles.trackButtonText
+                  }
+                >
+                  Open Live Tracking
+                </Text>
+              </View>
+
+              {stats.activeOrder.status ===
+                "Out for Delivery" && (
+                <TouchableOpacity
+                  style={
+                    styles.deliveredBtn
+                  }
+                  onPress={(event) => {
+                    event.stopPropagation();
+
+                    updateStatus(
+                      stats.activeOrder._id,
+                      "Delivered"
+                    );
+                  }}
+                >
+                  <Text
+                    style={
+                      styles.deliveredBtnText
+                    }
+                  >
+                    Mark as Delivered
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
           )}
 
           {/* =================================================
               AVAILABLE ORDERS
           ================================================= */}
 
-          <Text style={styles.sectionTitle}>
+          <Text
+            style={styles.sectionTitle}
+          >
             New Pickup Requests
           </Text>
 
           {orders.length === 0 ? (
-
-            <Text style={styles.emptyText}>
+            <Text
+              style={styles.emptyText}
+            >
               No orders available right now.
             </Text>
-
           ) : (
-
             orders.map((order) => (
-
               <View
                 key={order._id}
                 style={styles.orderCard}
               >
-
                 <Text
-                  style={styles.orderRestaurant}
+                  style={
+                    styles.orderRestaurant
+                  }
                 >
                   {order.restaurantId
                     ?.restaurantName ||
@@ -492,11 +766,68 @@ const acceptOrder = async (
                 </Text>
 
                 <Text
-                  style={styles.orderAddress}
+                  style={
+                    styles.orderAddress
+                  }
                 >
-                  {order.restaurantId?.address ||
+                  {order.restaurantId
+                    ?.address ||
                     "Address not available"}
                 </Text>
+
+                {/* =================================================
+                    RESTAURANT DISTANCE
+                ================================================= */}
+
+                <View
+                  style={styles.distanceRow}
+                >
+                  <Ionicons
+                    name="restaurant-outline"
+                    size={17}
+                    color="#2563EB"
+                  />
+
+                  <Text
+                    style={
+                      styles.restaurantDistanceText
+                    }
+                  >
+                    {typeof order.restaurantDistanceKm ===
+                    "number"
+                      ? `Restaurant: ${order.restaurantDistanceKm.toFixed(
+                          1
+                        )} km`
+                      : "Restaurant distance unavailable"}
+                  </Text>
+                </View>
+
+                {/* =================================================
+                    CUSTOMER DISTANCE
+                ================================================= */}
+
+                <View
+                  style={styles.distanceRow}
+                >
+                  <Ionicons
+                    name="home-outline"
+                    size={17}
+                    color="#16A34A"
+                  />
+
+                  <Text
+                    style={
+                      styles.customerDistanceText
+                    }
+                  >
+                    {typeof order.customerDistanceKm ===
+                    "number"
+                      ? `Customer: ${order.customerDistanceKm.toFixed(
+                          1
+                        )} km`
+                      : "Customer distance unavailable"}
+                  </Text>
+                </View>
 
                 <Text
                   style={styles.orderAmount}
@@ -507,10 +838,11 @@ const acceptOrder = async (
                 <View
                   style={styles.actionRow}
                 >
-
                   {/* ACCEPT */}
                   <TouchableOpacity
-                    style={styles.acceptBtn}
+                    style={
+                      styles.acceptBtn
+                    }
                     onPress={() =>
                       acceptOrder(
                         order._id,
@@ -524,29 +856,33 @@ const acceptOrder = async (
                       )
                     }
                   >
-                    <Text style={styles.btnText}>
+                    <Text
+                      style={styles.btnText}
+                    >
                       Accept
                     </Text>
                   </TouchableOpacity>
 
                   {/* REJECT */}
                   <TouchableOpacity
-                    style={styles.rejectBtn}
+                    style={
+                      styles.rejectBtn
+                    }
                     onPress={() =>
-                      console.log("Rejected")
+                      console.log(
+                        "Rejected"
+                      )
                     }
                   >
-                    <Text style={styles.btnText}>
+                    <Text
+                      style={styles.btnText}
+                    >
                       Reject
                     </Text>
                   </TouchableOpacity>
-
                 </View>
-
               </View>
-
             ))
-
           )}
 
           {/* =================================================
@@ -563,13 +899,13 @@ const acceptOrder = async (
               color="#FFFFFF"
             />
 
-            <Text style={styles.logoutBtnText}>
+            <Text
+              style={styles.logoutBtnText}
+            >
               Logout
             </Text>
           </TouchableOpacity>
-
         </ScrollView>
-
       </View>
     </SafeAreaView>
   );
@@ -580,7 +916,6 @@ const acceptOrder = async (
 // =====================================================
 
 const styles = StyleSheet.create({
-
   safeArea: {
     flex: 1,
     backgroundColor: "#081A33",
@@ -601,6 +936,21 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 20,
+  },
+
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+
+  refreshBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#FF8500",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   headerTitle: {
@@ -669,8 +1019,31 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#F5B82E",
+    borderColor: "#FF8500",
     marginBottom: 20,
+  },
+
+  activeHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  trackButton: {
+    marginTop: 14,
+    backgroundColor: "#FF8500",
+    paddingVertical: 11,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+
+  trackButtonText: {
+    color: "#0B0F14",
+    fontWeight: "800",
+    fontSize: 14,
   },
 
   activeTitle: {
@@ -687,7 +1060,7 @@ const styles = StyleSheet.create({
   },
 
   deliveredBtn: {
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     paddingVertical: 10,
     borderRadius: 10,
     alignItems: "center",
@@ -737,11 +1110,35 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
+  // ===================================================
+  // DISTANCES
+  // ===================================================
+
+  distanceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+  },
+
+  restaurantDistanceText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#2563EB",
+    marginLeft: 5,
+  },
+
+  customerDistanceText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#16A34A",
+    marginLeft: 5,
+  },
+
   orderAmount: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#F5B82E",
-    marginTop: 8,
+    color: "#FF8500",
+    marginTop: 10,
   },
 
   // ===================================================
@@ -835,5 +1232,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 16,
   },
-
 });

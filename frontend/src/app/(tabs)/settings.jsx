@@ -1,10 +1,8 @@
-import { useEffect, useState } from "react";
-import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   Alert,
-  Platform,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -32,10 +30,11 @@ export default function SettingsScreen() {
 
   const loadSettings = async () => {
     try {
-      const savedTheme = await AsyncStorage.getItem("snax_theme");
-      const savedLanguage = await AsyncStorage.getItem("snax_language");
-      const savedNotifications =
-        await AsyncStorage.getItem("snax_notifications");
+      const savedTheme = await AsyncStorage.getItem("gonbite_theme");
+      const savedLanguage = await AsyncStorage.getItem("gonbite_language");
+      const savedNotifications = await AsyncStorage.getItem(
+        "gonbite_notifications"
+      );
 
       if (savedTheme === "dark") {
         setDarkMode(true);
@@ -88,9 +87,9 @@ export default function SettingsScreen() {
           helpSub: "अपने ऑर्डर से संबंधित सहायता प्राप्त करें",
 
           contact: "हमसे संपर्क करें",
-          contactSub: "SNAX सपोर्ट टीम से बात करें",
+          contactSub: "GoNbite सपोर्ट टीम से बात करें",
 
-          about: "SNAX के बारे में",
+          about: "GoNbite के बारे में",
           version: "वर्जन 1.0.0",
 
           legal: "कानूनी",
@@ -124,13 +123,13 @@ export default function SettingsScreen() {
 
           helpTitle: "मदद और सहायता",
           contactTitle: "हमसे संपर्क करें",
-          aboutTitle: "SNAX के बारे में",
+          aboutTitle: "GoNbite के बारे में",
 
-          supportMessage: "SNAX Support\nsupport@snax.com",
+          supportMessage: "GoNbite Support\nsupport@gonbite.com",
 
-          aboutMessage: "SNAX Food Delivery App\nVersion 1.0.0",
+          aboutMessage: "GoNbite Food Delivery App\nVersion 1.0.0",
 
-          termsMessage: "कृपया SNAX की नियम और शर्तें पढ़ें।",
+          termsMessage: "कृपया GoNbite की नियम और शर्तें पढ़ें।",
         }
       : {
           settings: "Settings",
@@ -159,9 +158,9 @@ export default function SettingsScreen() {
           helpSub: "Get help with your orders",
 
           contact: "Contact Us",
-          contactSub: "Talk to the SNAX support team",
+          contactSub: "Talk to the GoNbite support team",
 
-          about: "About SNAX",
+          about: "About GoNbite",
           version: "Version 1.0.0",
 
           legal: "LEGAL",
@@ -195,13 +194,13 @@ export default function SettingsScreen() {
 
           helpTitle: "Help & Support",
           contactTitle: "Contact Us",
-          aboutTitle: "About SNAX",
+          aboutTitle: "About GoNbite",
 
-          supportMessage: "SNAX Support\nsupport@snax.com",
+          supportMessage: "GoNbite Support\nsupport@gonbite.com",
 
-          aboutMessage: "SNAX Food Delivery App\nVersion 1.0.0",
+          aboutMessage: "GoNbite Food Delivery App\nVersion 1.0.0",
 
-          termsMessage: "Please read the SNAX Terms & Conditions.",
+          termsMessage: "Please read the GoNbite Terms & Conditions.",
         };
 
   // ============================================================
@@ -212,7 +211,7 @@ export default function SettingsScreen() {
     try {
       setNotifications(value);
 
-      await AsyncStorage.setItem("snax_notifications", String(value));
+      await AsyncStorage.setItem("gonbite_notifications", String(value));
     } catch (error) {
       console.log("Notification setting error:", error);
     }
@@ -228,7 +227,10 @@ export default function SettingsScreen() {
 
       setDarkMode(isDark);
 
-      await AsyncStorage.setItem("snax_theme", isDark ? "dark" : "light");
+      await AsyncStorage.setItem(
+        "gonbite_theme",
+        isDark ? "dark" : "light"
+      );
     } catch (error) {
       console.log("Theme error:", error);
     }
@@ -242,7 +244,7 @@ export default function SettingsScreen() {
     try {
       setLanguage(selectedLanguage);
 
-      await AsyncStorage.setItem("snax_language", selectedLanguage);
+      await AsyncStorage.setItem("gonbite_language", selectedLanguage);
     } catch (error) {
       console.log("Language error:", error);
     }
@@ -252,26 +254,26 @@ export default function SettingsScreen() {
   // LOGOUT
   // ============================================================
 
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
 
-const handleLogout = async () => {
-  try {
-    await AsyncStorage.removeItem("token");
-    await AsyncStorage.removeItem("user");
+      console.log(
+        "TOKEN AFTER LOGOUT:",
+        await AsyncStorage.getItem("token")
+      );
 
-    console.log("TOKEN AFTER LOGOUT:",
-      await AsyncStorage.getItem("token")
-    );
+      console.log(
+        "USER AFTER LOGOUT:",
+        await AsyncStorage.getItem("user")
+      );
 
-    console.log("USER AFTER LOGOUT:",
-      await AsyncStorage.getItem("user")
-    );
-
-    router.replace("/(auth)/login");
-
-  } catch (error) {
-    console.error("LOGOUT ERROR:", error);
-  }
-};
+      router.replace("/(auth)/login");
+    } catch (error) {
+      console.error("LOGOUT ERROR:", error);
+    }
+  };
 
   // ============================================================
   // DELETE ACCOUNT
@@ -302,7 +304,7 @@ const handleLogout = async () => {
               t.deleteTitle,
               language === "Hindi"
                 ? "अकाउंट डिलीट API अभी कनेक्ट नहीं है।"
-                : "Delete account API is not connected yet.",
+                : "Delete account API is not connected yet."
             );
           } catch (error) {
             console.log("Delete account error:", error);
@@ -394,9 +396,7 @@ const handleLogout = async () => {
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back" size={21} color={theme.primary} />
-          </TouchableOpacity>
+          />
 
           <Text
             style={[
@@ -577,8 +577,6 @@ const handleLogout = async () => {
               ]}
             />
 
-           
-
             <View
               style={[
                 styles.divider,
@@ -587,8 +585,6 @@ const handleLogout = async () => {
                 },
               ]}
             />
-
-          
           </View>
 
           {/* LEGAL */}
@@ -614,37 +610,29 @@ const handleLogout = async () => {
             ]}
           >
             <SettingItem
-  icon="document-text-outline"
-  title={t.terms}
-  subtitle={t.termsSub}
-  onPress={() => router.push("/terms-conditions")}
-  theme={theme}
-/>
+              icon="document-text-outline"
+              title={t.terms}
+              subtitle={t.termsSub}
+              onPress={() => router.push("/terms-conditions")}
+              theme={theme}
+            />
           </View>
 
           {/* LOGOUT */}
 
-    <TouchableOpacity
-  style={[
-    styles.logoutButton,
-    {
-      backgroundColor: theme.card,
-      borderColor: theme.dangerBorder,
-    },
-  ]}
-  onPress={handleLogout}
-  activeOpacity={0.7}
->
-  <Ionicons
-    name="log-out-outline"
-    size={18}
-    color="#D32F2F"
-  />
-
-  <Text style={styles.logoutText}>
-    {t.logout}
-  </Text>
-</TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.logoutButton,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.dangerBorder,
+              },
+            ]}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.logoutText}>{t.logout}</Text>
+          </TouchableOpacity>
 
           {/* FOOTER */}
 
@@ -656,7 +644,7 @@ const handleLogout = async () => {
               },
             ]}
           >
-            SNAX
+            GoNbite
           </Text>
 
           <Text
@@ -689,17 +677,6 @@ function SettingItem({ icon, title, subtitle, onPress, theme }) {
       activeOpacity={0.7}
     >
       <View style={styles.settingLeft}>
-        <View
-          style={[
-            styles.iconBox,
-            {
-              backgroundColor: theme.primary,
-            },
-          ]}
-        >
-          <Ionicons name={icon} size={18} color="#F5B82E" />
-        </View>
-
         <View style={styles.textContainer}>
           <Text
             style={[
@@ -724,8 +701,6 @@ function SettingItem({ icon, title, subtitle, onPress, theme }) {
           </Text>
         </View>
       </View>
-
-      <Ionicons name="chevron-forward" size={17} color={theme.chevron} />
     </TouchableOpacity>
   );
 }
@@ -734,21 +709,17 @@ function SettingItem({ icon, title, subtitle, onPress, theme }) {
 // SWITCH ITEM
 // ============================================================
 
-function SwitchItem({ icon, title, subtitle, value, onValueChange, theme }) {
+function SwitchItem({
+  icon,
+  title,
+  subtitle,
+  value,
+  onValueChange,
+  theme,
+}) {
   return (
     <View style={styles.settingRow}>
       <View style={styles.settingLeft}>
-        <View
-          style={[
-            styles.iconBox,
-            {
-              backgroundColor: theme.primary,
-            },
-          ]}
-        >
-          <Ionicons name={icon} size={18} color="#F5B82E" />
-        </View>
-
         <View style={styles.textContainer}>
           <Text
             style={[
@@ -779,7 +750,7 @@ function SwitchItem({ icon, title, subtitle, value, onValueChange, theme }) {
         onValueChange={onValueChange}
         trackColor={{
           false: "#D1D5DB",
-          true: "#F5B82E",
+          true: "#FF8500",
         }}
         thumbColor="#FFFFFF"
       />
@@ -861,15 +832,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
     marginRight: 8,
-  },
-
-  iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
   },
 
   textContainer: {

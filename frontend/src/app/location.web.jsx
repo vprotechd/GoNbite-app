@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -42,7 +42,7 @@ export default function LocationScreen() {
         enableHighAccuracy: true,
         timeout: 15000,
         maximumAge: 0,
-      }
+      },
     );
   };
 
@@ -53,11 +53,9 @@ export default function LocationScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#F5B82E" />
+        <ActivityIndicator size="large" color="#FF8500" />
 
-        <Text style={styles.loadingText}>
-          Getting your location...
-        </Text>
+        <Text style={styles.loadingText}>Getting your location...</Text>
       </View>
     );
   }
@@ -65,21 +63,14 @@ export default function LocationScreen() {
   if (!location) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorTitle}>
-          Location unavailable
-        </Text>
+        <Text style={styles.errorTitle}>Location unavailable</Text>
 
         <Text style={styles.errorText}>
           Please allow location access in your browser.
         </Text>
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={getCurrentLocation}
-        >
-          <Text style={styles.buttonText}>
-            Try Again
-          </Text>
+        <TouchableOpacity style={styles.button} onPress={getCurrentLocation}>
+          <Text style={styles.buttonText}>Try Again</Text>
         </TouchableOpacity>
       </View>
     );
@@ -94,18 +85,15 @@ export default function LocationScreen() {
           style={styles.map}
           src={`https://www.openstreetmap.org/export/embed.html?bbox=${
             location.longitude - 0.01
-          }%2C${location.latitude - 0.01}%2C${
-            location.longitude + 0.01
-          }%2C${location.latitude + 0.01
+          }%2C${location.latitude - 0.01}%2C${location.longitude + 0.01}%2C${
+            location.latitude + 0.01
           }&layer=mapnik&marker=${location.latitude}%2C${location.longitude}`}
         />
       </View>
 
       {/* BOTTOM PANEL */}
       <View style={styles.bottomPanel}>
-        <Text style={styles.title}>
-          Set Delivery Location
-        </Text>
+        <Text style={styles.title}>Set Delivery Location</Text>
 
         <Text style={styles.subtitle}>
           Your current location has been detected.
@@ -128,18 +116,14 @@ export default function LocationScreen() {
             alert("Your current location has been selected.");
           }}
         >
-          <Text style={styles.confirmButtonText}>
-            Confirm Location
-          </Text>
+          <Text style={styles.confirmButtonText}>Confirm Location</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.refreshButton}
           onPress={getCurrentLocation}
         >
-          <Text style={styles.refreshButtonText}>
-            📍 Use Current Location
-          </Text>
+          <Text style={styles.refreshButtonText}>📍 Use Current Location</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -198,7 +182,7 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     paddingHorizontal: 24,
     paddingVertical: 13,
     borderRadius: 10,
@@ -246,7 +230,7 @@ const styles = StyleSheet.create({
 
   confirmButton: {
     marginTop: 15,
-    backgroundColor: "#F5B82E",
+    backgroundColor: "#FF8500",
     paddingVertical: 15,
     borderRadius: 12,
     alignItems: "center",

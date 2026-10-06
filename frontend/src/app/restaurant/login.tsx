@@ -24,21 +24,148 @@ export default function RestaurantLogin() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password.");
+      Alert.alert(
+        "Error",
+        "Please enter both email and password."
+      );
       return;
     }
 
     setLoading(true);
+
     try {
-      const res = await api.post("/restaurant/login", { email, password });
-      await AsyncStorage.setItem("restaurantToken", res.data.token);
-      router.replace("/restaurant/dashboard");
-       } catch (error: any) { // 👈 Add ": any" here
+      console.log("🍽️ RESTAURANT LOGIN START");
+      console.log("📧 EMAIL:", email);
+
+      const res = await api.post("/restaurant/login", {
+        email,
+        password,
+      });
+
+      console.log(
+        "🍽️ RESTAURANT LOGIN RESPONSE:",
+        res.data
+      );
+
+      const token = res.data?.token;
+
+      if (!token) {
+        throw new Error(
+          "Restaurant token was not received from server."
+        );
+      }
+
+      /*
+       * ============================================
+       * IMPORTANT:
+       * REMOVE DELIVERY SESSION
+       *
+       * Restaurant and Delivery must not share
+       * active authentication sessions.
+       * ============================================
+       */
+
+      await AsyncStorage.removeItem(
+        "deliveryToken"
+      );
+
+      /*
+       * ============================================
+       * SAVE RESTAURANT TOKEN
+       * ============================================
+       */
+
+      await AsyncStorage.setItem(
+        "restaurantToken",
+        token
+      );
+
+      /*
+       * ============================================
+       * SAVE RESTAURANT USER
+       *
+       * RestaurantLayout requires:
+       * user.role === "restaurant"
+       * ============================================
+       */
+
+      const restaurantUser = {
+        ...(res.data?.user || {}),
+        role: "restaurant",
+      };
+
+      await AsyncStorage.setItem(
+        "user",
+        JSON.stringify(restaurantUser)
+      );
+
+      /*
+       * ============================================
+       * VERIFY STORAGE
+       * ============================================
+       */
+
+      const savedRestaurantToken =
+        await AsyncStorage.getItem(
+          "restaurantToken"
+        );
+
+      const savedDeliveryToken =
+        await AsyncStorage.getItem(
+          "deliveryToken"
+        );
+
+      const savedUser =
+        await AsyncStorage.getItem("user");
+
+      console.log(
+        "🍽️ RESTAURANT TOKEN SAVED:",
+        !!savedRestaurantToken
+      );
+
+      console.log(
+        "🚴 DELIVERY TOKEN AFTER RESTAURANT LOGIN:",
+        savedDeliveryToken
+      );
+
+      console.log(
+        "👤 USER SAVED:",
+        savedUser
+      );
+
+      /*
+       * ============================================
+       * GO TO RESTAURANT DASHBOARD
+       * ============================================
+       */
+
+      console.log(
+        "➡️ GOING TO RESTAURANT DASHBOARD"
+      );
+
+      router.replace(
+        "/restaurant/dashboard"
+      );
+
+    } catch (error) {
+      console.error(
+        "❌ RESTAURANT LOGIN ERROR:",
+        error
+      );
+
+      const err = error as any;
+
+      const errorMessage =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Login failed. Please check your credentials.";
+
       Alert.alert(
         "Error",
-        error?.response?.data?.error ||
-        "Login failed. Please check your credentials.",
+        errorMessage
       );
+
     } finally {
       setLoading(false);
     }
@@ -46,83 +173,146 @@ export default function RestaurantLogin() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#081A33" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="#081A33"
+      />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={
+          Platform.OS === "ios"
+            ? "padding"
+            : undefined
+        }
         style={styles.container}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={
+            styles.scrollContent
+          }
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          {/* --- DARK HEADER --- */}
+          {/* HEADER */}
+
           <View style={styles.header}>
             <TouchableOpacity
               onPress={() => router.back()}
               style={styles.backButton}
+              activeOpacity={0.7}
             >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              <Ionicons
+                name="arrow-back"
+                size={22}
+                color="#FFFFFF"
+              />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Restaurant Panel</Text>
-            <View style={{ width: 24 }} />
+
+            <Text style={styles.headerTitle}>
+              Restaurant Panel
+            </Text>
+
+            <View style={styles.headerSpacer} />
           </View>
 
-          {/* --- WHITE CARD --- */}
+          {/* LOGIN CARD */}
+
           <View style={styles.whiteCard}>
             <View style={styles.logoContainer}>
-              <Ionicons name="storefront" size={48} color="#F5B82E" />
-              <Text style={styles.cardTitle}>Welcome Back</Text>
+              <Ionicons
+                name="storefront"
+                size={42}
+                color="#FF6B35"
+              />
+
+              <Text style={styles.cardTitle}>
+                Welcome Back
+              </Text>
+
               <Text style={styles.cardSubtitle}>
                 Sign in to manage your restaurant
               </Text>
             </View>
 
-            {/* --- FORM FIELDS --- */}
+            {/* FORM */}
+
             <View style={styles.formContainer}>
-              <Text style={styles.label}>Email Address</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="restaurant@email.com"
-                placeholderTextColor="#8E9BAE"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+              <View>
+                <Text style={styles.label}>
+                  Email Address
+                </Text>
 
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your password"
-                placeholderTextColor="#8E9BAE"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+                <TextInput
+                  style={styles.input}
+                  placeholder="restaurant@email.com"
+                  placeholderTextColor="#8E9BAE"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
 
-              {/* --- BUTTON --- */}
+              <View>
+                <Text style={styles.label}>
+                  Password
+                </Text>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#8E9BAE"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              </View>
+
+              {/* LOGIN BUTTON */}
+
               <TouchableOpacity
-                style={[styles.loginButton, loading && styles.disabledButton]}
+                style={[
+                  styles.loginButton,
+                  loading &&
+                    styles.disabledButton,
+                ]}
                 onPress={handleLogin}
                 disabled={loading}
+                activeOpacity={0.8}
               >
-                <Text style={styles.loginButtonText}>
-                  {loading ? "Logging in..." : "Sign In"}
+                <Text
+                  style={
+                    styles.loginButtonText
+                  }
+                >
+                  {loading
+                    ? "Logging in..."
+                    : "Sign In"}
                 </Text>
               </TouchableOpacity>
 
+              {/* REGISTER LINK */}
+
               <TouchableOpacity
-                onPress={() => router.push("/restaurant/register")}
+                onPress={() =>
+                  router.push(
+                    "/restaurant/register"
+                  )
+                }
                 style={styles.linkContainer}
+                activeOpacity={0.7}
               >
                 <Text style={styles.linkText}>
-                  Don't have an account? Register your restaurant here
+                  Don't have an account? Register
+                  your restaurant here
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
-          <View style={{ height: 30 }} />
+
+          <View style={styles.bottomSpace} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -130,86 +320,180 @@ export default function RestaurantLogin() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#081A33" },
-  container: { flex: 1, backgroundColor: "#F5F7FA" },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 30 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#081A33",
+  },
 
-  /* --- DARK HEADER --- */
+  container: {
+    flex: 1,
+    backgroundColor: "#F5F7FA",
+  },
+
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 25,
+    alignItems: "center",
+  },
+
+  /* =========================
+     HEADER
+  ========================= */
+
   header: {
+    width: "100%",
+    maxWidth: 700,
+    height: 52,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom: 14,
   },
-  backButton: { padding: 6 },
+
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#081A33",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   headerTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "700",
     color: "#FFFFFF",
   },
 
-  /* --- WHITE CARD --- */
-  whiteCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  logoContainer: { alignItems: "center", marginBottom: 20 },
-  cardTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#0B0F14",
-    marginTop: 8,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: "#64748B",
-    marginTop: 4,
+  headerSpacer: {
+    width: 36,
   },
 
-  /* --- FIELDS --- */
-  formContainer: { gap: 12 },
+  /* =========================
+     WHITE CARD
+  ========================= */
+
+  whiteCard: {
+    width: "100%",
+    maxWidth: 500,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 22,
+
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+
+  logoContainer: {
+    alignItems: "center",
+    marginBottom: 18,
+  },
+
+  cardTitle: {
+    fontSize: 21,
+    fontWeight: "800",
+    color: "#0B0F14",
+    marginTop: 7,
+    textAlign: "center",
+  },
+
+  cardSubtitle: {
+    fontSize: 13,
+    color: "#64748B",
+    marginTop: 4,
+    textAlign: "center",
+  },
+
+  /* =========================
+     FORM
+  ========================= */
+
+  formContainer: {
+    width: "100%",
+    gap: 11,
+  },
+
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#0B0F14",
-    marginBottom: 2,
+    marginBottom: 5,
   },
+
   input: {
+    width: "100%",
+    height: 44,
     backgroundColor: "#F5F7FA",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
+    borderRadius: 10,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    fontSize: 14,
     color: "#0B0F14",
     borderWidth: 1,
     borderColor: "#E2E6EB",
   },
 
-  /* --- BUTTON --- */
+  /* =========================
+     LOGIN BUTTON
+  ========================= */
+
   loginButton: {
-    backgroundColor: "#F5B82E",
-    borderRadius: 14,
-    paddingVertical: 16,
+    alignSelf: "center",
+
+    width: "65%",
+    maxWidth: 230,
+    minWidth: 150,
+
+    height: 42,
+    borderRadius: 10,
+
     alignItems: "center",
-    marginTop: 8,
-  },
-  disabledButton: { opacity: 0.6 },
-  loginButtonText: {
-    color: "#0B0F14",
-    fontWeight: "700",
-    fontSize: 17,
+    justifyContent: "center",
+
+    backgroundColor: "#FF6B35",
+
+    marginTop: 5,
   },
 
-  /* --- LINK --- */
-  linkContainer: { marginTop: 16, alignItems: "center" },
+  disabledButton: {
+    opacity: 0.6,
+  },
+
+  loginButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+
+  /* =========================
+     REGISTER LINK
+  ========================= */
+
+  linkContainer: {
+    marginTop: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+
   linkText: {
-    color: "#F5B82E",
+    color: "#FF6B35",
     fontWeight: "600",
+    fontSize: 12,
+    textAlign: "center",
+    lineHeight: 17,
+  },
+
+  bottomSpace: {
+    height: 25,
   },
 });
