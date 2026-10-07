@@ -33,8 +33,8 @@ export const useGoogleLogin = () => {
 const redirectUri =
   Platform.OS === "web"
     ? window.location.hostname === "localhost"
-      ? "http://localhost:8081/"
-      : "https://gonbite-app-1.onrender.com/"
+      ? "http://localhost:8081/oauthredirect"
+      : "https://gonbite-app-1.onrender.com/oauthredirect"
     : makeRedirectUri({
         scheme: "gonbite",
         path: "oauthredirect",
