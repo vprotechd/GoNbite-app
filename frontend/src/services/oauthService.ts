@@ -30,11 +30,15 @@ export const useGoogleLogin = () => {
   // PLATFORM-SPECIFIC REDIRECT URI
   // ---------------------------------------------------
 
-  const redirectUri = makeRedirectUri({
-    scheme: "gonbite",
-    path: "oauthredirect",
-  });
-
+const redirectUri =
+  Platform.OS === "web"
+    ? window.location.hostname === "localhost"
+      ? "http://localhost:8081/"
+      : "https://gonbite-app-1.onrender.com/"
+    : makeRedirectUri({
+        scheme: "gonbite",
+        path: "oauthredirect",
+      });
   console.log("🔗 GOOGLE REDIRECT URI:", redirectUri);
 
   // ---------------------------------------------------
