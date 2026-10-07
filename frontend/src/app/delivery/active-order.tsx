@@ -768,21 +768,41 @@ export default function ActiveOrderScreen() {
     async (
       force = false
     ) => {
-      if (!orderId) {
-        console.log(
-          "⏳ ROUTE: Order ID not available"
-        );
+      if (
+  orderStatus ===
+  "Out for Delivery"
+) {
+  destination = customerLocation;
 
-        return;
-      }
+  /*
+   * Customer location may not be available
+   * in the delivery dashboard response.
+   *
+   * The backend /orders/:id/route endpoint
+   * already knows the customer's delivery
+   * location from the order.
+   *
+   * Therefore, do NOT stop route fetching
+   * just because customerLocation is null.
+   */
+  if (!destination) {
+    console.log(
+      "⚠️ CUSTOMER LOCATION NOT IN DASHBOARD - BACKEND WILL RESOLVE DESTINATION"
+    );
+  }
+}
 
-      if (!currentLocation) {
-        console.log(
-          "⏳ ROUTE: Current delivery location not available"
-        );
+if (
+  orderStatus ===
+  "Accepted by Delivery" &&
+  !destination
+) {
+  console.log(
+    "⏳ ROUTE: Restaurant location not available"
+  );
 
-        return;
-      }
+  return;
+}
 
       /*
        * ---------------------------------------------------
@@ -843,12 +863,13 @@ export default function ActiveOrderScreen() {
           currentLocation
         ) >= 30;
 
-      const destinationMoved =
-        !lastRouteDestinationRef.current ||
-        getDistanceMeters(
-          lastRouteDestinationRef.current,
-          destination
-        ) >= 30;
+     const destinationMoved =
+  !destination ||
+  !lastRouteDestinationRef.current ||
+  getDistanceMeters(
+    lastRouteDestinationRef.current,
+    destination
+  ) >= 30;
 
       /*
        * If route already exists and neither
@@ -965,27 +986,48 @@ export default function ActiveOrderScreen() {
                   )
               );
 
-          if (
-            validCoordinates.length >= 2
-          ) {
-            setRouteCoordinates(
-              validCoordinates
-            );
+         if (
+  validCoordinates.length >= 2
+) {
+  setRouteCoordinates(
+    validCoordinates
+  );
 
-            lastRouteOriginRef.current =
-              currentLocation;
+  lastRouteOriginRef.current =
+    currentLocation;
 
-            lastRouteDestinationRef.current =
-              destination;
+  /*
+   * If customer location was not available
+   * from /delivery/dashboard, the final point
+   * of the backend road route represents the
+   * customer destination.
+   */
+  const resolvedDestination =
+    destination ||
+    validCoordinates[
+      validCoordinates.length - 1
+    ];
 
-            console.log(
-              "✅ DELIVERY ROUTE SET:",
-              validCoordinates.length,
-              "points"
-            );
+  setCustomerLocation(
+    resolvedDestination
+  );
 
-            return;
-          }
+  lastRouteDestinationRef.current =
+    resolvedDestination;
+
+  console.log(
+    "📍 CUSTOMER DESTINATION RESOLVED:",
+    resolvedDestination
+  );
+
+  console.log(
+    "✅ DELIVERY ROUTE SET:",
+    validCoordinates.length,
+    "points"
+  );
+
+  return;
+}
         }
 
         /*
@@ -1010,27 +1052,42 @@ export default function ActiveOrderScreen() {
               encodedPolyline
             );
 
-          if (
-            decoded.length >= 2
-          ) {
-            setRouteCoordinates(
-              decoded
-            );
+         if (
+  decoded.length >= 2
+) {
+  setRouteCoordinates(
+    decoded
+  );
 
-            lastRouteOriginRef.current =
-              currentLocation;
+  lastRouteOriginRef.current =
+    currentLocation;
 
-            lastRouteDestinationRef.current =
-              destination;
+  const resolvedDestination =
+    destination ||
+    decoded[
+      decoded.length - 1
+    ];
 
-            console.log(
-              "✅ DELIVERY ROUTE DECODED:",
-              decoded.length,
-              "points"
-            );
+  setCustomerLocation(
+    resolvedDestination
+  );
 
-            return;
-          }
+  lastRouteDestinationRef.current =
+    resolvedDestination;
+
+  console.log(
+    "📍 CUSTOMER DESTINATION RESOLVED:",
+    resolvedDestination
+  );
+
+  console.log(
+    "✅ DELIVERY ROUTE DECODED:",
+    decoded.length,
+    "points"
+  );
+
+  return;
+}
         }
 
         /*
