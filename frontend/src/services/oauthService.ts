@@ -1,9 +1,7 @@
 import * as Google from "expo-auth-session/providers/google";
 import * as Facebook from "expo-auth-session/providers/facebook";
 import * as WebBrowser from "expo-web-browser";
-import {
-  makeRedirectUri,
-} from "expo-auth-session";
+import { makeRedirectUri, ResponseType } from "expo-auth-session";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import api from "./api";
@@ -26,62 +24,50 @@ const GOOGLE_ANDROID_CLIENT_ID =
 // =====================================================
 
 export const useGoogleLogin = () => {
-  // ---------------------------------------------------
-  // PLATFORM-SPECIFIC REDIRECT URI
-  // ---------------------------------------------------
+  const redirectUri =
+    Platform.OS === "web"
+      ? window.location.hostname === "localhost"
+        ? "http://localhost:8081/oauthredirect"
+        : "https://gonbite-app-1.onrender.com/oauthredirect"
+      : makeRedirectUri({
+          native: "gonbite://oauthredirect",
+        });
 
-const redirectUri =
-  Platform.OS === "web"
-    ? window.location.hostname === "localhost"
-      ? "http://localhost:8081/oauthredirect"
-      : "https://gonbite-app-1.onrender.com/oauthredirect"
-    : makeRedirectUri({
-        scheme: "gonbite",
-        path: "oauthredirect",
-      });
+  console.log("=================================");
   console.log("🔗 GOOGLE REDIRECT URI:", redirectUri);
-
-  // ---------------------------------------------------
-  // GOOGLE AUTH REQUEST
-  // ---------------------------------------------------
+  console.log("=================================");
 
   const [request, response, promptAsync] =
     Google.useAuthRequest({
-      // WEB
       webClientId: GOOGLE_WEB_CLIENT_ID,
-
-      // ANDROID
       androidClientId: GOOGLE_ANDROID_CLIENT_ID,
 
-      // Explicit redirect
       redirectUri,
 
-      // Ask Google for basic profile information
       scopes: [
         "openid",
         "profile",
         "email",
       ],
 
-      // Always allow account selection
       selectAccount: true,
-    });
 
-  // ---------------------------------------------------
-  // HANDLE GOOGLE LOGIN
-  // ---------------------------------------------------
+      // Important:
+      // Web -> token is returned directly
+      // Android -> Google provider uses code flow
+      responseType:
+        Platform.OS === "web"
+          ? ResponseType.Token
+          : ResponseType.Code,
+    });
 
   const handleGoogleLogin = async () => {
     try {
-      console.log("🔵 Starting Google login...");
-      console.log(
-        "🔵 Platform:",
-        Platform.OS
-      );
-      console.log(
-        "🔗 Redirect URI:",
-        redirectUri
-      );
+      console.log("=================================");
+      console.log("🔵 GOOGLE LOGIN START");
+      console.log("=================================");
+      console.log("🔵 Platform:", Platform.OS);
+      console.log("🔗 Redirect URI:", redirectUri);
 
       if (!request) {
         console.log(
@@ -93,9 +79,7 @@ const redirectUri =
         };
       }
 
-      // ------------------------------------------------
-      // OPEN GOOGLE LOGIN
-      // ------------------------------------------------
+      console.log("🔵 Opening Google OAuth...");
 
       const result = await promptAsync();
 
@@ -104,31 +88,51 @@ const redirectUri =
         result
       );
 
-      // ------------------------------------------------
-      // USER CANCELLED / FAILED
-      // ------------------------------------------------
-
       if (result?.type !== "success") {
         console.log(
           "❌ Google login cancelled or failed:",
           result?.type
         );
 
+        if (result?.type === "error") {
+          console.error(
+            "❌ Google OAuth error:",
+            result.error
+          );
+        }
+
         return {
           success: false,
         };
       }
 
-      // ------------------------------------------------
+      // =================================================
       // GET ACCESS TOKEN
-      // ------------------------------------------------
+      // =================================================
 
-      const accessToken =
+      let accessToken =
         result.authentication?.accessToken;
+
+      // Web token flow can also return the token
+      // inside params.
+      if (!accessToken) {
+        accessToken =
+          result.params?.access_token;
+      }
 
       if (!accessToken) {
         console.error(
           "❌ Google access token not received."
+        );
+
+        console.log(
+          "🔍 Google result params:",
+          result.params
+        );
+
+        console.log(
+          "🔍 Google authentication:",
+          result.authentication
         );
 
         return {
@@ -140,9 +144,13 @@ const redirectUri =
         "✅ Google access token received."
       );
 
-      // ------------------------------------------------
-      // SEND GOOGLE TOKEN TO GONBITE BACKEND
-      // ------------------------------------------------
+      // =================================================
+      // SEND TOKEN TO GONBITE BACKEND
+      // =================================================
+
+      console.log(
+        "🔵 Sending Google token to backend..."
+      );
 
       const apiResponse = await api.post(
         "/auth/oauth/google",
@@ -156,9 +164,9 @@ const redirectUri =
         apiResponse.data
       );
 
-      // ------------------------------------------------
+      // =================================================
       // GET GONBITE JWT
-      // ------------------------------------------------
+      // =================================================
 
       const { token, user } =
         apiResponse.data;
@@ -173,9 +181,9 @@ const redirectUri =
         };
       }
 
-      // ------------------------------------------------
+      // =================================================
       // SAVE LOGIN SESSION
-      // ------------------------------------------------
+      // =================================================
 
       await AsyncStorage.setItem(
         "token",
@@ -188,8 +196,20 @@ const redirectUri =
       );
 
       console.log(
-        "✅ Google login successful:",
+        "================================="
+      );
+
+      console.log(
+        "✅ GOOGLE LOGIN SUCCESS"
+      );
+
+      console.log(
+        "👤 User:",
         user.email
+      );
+
+      console.log(
+        "================================="
       );
 
       return {
@@ -199,10 +219,21 @@ const redirectUri =
 
     } catch (error: any) {
       console.error(
-        "❌ Google Login Error:",
+        "================================="
+      );
+
+      console.error(
+        "❌ GOOGLE LOGIN ERROR"
+      );
+
+      console.error(
         error?.response?.data ||
           error?.message ||
           error
+      );
+
+      console.error(
+        "================================="
       );
 
       return {
@@ -226,10 +257,14 @@ const FACEBOOK_APP_ID =
   "1013626601365790";
 
 export const useFacebookLogin = () => {
-  const redirectUri = makeRedirectUri({
-    scheme: "gonbite",
-    path: "facebook",
-  });
+  const redirectUri =
+    Platform.OS === "web"
+      ? window.location.hostname === "localhost"
+        ? "http://localhost:8081/facebook"
+        : "https://gonbite-app-1.onrender.com/facebook"
+      : makeRedirectUri({
+          native: "gonbite://facebook",
+        });
 
   console.log(
     "🔗 FACEBOOK REDIRECT URI:",
@@ -256,6 +291,11 @@ export const useFacebookLogin = () => {
     try {
       console.log(
         "🔵 Starting Facebook login..."
+      );
+
+      console.log(
+        "🔗 Facebook Redirect URI:",
+        redirectUri
       );
 
       if (!request) {
@@ -286,8 +326,13 @@ export const useFacebookLogin = () => {
         };
       }
 
-      const accessToken =
+      let accessToken =
         result.authentication?.accessToken;
+
+      if (!accessToken) {
+        accessToken =
+          result.params?.access_token;
+      }
 
       if (!accessToken) {
         console.error(
@@ -368,4 +413,3 @@ export const useFacebookLogin = () => {
     promptAsync: handleFacebookLogin,
   };
 };
-
