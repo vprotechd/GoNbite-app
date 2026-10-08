@@ -2,7 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { useGoogleLogin, useFacebookLogin } from "../../services/oauthService";
+import {
+  useFacebookLogin,
+  useGoogleLogin,
+} from "../../services/oauthService";
 
 import {
   ActivityIndicator,
@@ -50,7 +53,6 @@ export default function LoginScreen() {
           input.setAttribute("data-lpignore", "true");
           input.setAttribute("data-form-type", "other");
 
-          // Remove browser black focus outline
           input.style.outline = "none";
           input.style.boxShadow = "none";
           input.style.border = "none";
@@ -62,7 +64,7 @@ export default function LoginScreen() {
   }, []);
 
   // --------------------------------------------------
-  // LOGIN
+  // NORMAL LOGIN
   // --------------------------------------------------
 
   const handleLogin = async () => {
@@ -76,7 +78,6 @@ export default function LoginScreen() {
       return;
     }
 
-    // Fixed email regex
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(email.trim())) {
@@ -97,7 +98,7 @@ export default function LoginScreen() {
       if (!token) {
         Alert.alert(
           "Login Failed",
-          "Authentication token was not received from the server.",
+          "Authentication token was not received from the server."
         );
         return;
       }
@@ -108,17 +109,21 @@ export default function LoginScreen() {
         await AsyncStorage.setItem("user", JSON.stringify(user));
       }
 
+      console.log("NORMAL LOGIN SUCCESS");
+      console.log("USER:", user);
+      console.log("TOKEN SAVED:", true);
+
       router.replace("/(tabs)");
     } catch (error: any) {
       console.log(
         "Login error:",
-        error?.response?.data || error?.message || error,
+        error?.response?.data || error?.message || error
       );
 
       Alert.alert(
         "Login Failed",
         error?.response?.data?.message ||
-          "Invalid email or password. Please try again.",
+          "Invalid email or password. Please try again."
       );
     } finally {
       setLoading(false);
@@ -128,36 +133,220 @@ export default function LoginScreen() {
   // --------------------------------------------------
   // GOOGLE LOGIN
   // --------------------------------------------------
+
   const handleGooglePress = async () => {
     if (loading) return;
+
     try {
-      const result = await googleLogin.promptAsync();
-      if (result?.success) {
-        router.replace("/(tabs)");
-      } else {
-        Alert.alert("Google Login", "Google login failed or was cancelled.");
+      setLoading(true);
+
+      console.log("=================================");
+      console.log("GOOGLE LOGIN START");
+      console.log("=================================");
+
+     const result = await googleLogin.promptAsync();
+
+if (!(result as any)?.type || (result as any).type !== "success") {
+  Alert.alert("Google Login", "Google login failed or was cancelled.");
+  return;
+}
+
+console.log("GOOGLE LOGIN SUCCESS");
+
+      // Give the OAuth service a moment to finish
+      // saving the backend session.
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      const token = await AsyncStorage.getItem("token");
+      const userString = await AsyncStorage.getItem("user");
+
+      console.log("GOOGLE TOKEN EXISTS:", !!token);
+      console.log("GOOGLE USER:", userString);
+
+      if (!token || !userString) {
+        console.error(
+          "GOOGLE LOGIN ERROR: token or user was not saved."
+        );
+
+        Alert.alert(
+          "Google Login",
+          "Google authentication succeeded, but your GoNbite session could not be created."
+        );
+
+        return;
       }
+
+      let user;
+
+      try {
+        user = JSON.parse(userString);
+      } catch (parseError) {
+        console.error("GOOGLE USER JSON ERROR:", parseError);
+
+        Alert.alert(
+          "Google Login",
+          "Invalid user session received."
+        );
+
+        return;
+      }
+
+      console.log("GOOGLE USER ROLE:", user?.role);
+
+      // Social users are customers in GoNbite.
+      if (!user?.role) {
+        user.role = "customer";
+
+        await AsyncStorage.setItem(
+          "user",
+          JSON.stringify(user)
+        );
+
+        console.log("GOOGLE ROLE SET TO CUSTOMER");
+      }
+
+      if (user.role !== "customer") {
+        console.error(
+          "GOOGLE LOGIN UNEXPECTED ROLE:",
+          user.role
+        );
+
+        Alert.alert(
+          "Google Login",
+          "This account does not have customer access."
+        );
+
+        return;
+      }
+
+      console.log("GOOGLE LOGIN COMPLETE");
+      console.log("NAVIGATING TO CUSTOMER HOME");
+
+      router.replace("/(tabs)");
     } catch (error: any) {
-      console.error("Google Login Error:", error?.response?.data || error?.message || error);
-      Alert.alert("Google Login", "Something went wrong while logging in with Google.");
+      console.error(
+        "Google Login Error:",
+        error?.response?.data ||
+          error?.message ||
+          error
+      );
+
+      Alert.alert(
+        "Google Login",
+        "Something went wrong while logging in with Google."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   // --------------------------------------------------
   // FACEBOOK LOGIN
   // --------------------------------------------------
+
   const handleFacebookPress = async () => {
     if (loading) return;
+
     try {
+      setLoading(true);
+
+      console.log("=================================");
+      console.log("FACEBOOK LOGIN START");
+      console.log("=================================");
+
       const result = await facebookLogin.promptAsync();
-      if (result?.success) {
-        router.replace("/(tabs)");
-      } else {
-        Alert.alert("Facebook Login", "Facebook login failed or was cancelled.");
+
+if (!(result as any)?.type || (result as any).type !== "success") {
+  Alert.alert("Facebook Login", "Facebook login failed or was cancelled.");
+  return;
+}
+
+console.log("FACEBOOK LOGIN SUCCESS");
+
+      // Give the OAuth service a moment to finish
+      // saving the backend session.
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      const token = await AsyncStorage.getItem("token");
+      const userString = await AsyncStorage.getItem("user");
+
+      console.log("FACEBOOK TOKEN EXISTS:", !!token);
+      console.log("FACEBOOK USER:", userString);
+
+      if (!token || !userString) {
+        console.error(
+          "FACEBOOK LOGIN ERROR: token or user was not saved."
+        );
+
+        Alert.alert(
+          "Facebook Login",
+          "Facebook authentication succeeded, but your GoNbite session could not be created."
+        );
+
+        return;
       }
+
+      let user;
+
+      try {
+        user = JSON.parse(userString);
+      } catch (parseError) {
+        console.error("FACEBOOK USER JSON ERROR:", parseError);
+
+        Alert.alert(
+          "Facebook Login",
+          "Invalid user session received."
+        );
+
+        return;
+      }
+
+      console.log("FACEBOOK USER ROLE:", user?.role);
+
+      // Social users are customers in GoNbite.
+      if (!user?.role) {
+        user.role = "customer";
+
+        await AsyncStorage.setItem(
+          "user",
+          JSON.stringify(user)
+        );
+
+        console.log("FACEBOOK ROLE SET TO CUSTOMER");
+      }
+
+      if (user.role !== "customer") {
+        console.error(
+          "FACEBOOK LOGIN UNEXPECTED ROLE:",
+          user.role
+        );
+
+        Alert.alert(
+          "Facebook Login",
+          "This account does not have customer access."
+        );
+
+        return;
+      }
+
+      console.log("FACEBOOK LOGIN COMPLETE");
+      console.log("NAVIGATING TO CUSTOMER HOME");
+
+      router.replace("/(tabs)");
     } catch (error: any) {
-      console.error("Facebook Login Error:", error?.response?.data || error?.message || error);
-      Alert.alert("Facebook Login", "Something went wrong while logging in with Facebook.");
+      console.error(
+        "Facebook Login Error:",
+        error?.response?.data ||
+          error?.message ||
+          error
+      );
+
+      Alert.alert(
+        "Facebook Login",
+        "Something went wrong while logging in with Facebook."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -167,12 +356,17 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.navy} />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={COLORS.navy}
+      />
 
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        keyboardVerticalOffset={
+          Platform.OS === "ios" ? 0 : 20
+        }
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -206,7 +400,9 @@ export default function LoginScreen() {
               {/* EMAIL */}
 
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Email Address</Text>
+                <Text style={styles.inputLabel}>
+                  Email Address
+                </Text>
 
                 <View style={styles.inputWrapper}>
                   <Ionicons
@@ -235,7 +431,9 @@ export default function LoginScreen() {
               {/* PASSWORD */}
 
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Password</Text>
+                <Text style={styles.inputLabel}>
+                  Password
+                </Text>
 
                 <View style={styles.inputWrapper}>
                   <Ionicons
@@ -260,13 +458,19 @@ export default function LoginScreen() {
                   />
 
                   <TouchableOpacity
-                    onPress={() => setShowPassword((prev) => !prev)}
+                    onPress={() =>
+                      setShowPassword((prev) => !prev)
+                    }
                     style={styles.eyeIcon}
                     disabled={loading}
                     activeOpacity={0.7}
                   >
                     <Ionicons
-                      name={showPassword ? "eye-outline" : "eye-off-outline"}
+                      name={
+                        showPassword
+                          ? "eye-outline"
+                          : "eye-off-outline"
+                      }
                       size={19}
                       color={COLORS.icon}
                     />
@@ -279,29 +483,49 @@ export default function LoginScreen() {
               <TouchableOpacity
                 style={styles.forgotButton}
                 activeOpacity={0.7}
-                onPress={() => router.push("/(auth)/forgot-password")}
+                onPress={() =>
+                  router.push(
+                    "/(auth)/forgot-password"
+                  )
+                }
                 disabled={loading}
               >
-                <Text style={styles.forgotText}>Forgot Password?</Text>
+                <Text style={styles.forgotText}>
+                  Forgot Password?
+                </Text>
               </TouchableOpacity>
 
               {/* LOGIN BUTTON */}
 
               <TouchableOpacity
-                style={[styles.loginButton, loading && styles.disabledButton]}
+                style={[
+                  styles.loginButton,
+                  loading && styles.disabledButton,
+                ]}
                 onPress={handleLogin}
                 disabled={loading}
                 activeOpacity={0.85}
               >
                 {loading ? (
-                  <View style={styles.loadingButtonContent}>
-                    <ActivityIndicator color={COLORS.navy} size="small" />
+                  <View
+                    style={styles.loadingButtonContent}
+                  >
+                    <ActivityIndicator
+                      color={COLORS.navy}
+                      size="small"
+                    />
 
-                    <Text style={styles.loadingButtonText}>Signing In...</Text>
+                    <Text
+                      style={styles.loadingButtonText}
+                    >
+                      Signing In...
+                    </Text>
                   </View>
                 ) : (
                   <>
-                    <Text style={styles.loginButtonText}>Sign In</Text>
+                    <Text style={styles.loginButtonText}>
+                      Sign In
+                    </Text>
 
                     <Ionicons
                       name="arrow-forward"
@@ -317,7 +541,9 @@ export default function LoginScreen() {
               <View style={styles.dividerContainer}>
                 <View style={styles.dividerLine} />
 
-                <Text style={styles.dividerText}>or continue with</Text>
+                <Text style={styles.dividerText}>
+                  or continue with
+                </Text>
 
                 <View style={styles.dividerLine} />
               </View>
@@ -333,12 +559,14 @@ export default function LoginScreen() {
                   onPress={handleGooglePress}
                   disabled={loading}
                 >
-  <Image
-  source={require("../../../assets/images/google-logo.png")}
-  style={styles.googleLogo}
-/>
+                  <Image
+                    source={require("../../../assets/images/google-logo.png")}
+                    style={styles.googleLogo}
+                  />
 
-                  <Text style={styles.socialText}>Google</Text>
+                  <Text style={styles.socialText}>
+                    Google
+                  </Text>
                 </TouchableOpacity>
 
                 {/* APPLE */}
@@ -349,13 +577,20 @@ export default function LoginScreen() {
                   onPress={() =>
                     Alert.alert(
                       "Apple Login",
-                      "Apple login will be available soon.",
+                      "Apple login will be available soon."
                     )
                   }
+                  disabled={loading}
                 >
-                  <Ionicons name="logo-apple" size={19} color="#000000" />
+                  <Ionicons
+                    name="logo-apple"
+                    size={19}
+                    color="#000000"
+                  />
 
-                  <Text style={styles.socialText}>Apple</Text>
+                  <Text style={styles.socialText}>
+                    Apple
+                  </Text>
                 </TouchableOpacity>
 
                 {/* FACEBOOK */}
@@ -366,22 +601,38 @@ export default function LoginScreen() {
                   onPress={handleFacebookPress}
                   disabled={loading}
                 >
-                  <Ionicons name="logo-facebook" size={19} color="#1877F2" />
+                  <Ionicons
+                    name="logo-facebook"
+                    size={19}
+                    color="#1877F2"
+                  />
 
-                  <Text style={styles.socialText}>Facebook</Text>
+                  <Text style={styles.socialText}>
+                    Facebook
+                  </Text>
                 </TouchableOpacity>
               </View>
 
               {/* REGISTER */}
 
               <View style={styles.bottomRow}>
-                <Text style={styles.bottomText}>Don't have an account?</Text>
+                <Text style={styles.bottomText}>
+                  Don't have an account?
+                </Text>
 
                 <TouchableOpacity
-                  onPress={() => router.push("/(auth)/register")}
+                  onPress={() =>
+                    router.push(
+                      "/(auth)/register"
+                    )
+                  }
                   activeOpacity={0.7}
+                  disabled={loading}
                 >
-                  <Text style={styles.link}> Create Account</Text>
+                  <Text style={styles.link}>
+                    {" "}
+                    Create Account
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -395,7 +646,11 @@ export default function LoginScreen() {
             <View style={styles.partnerDivider}>
               <View style={styles.dividerLine} />
 
-              <Text style={styles.partnerDividerText}>ARE YOU A PARTNER?</Text>
+              <Text
+                style={styles.partnerDividerText}
+              >
+                ARE YOU A PARTNER?
+              </Text>
 
               <View style={styles.dividerLine} />
             </View>
@@ -405,19 +660,26 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={styles.partnerButton}
               activeOpacity={0.8}
-              onPress={() => router.push("/restaurant/login")}
+              onPress={() =>
+                router.push("/restaurant/login")
+              }
+              disabled={loading}
             >
-              
-
               <View style={styles.partnerTextContainer}>
-                <Text style={styles.partnerTitle}>Restaurant Partner</Text>
+                <Text style={styles.partnerTitle}>
+                  Restaurant Partner
+                </Text>
 
                 <Text style={styles.partnerSubtitle}>
                   Manage your restaurant and orders
                 </Text>
               </View>
 
-              <Ionicons name="chevron-forward" size={20} color={COLORS.icon} />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={COLORS.icon}
+              />
             </TouchableOpacity>
 
             {/* DELIVERY */}
@@ -425,19 +687,26 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={styles.partnerButton}
               activeOpacity={0.8}
-              onPress={() => router.push("/delivery/login")}
+              onPress={() =>
+                router.push("/delivery/login")
+              }
+              disabled={loading}
             >
-            
-
               <View style={styles.partnerTextContainer}>
-                <Text style={styles.partnerTitle}>Delivery Partner</Text>
+                <Text style={styles.partnerTitle}>
+                  Delivery Partner
+                </Text>
 
                 <Text style={styles.partnerSubtitle}>
                   Sign in and start delivering orders
                 </Text>
               </View>
 
-              <Ionicons name="chevron-forward" size={20} color={COLORS.icon} />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={COLORS.icon}
+              />
             </TouchableOpacity>
           </View>
 
@@ -455,7 +724,9 @@ export default function LoginScreen() {
                 color={COLORS.icon}
               />
 
-              <Text style={styles.secureText}>Secure & private login</Text>
+              <Text style={styles.secureText}>
+                Secure & private login
+              </Text>
             </View>
           </View>
         </ScrollView>
@@ -491,10 +762,6 @@ const COLORS = {
 // ==========================================================
 
 const styles = StyleSheet.create({
-  // ========================================================
-  // MAIN
-  // ========================================================
-
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.navy,
@@ -513,10 +780,6 @@ const styles = StyleSheet.create({
     paddingBottom: 35,
     alignItems: "center",
   },
-
-  // ========================================================
-  // HEADER
-  // ========================================================
 
   header: {
     width: "100%",
@@ -546,10 +809,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
-  // ========================================================
-  // FORM
-  // ========================================================
-
   formWrapper: {
     width: "100%",
     maxWidth: 420,
@@ -575,10 +834,6 @@ const styles = StyleSheet.create({
     elevation: 9,
   },
 
-  // ========================================================
-  // INPUTS
-  // ========================================================
-
   inputContainer: {
     marginBottom: 17,
   },
@@ -599,7 +854,6 @@ const styles = StyleSheet.create({
 
     backgroundColor: COLORS.inputBackground,
 
-    // Clean subtle border — NOT black
     borderWidth: 1,
     borderColor: COLORS.inputBorder,
 
@@ -622,8 +876,6 @@ const styles = StyleSheet.create({
 
     paddingVertical: 0,
 
-    // Important for React Native Web:
-    // removes browser black focus outline
     outlineStyle: "none" as any,
 
     borderWidth: 0,
@@ -636,10 +888,6 @@ const styles = StyleSheet.create({
     padding: 5,
     marginLeft: 5,
   },
-
-  // ========================================================
-  // FORGOT PASSWORD
-  // ========================================================
 
   forgotButton: {
     alignSelf: "flex-end",
@@ -655,10 +903,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
-
-  // ========================================================
-  // LOGIN BUTTON
-  // ========================================================
 
   loginButton: {
     height: 52,
@@ -698,10 +942,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // ========================================================
-  // DIVIDER
-  // ========================================================
-
   dividerContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -720,10 +960,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
   },
-
-  // ========================================================
-  // SOCIAL BUTTONS
-  // ========================================================
 
   socialContainer: {
     width: "100%",
@@ -759,10 +995,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // ========================================================
-  // REGISTER LINK
-  // ========================================================
-
   bottomRow: {
     flexDirection: "row",
     justifyContent: "center",
@@ -781,10 +1013,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
   },
-
-  // ========================================================
-  // PARTNER LOGIN
-  // ========================================================
 
   partnerSection: {
     width: "100%",
@@ -858,10 +1086,6 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
 
-  // ========================================================
-  // FOOTER
-  // ========================================================
-
   footer: {
     width: "100%",
     maxWidth: 420,
@@ -894,8 +1118,8 @@ const styles = StyleSheet.create({
   },
 
   googleLogo: {
-  width: 19,
-  height: 19,
-  resizeMode: "contain",
-},
+    width: 19,
+    height: 19,
+    resizeMode: "contain",
+  },
 });

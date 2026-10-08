@@ -20,7 +20,9 @@ import { io, Socket } from "socket.io-client";
 import api from "../../../src/services/api";
 import PlatformMap from "../../components/PlatformMap";
 
-const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL;
+const SOCKET_URL =
+  process.env.EXPO_PUBLIC_SOCKET_URL ||
+  "https://gonbite-app.onrender.com";
 
 interface LocationCoords {
   latitude: number;
@@ -30,11 +32,66 @@ interface LocationCoords {
 
 interface RouteResponse {
   success?: boolean;
-  routeCoordinates?: LocationCoords[];
+
+  routeCoordinates?: any[];
+
   encodedPolyline?: string;
+
   polyline?: string;
+
   distance?: number;
+
   duration?: number;
+
+  restaurantLocation?: any;
+
+  customerLocation?: any;
+
+  restaurant?: any;
+
+  customer?: any;
+
+  destination?: any;
+}
+
+interface DeliveryAddressObject {
+  address?: string;
+
+  latitude?: number | string;
+
+  longitude?: number | string;
+
+  lat?: number | string;
+
+  lng?: number | string;
+
+  landmark?: string;
+
+  receiverName?: string;
+
+  receiverPhone?: string;
+}
+
+interface RestaurantData {
+  _id?: string;
+
+  id?: string;
+
+  restaurantName?: string;
+
+  address?: string;
+
+  phone?: string;
+
+  latitude?: number | string;
+
+  longitude?: number | string;
+
+  location?: any;
+
+  coordinates?: any;
+
+  restaurantLocation?: any;
 }
 
 interface DeliveryDashboardResponse {
@@ -42,27 +99,266 @@ interface DeliveryDashboardResponse {
 
   activeOrder?: {
     _id: string;
+
     status: string;
 
     customerName?: string;
+
     customerPhone?: string;
 
-    deliveryAddress?: string;
+    deliveryAddress?:
+      | string
+      | DeliveryAddressObject;
 
-    restaurantId?: {
-      _id?: string;
-      id?: string;
-      restaurantName?: string;
-      address?: string;
-      phone?: string;
-      latitude?: number;
-      longitude?: number;
-    };
+    restaurantId?: RestaurantData;
 
     deliveryPartnerLocation?: LocationCoords | null;
+
     customerLocation?: LocationCoords | null;
+
+    deliveryLocation?: LocationCoords | null;
+
+    customer?: any;
   } | null;
 }
+
+/*
+ * =========================================================
+ * NORMALIZE LOCATION
+ * =========================================================
+ *
+ * Supports:
+ *
+ * 1. { latitude, longitude }
+ * 2. { lat, lng }
+ * 3. { location: { latitude, longitude } }
+ * 4. { coordinates: { latitude, longitude } }
+ * 5. GeoJSON [longitude, latitude]
+ *
+ * =========================================================
+ */
+
+const toLocationCoords = (
+  value: any
+): LocationCoords | null => {
+  if (!value) {
+    return null;
+  }
+
+  /*
+   * GEOJSON
+   *
+   * Example:
+   * coordinates: [76.7055, 30.7199]
+   *
+   * GeoJSON order:
+   * [longitude, latitude]
+   */
+
+  if (
+    Array.isArray(value) &&
+    value.length >= 2
+  ) {
+    const longitude = Number(value[0]);
+    const latitude = Number(value[1]);
+
+    if (
+      Number.isFinite(latitude) &&
+      Number.isFinite(longitude)
+    ) {
+      return {
+        latitude,
+        longitude,
+      };
+    }
+  }
+
+  /*
+   * Direct / nested coordinate formats
+   */
+
+  const latitude = Number(
+    value.latitude ??
+      value.lat ??
+      value.location?.latitude ??
+      value.location?.lat ??
+      value.coordinates?.latitude ??
+      value.coordinates?.lat
+  );
+
+  const longitude = Number(
+    value.longitude ??
+      value.lng ??
+      value.lon ??
+      value.location?.longitude ??
+      value.location?.lng ??
+      value.coordinates?.longitude ??
+      value.coordinates?.lng
+  );
+
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude)
+  ) {
+    return null;
+  }
+
+  return {
+    latitude,
+    longitude,
+    ...(value.updatedAt
+      ? {
+          updatedAt: value.updatedAt,
+        }
+      : {}),
+  };
+};
+
+/*
+ * =========================================================
+ * GET RESTAURANT LOCATION
+ * =========================================================
+ */
+
+const getRestaurantLocation = (
+  restaurant: any
+): LocationCoords | null => {
+  if (!restaurant) {
+    return null;
+  }
+
+  /*
+   * 1. Complete restaurant object
+   */
+
+  const direct =
+    toLocationCoords(restaurant);
+
+  if (direct) {
+    return direct;
+  }
+
+  /*
+   * 2. restaurant.location
+   */
+
+  const location =
+    toLocationCoords(
+      restaurant.location
+    );
+
+  if (location) {
+    return location;
+  }
+
+  /*
+   * 3. restaurant.coordinates
+   */
+
+  const coordinates =
+    toLocationCoords(
+      restaurant.coordinates
+    );
+
+  if (coordinates) {
+    return coordinates;
+  }
+
+  /*
+   * 4. restaurant.restaurantLocation
+   */
+
+  const nestedLocation =
+    toLocationCoords(
+      restaurant.restaurantLocation
+    );
+
+  if (nestedLocation) {
+    return nestedLocation;
+  }
+
+  /*
+   * 5. restaurant.address
+   *
+   * In case backend returns coordinates
+   * inside address object.
+   */
+
+  const nestedAddress =
+    toLocationCoords(
+      restaurant.address
+    );
+
+  if (nestedAddress) {
+    return nestedAddress;
+  }
+
+  return null;
+};
+
+/*
+ * =========================================================
+ * CUSTOMER LOCATION HELPER
+ * =========================================================
+ */
+
+const getCustomerLocation = (
+  activeOrder: any
+): LocationCoords | null => {
+  if (!activeOrder) {
+    return null;
+  }
+
+  return toLocationCoords(
+    activeOrder.customerLocation ??
+      activeOrder.deliveryLocation ??
+      activeOrder.customer?.location ??
+      activeOrder.customer?.coordinates ??
+      (typeof activeOrder.deliveryAddress ===
+      "object"
+        ? activeOrder.deliveryAddress
+        : null)
+  );
+};
+
+/*
+ * =========================================================
+ * ADDRESS HELPER
+ * =========================================================
+ */
+
+const getAddressText = (
+  value: any
+): string => {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (
+    value &&
+    typeof value === "object"
+  ) {
+    const address =
+      value.address || "";
+
+    const landmark =
+      value.landmark || "";
+
+    if (address && landmark) {
+      return `${address}, ${landmark}`;
+    }
+
+    if (address) {
+      return address;
+    }
+
+    if (landmark) {
+      return landmark;
+    }
+  }
+
+  return "Customer address";
+};
 
 /*
  * =========================================================
@@ -125,8 +421,7 @@ const decodePolyline = (
 
   try {
     while (
-      index <
-      encoded.length
+      index < encoded.length
     ) {
       let shift = 0;
       let result = 0;
@@ -148,8 +443,7 @@ const decodePolyline = (
           ? ~(result >> 1)
           : result >> 1;
 
-      latitude +=
-        deltaLatitude;
+      latitude += deltaLatitude;
 
       shift = 0;
       result = 0;
@@ -170,15 +464,12 @@ const decodePolyline = (
           ? ~(result >> 1)
           : result >> 1;
 
-      longitude +=
-        deltaLongitude;
+      longitude += deltaLongitude;
 
       points.push({
-        latitude:
-          latitude / 1e5,
+        latitude: latitude / 1e5,
 
-        longitude:
-          longitude / 1e5,
+        longitude: longitude / 1e5,
       });
     }
   } catch (error) {
@@ -191,6 +482,18 @@ const decodePolyline = (
   }
 
   return points;
+};
+
+/*
+ * =========================================================
+ * NORMALIZE ROUTE POINT
+ * =========================================================
+ */
+
+const normalizeRoutePoint = (
+  point: any
+): LocationCoords | null => {
+  return toLocationCoords(point);
 };
 
 export default function ActiveOrderScreen() {
@@ -206,38 +509,67 @@ export default function ActiveOrderScreen() {
    * =====================================================
    */
 
-  const [restaurantPhone, setRestaurantPhone] =
-    useState("");
+  const [
+    restaurantPhone,
+    setRestaurantPhone,
+  ] = useState("");
 
-  const [customerPhone, setCustomerPhone] =
-    useState("");
+  const [
+    customerPhone,
+    setCustomerPhone,
+  ] = useState("");
 
-  const [customerName, setCustomerName] =
-    useState("");
+  const [
+    customerName,
+    setCustomerName,
+  ] = useState("");
 
   const [orderId, setOrderId] =
     useState<string | null>(null);
 
-  const [orderStatus, setOrderStatus] =
-    useState<string>("");
+  const [
+    orderStatus,
+    setOrderStatus,
+  ] = useState<string>("");
 
-  const [deliveryAddress, setDeliveryAddress] =
-    useState<string>("");
+  const [
+    deliveryAddress,
+    setDeliveryAddress,
+  ] = useState<string>("");
 
-  const [restaurantName, setRestaurantName] =
-    useState<string>("");
+  const [
+    restaurantName,
+    setRestaurantName,
+  ] = useState<string>("");
 
-  const [restaurantAddress, setRestaurantAddress] =
-    useState<string>("");
+  const [
+    restaurantAddress,
+    setRestaurantAddress,
+  ] = useState<string>("");
 
-  const [restaurantLocation, setRestaurantLocation] =
-    useState<LocationCoords | null>(null);
+  const [
+    restaurantLocation,
+    setRestaurantLocation,
+  ] =
+    useState<LocationCoords | null>(
+      null
+    );
 
-  const [currentLocation, setCurrentLocation] =
-    useState<LocationCoords | null>(null);
+  const [
+    currentLocation,
+    setCurrentLocation,
+  ] =
+    useState<LocationCoords | null>(
+      null
+    );
 
-  const [customerLocation, setCustomerLocation] =
-    useState<LocationCoords | null>(null);
+  const [
+    customerLocation,
+    setCustomerLocation,
+  ] =
+    useState<LocationCoords | null>(
+      null
+    );
 
   /*
    * =====================================================
@@ -245,11 +577,15 @@ export default function ActiveOrderScreen() {
    * =====================================================
    */
 
-  const [routeCoordinates, setRouteCoordinates] =
-    useState<LocationCoords[]>([]);
+  const [
+    routeCoordinates,
+    setRouteCoordinates,
+  ] = useState<LocationCoords[]>([]);
 
-  const [socketConnected, setSocketConnected] =
-    useState(false);
+  const [
+    socketConnected,
+    setSocketConnected,
+  ] = useState(false);
 
   const socketRef =
     useRef<Socket | null>(null);
@@ -272,15 +608,22 @@ export default function ActiveOrderScreen() {
     useRef(false);
 
   const lastRouteOriginRef =
-    useRef<LocationCoords | null>(null);
+    useRef<LocationCoords | null>(
+      null
+    );
 
   const lastRouteDestinationRef =
-    useRef<LocationCoords | null>(null);
+    useRef<LocationCoords | null>(
+      null
+    );
 
   const routeTimerRef =
     useRef<ReturnType<typeof setTimeout> | null>(
       null
     );
+
+  const lastRouteStatusRef =
+    useRef<string | null>(null);
 
   /*
    * =====================================================
@@ -295,7 +638,9 @@ export default function ActiveOrderScreen() {
     if (!phone) {
       Alert.alert(
         "Phone Number Unavailable",
-        `${person || "Contact"} phone number is not available.`
+        `${
+          person || "Contact"
+        } phone number is not available.`
       );
 
       return;
@@ -306,7 +651,9 @@ export default function ActiveOrderScreen() {
         String(phone).trim();
 
       console.log(
-        `📞 CALLING ${person || "CONTACT"}:`,
+        `📞 CALLING ${
+          person || "CONTACT"
+        }:`,
         phoneNumber
       );
 
@@ -327,9 +674,7 @@ export default function ActiveOrderScreen() {
         return;
       }
 
-      await Linking.openURL(
-        url
-      );
+      await Linking.openURL(url);
     } catch (error) {
       console.error(
         "❌ CALL ERROR:",
@@ -344,9 +689,9 @@ export default function ActiveOrderScreen() {
   };
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * FETCH ACTIVE ORDER
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   const fetchOrderTracking =
@@ -381,19 +726,34 @@ export default function ActiveOrderScreen() {
 
           setOrderId(null);
           setOrderStatus("");
+
           setCurrentLocation(null);
+
           setCustomerLocation(null);
+
           setRestaurantLocation(null);
+
           setRouteCoordinates([]);
 
           setRestaurantPhone("");
+
           setCustomerPhone("");
+
           setCustomerName("");
+
+          setDeliveryAddress("");
+
+          setRestaurantName("");
+
+          setRestaurantAddress("");
 
           lastRouteOriginRef.current =
             null;
 
           lastRouteDestinationRef.current =
+            null;
+
+          lastRouteStatusRef.current =
             null;
 
           return;
@@ -454,25 +814,40 @@ export default function ActiveOrderScreen() {
          */
 
         setDeliveryAddress(
-          activeOrder.deliveryAddress ||
-            "Customer location"
+          getAddressText(
+            activeOrder.deliveryAddress
+          )
         );
 
         /*
+         * =================================================
          * RESTAURANT
+         * =================================================
          */
 
         const restaurant =
           activeOrder.restaurantId;
 
         if (restaurant) {
+          console.log(
+            "🏪 FULL RESTAURANT OBJECT:",
+            JSON.stringify(
+              restaurant,
+              null,
+              2
+            )
+          );
+
           setRestaurantName(
             restaurant.restaurantName ||
               "Restaurant"
           );
 
           setRestaurantAddress(
-            restaurant.address || ""
+            typeof restaurant.address ===
+              "string"
+              ? restaurant.address
+              : ""
           );
 
           /*
@@ -480,8 +855,7 @@ export default function ActiveOrderScreen() {
            */
 
           setRestaurantPhone(
-            restaurant.phone ||
-              ""
+            restaurant.phone || ""
           );
 
           console.log(
@@ -491,38 +865,51 @@ export default function ActiveOrderScreen() {
           );
 
           /*
-           * Restaurant coordinates
+           * RESTAURANT LOCATION
            */
 
-          if (
-            typeof restaurant.latitude ===
-              "number" &&
-            typeof restaurant.longitude ===
-              "number"
-          ) {
-            setRestaurantLocation({
-              latitude:
-                restaurant.latitude,
+          const normalizedRestaurantLocation =
+            getRestaurantLocation(
+              restaurant
+            );
 
-              longitude:
-                restaurant.longitude,
-            });
+          console.log(
+            "🏪 NORMALIZED RESTAURANT LOCATION:",
+            normalizedRestaurantLocation
+          );
+
+          if (
+            normalizedRestaurantLocation
+          ) {
+            setRestaurantLocation(
+              normalizedRestaurantLocation
+            );
 
             console.log(
               "🏪 RESTAURANT LOCATION:",
-              {
-                latitude:
-                  restaurant.latitude,
-
-                longitude:
-                  restaurant.longitude,
-              }
+              normalizedRestaurantLocation
             );
           } else {
-            setRestaurantLocation(null);
+            /*
+             * IMPORTANT:
+             *
+             * Do NOT assume restaurant location
+             * does not exist in backend.
+             *
+             * The route API will be called and
+             * can resolve restaurant destination.
+             */
+
+            setRestaurantLocation(
+              null
+            );
 
             console.log(
-              "⚠️ Restaurant coordinates not available"
+              "⚠️ Dashboard restaurant coordinates not available."
+            );
+
+            console.log(
+              "🛣️ Route API will try to resolve restaurant destination."
             );
           }
         } else {
@@ -530,51 +917,61 @@ export default function ActiveOrderScreen() {
           setRestaurantAddress("");
           setRestaurantPhone("");
           setRestaurantLocation(null);
+
+          console.log(
+            "⚠️ Restaurant object not available in active order."
+          );
         }
 
         /*
+         * =================================================
          * SAVED DELIVERY PARTNER LOCATION
+         * =================================================
          */
 
+        const savedDeliveryLocation =
+          toLocationCoords(
+            activeOrder.deliveryPartnerLocation
+          );
+
         if (
-          activeOrder.deliveryPartnerLocation &&
-          typeof activeOrder
-            .deliveryPartnerLocation
-            .latitude === "number" &&
-          typeof activeOrder
-            .deliveryPartnerLocation
-            .longitude === "number"
+          savedDeliveryLocation
         ) {
           console.log(
             "📍 SAVED DELIVERY LOCATION:",
-            activeOrder.deliveryPartnerLocation
+            savedDeliveryLocation
           );
 
           setCurrentLocation(
-            activeOrder.deliveryPartnerLocation
+            savedDeliveryLocation
+          );
+        } else {
+          console.log(
+            "⚠️ Saved delivery partner location not available"
           );
         }
 
         /*
+         * =================================================
          * SAVED CUSTOMER LOCATION
+         * =================================================
          */
 
+        const savedCustomerLocation =
+          getCustomerLocation(
+            activeOrder
+          );
+
         if (
-          activeOrder.customerLocation &&
-          typeof activeOrder
-            .customerLocation.latitude ===
-            "number" &&
-          typeof activeOrder
-            .customerLocation.longitude ===
-            "number"
+          savedCustomerLocation
         ) {
           console.log(
             "👤 SAVED CUSTOMER LOCATION:",
-            activeOrder.customerLocation
+            savedCustomerLocation
           );
 
           setCustomerLocation(
-            activeOrder.customerLocation
+            savedCustomerLocation
           );
         } else {
           setCustomerLocation(null);
@@ -596,9 +993,9 @@ export default function ActiveOrderScreen() {
     };
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * GET CURRENT LOCATION
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   const getCurrentLocation =
@@ -619,6 +1016,7 @@ export default function ActiveOrderScreen() {
                 );
 
                 resolve(null);
+
                 return;
               }
 
@@ -654,7 +1052,9 @@ export default function ActiveOrderScreen() {
                 },
                 {
                   enableHighAccuracy: true,
+
                   maximumAge: 5000,
+
                   timeout: 15000,
                 }
               );
@@ -716,9 +1116,9 @@ export default function ActiveOrderScreen() {
     };
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * SEND CURRENT LOCATION THROUGH SOCKET
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   const sendDeliveryLocation = (
@@ -759,66 +1159,50 @@ export default function ActiveOrderScreen() {
   };
 
   /*
-   * =======================================================
+   * =====================================================
    * FETCH ROAD ROUTE
-   * =======================================================
+   * =====================================================
    */
 
   const fetchDeliveryRoute =
     async (
       force = false
     ) => {
+      /*
+       * We need order ID and rider location.
+       */
+
       if (
-  orderStatus ===
-  "Out for Delivery"
-) {
-  destination = customerLocation;
+        !orderId ||
+        !currentLocation
+      ) {
+        console.log(
+          "⏳ ROUTE: Delivery partner location not available"
+        );
 
-  /*
-   * Customer location may not be available
-   * in the delivery dashboard response.
-   *
-   * The backend /orders/:id/route endpoint
-   * already knows the customer's delivery
-   * location from the order.
-   *
-   * Therefore, do NOT stop route fetching
-   * just because customerLocation is null.
-   */
-  if (!destination) {
-    console.log(
-      "⚠️ CUSTOMER LOCATION NOT IN DASHBOARD - BACKEND WILL RESOLVE DESTINATION"
-    );
-  }
-}
-
-if (
-  orderStatus ===
-  "Accepted by Delivery" &&
-  !destination
-) {
-  console.log(
-    "⏳ ROUTE: Restaurant location not available"
-  );
-
-  return;
-}
+        return;
+      }
 
       /*
-       * ---------------------------------------------------
-       * DETERMINE DESTINATION
-       * ---------------------------------------------------
+       * ===================================================
+       * IMPORTANT:
+       *
+       * Do NOT require restaurantLocation here.
+       *
+       * The backend route endpoint may be able
+       * to resolve restaurant coordinates.
+       *
+       * Accepted:
+       * Partner → Restaurant
+       *
+       * Out:
+       * Partner → Customer
+       * ===================================================
        */
 
       let destination:
         | LocationCoords
         | null = null;
-
-      /*
-       * Accepted by Delivery:
-       *
-       * Delivery Partner → Restaurant
-       */
 
       if (
         orderStatus ===
@@ -826,13 +1210,17 @@ if (
       ) {
         destination =
           restaurantLocation;
-      }
 
-      /*
-       * Out for Delivery:
-       *
-       * Delivery Partner → Customer
-       */
+        if (!destination) {
+          console.log(
+            "⚠️ ROUTE: Restaurant location is missing locally."
+          );
+
+          console.log(
+            "🛣️ ROUTE: Calling backend to resolve restaurant destination..."
+          );
+        }
+      }
 
       if (
         orderStatus ===
@@ -840,46 +1228,65 @@ if (
       ) {
         destination =
           customerLocation;
-      }
 
-      if (!destination) {
-        console.log(
-          "⏳ ROUTE: Destination location not available"
-        );
-
-        return;
+        if (!destination) {
+          console.log(
+            "⚠️ CUSTOMER LOCATION NOT IN DASHBOARD - BACKEND WILL RESOLVE DESTINATION"
+          );
+        }
       }
 
       /*
-       * ---------------------------------------------------
+       * If status is something else,
+       * no road route is required.
+       */
+
+      if (
+        orderStatus !==
+          "Accepted by Delivery" &&
+        orderStatus !==
+          "Out for Delivery"
+      ) {
+        return;
+      }
+
+      const origin =
+        currentLocation;
+
+      /*
+       * ===================================================
        * CHECK IF ROUTE NEEDS REFRESH
-       * ---------------------------------------------------
+       * ===================================================
        */
 
       const originMoved =
         !lastRouteOriginRef.current ||
         getDistanceMeters(
           lastRouteOriginRef.current,
-          currentLocation
+          origin
         ) >= 30;
 
-     const destinationMoved =
-  !destination ||
-  !lastRouteDestinationRef.current ||
-  getDistanceMeters(
-    lastRouteDestinationRef.current,
-    destination
-  ) >= 30;
+      /*
+       * If destination is not known yet,
+       * force a backend request.
+       */
+
+      const destinationMoved =
+        !destination ||
+        !lastRouteDestinationRef.current ||
+        getDistanceMeters(
+          lastRouteDestinationRef.current,
+          destination
+        ) >= 30;
 
       /*
-       * If route already exists and neither
-       * point moved 30 meters, don't request
-       * another route.
+       * Existing route is still valid.
        */
 
       if (
         !force &&
-        routeCoordinates.length >= 2 &&
+        routeCoordinates.length >=
+          2 &&
         !originMoved &&
         !destinationMoved
       ) {
@@ -887,8 +1294,7 @@ if (
       }
 
       /*
-       * Don't send multiple route requests
-       * at the same time.
+       * Don't send multiple route requests.
        */
 
       if (
@@ -911,11 +1317,11 @@ if (
 
         console.log(
           "📍 FROM:",
-          currentLocation
+          origin
         );
 
         console.log(
-          "📍 TO:",
+          "📍 LOCAL TO:",
           destination
         );
 
@@ -930,9 +1336,9 @@ if (
         );
 
         /*
-         * -------------------------------------------------
+         * =================================================
          * API
-         * -------------------------------------------------
+         * =================================================
          */
 
         const response =
@@ -949,35 +1355,117 @@ if (
         );
 
         /*
-         * -------------------------------------------------
-         * DIRECT ROUTE COORDINATES
-         * -------------------------------------------------
+         * =================================================
+         * BACKEND LOCATIONS
+         * =================================================
          */
+
+        const backendRestaurant =
+          getRestaurantLocation(
+            data?.restaurantLocation ??
+              data?.restaurant
+          );
+
+        const backendCustomer =
+          toLocationCoords(
+            data?.customerLocation ??
+              data?.customer
+          );
+
+        const backendDestination =
+          toLocationCoords(
+            data?.destination
+          );
+
+        console.log(
+          "🏪 BACKEND RESTAURANT:",
+          backendRestaurant
+        );
+
+        console.log(
+          "👤 BACKEND CUSTOMER:",
+          backendCustomer
+        );
+
+        console.log(
+          "📍 BACKEND DESTINATION:",
+          backendDestination
+        );
+
+        /*
+         * =================================================
+         * REMEMBER CURRENT LOCATIONS
+         * BEFORE UPDATING STATE
+         * =================================================
+         */
+
+        const restaurantWasMissing =
+          !restaurantLocation;
+
+        const customerWasMissing =
+          !customerLocation;
+
+        /*
+         * =================================================
+         * KEEP RESTAURANT AND CUSTOMER SEPARATE
+         * =================================================
+         */
+
+        if (
+          backendRestaurant
+        ) {
+          setRestaurantLocation(
+            backendRestaurant
+          );
+
+          console.log(
+            "🏪 BACKEND RESTAURANT LOCATION SET:",
+            backendRestaurant
+          );
+        }
+
+        if (
+          backendCustomer
+        ) {
+          setCustomerLocation(
+            backendCustomer
+          );
+
+          console.log(
+            "👤 BACKEND CUSTOMER LOCATION SET:",
+            backendCustomer
+          );
+        }
+
+        /*
+         * =================================================
+         * DIRECT ROUTE COORDINATES
+         * =================================================
+         */
+
+        let validCoordinates:
+          LocationCoords[] = [];
 
         if (
           Array.isArray(
             data?.routeCoordinates
           ) &&
-          data.routeCoordinates.length >=
-            2
+          data.routeCoordinates
+            .length >= 2
         ) {
-          const validCoordinates =
+          validCoordinates =
             data.routeCoordinates
               .map(
-                (point) => ({
-                  latitude:
-                    Number(
-                      point.latitude
-                    ),
-
-                  longitude:
-                    Number(
-                      point.longitude
-                    ),
-                })
+                (point) =>
+                  normalizeRoutePoint(
+                    point
+                  )
               )
               .filter(
-                (point) =>
+                (
+                  point
+                ): point is LocationCoords =>
+                  point !== null &&
                   Number.isFinite(
                     point.latitude
                   ) &&
@@ -985,115 +1473,195 @@ if (
                     point.longitude
                   )
               );
-
-         if (
-  validCoordinates.length >= 2
-) {
-  setRouteCoordinates(
-    validCoordinates
-  );
-
-  lastRouteOriginRef.current =
-    currentLocation;
-
-  /*
-   * If customer location was not available
-   * from /delivery/dashboard, the final point
-   * of the backend road route represents the
-   * customer destination.
-   */
-  const resolvedDestination =
-    destination ||
-    validCoordinates[
-      validCoordinates.length - 1
-    ];
-
-  setCustomerLocation(
-    resolvedDestination
-  );
-
-  lastRouteDestinationRef.current =
-    resolvedDestination;
-
-  console.log(
-    "📍 CUSTOMER DESTINATION RESOLVED:",
-    resolvedDestination
-  );
-
-  console.log(
-    "✅ DELIVERY ROUTE SET:",
-    validCoordinates.length,
-    "points"
-  );
-
-  return;
-}
         }
 
         /*
-         * -------------------------------------------------
-         * ENCODED POLYLINE
-         * -------------------------------------------------
+         * =================================================
+         * ENCODED POLYLINE FALLBACK
+         * =================================================
          */
 
-        const encodedPolyline =
-          data?.encodedPolyline ||
-          data?.polyline;
-
         if (
-          encodedPolyline
+          validCoordinates.length < 2
         ) {
-          console.log(
-            "🔄 Decoding encoded route..."
-          );
+          const encodedPolyline =
+            data?.encodedPolyline ||
+            data?.polyline;
 
-          const decoded =
-            decodePolyline(
-              encodedPolyline
+          if (
+            encodedPolyline
+          ) {
+            console.log(
+              "🔄 Decoding encoded route..."
             );
 
-         if (
-  decoded.length >= 2
-) {
-  setRouteCoordinates(
-    decoded
-  );
-
-  lastRouteOriginRef.current =
-    currentLocation;
-
-  const resolvedDestination =
-    destination ||
-    decoded[
-      decoded.length - 1
-    ];
-
-  setCustomerLocation(
-    resolvedDestination
-  );
-
-  lastRouteDestinationRef.current =
-    resolvedDestination;
-
-  console.log(
-    "📍 CUSTOMER DESTINATION RESOLVED:",
-    resolvedDestination
-  );
-
-  console.log(
-    "✅ DELIVERY ROUTE DECODED:",
-    decoded.length,
-    "points"
-  );
-
-  return;
-}
+            validCoordinates =
+              decodePolyline(
+                encodedPolyline
+              );
+          }
         }
 
         /*
-         * -------------------------------------------------
-         * NO ROUTE
-         * -------------------------------------------------
+         * =================================================
+         * VALID ROUTE
+         * =================================================
+         */
+
+        if (
+          validCoordinates.length >=
+          2
+        ) {
+          setRouteCoordinates(
+            validCoordinates
+          );
+
+          lastRouteOriginRef.current =
+            origin;
+
+          /*
+           * =================================================
+           * ACCEPTED BY DELIVERY
+           *
+           * Partner → Restaurant
+           * =================================================
+           */
+
+          if (
+            orderStatus ===
+            "Accepted by Delivery"
+          ) {
+            const resolvedRestaurant =
+              restaurantLocation ||
+              backendRestaurant ||
+              backendDestination ||
+              validCoordinates[
+                validCoordinates.length -
+                  1
+              ];
+
+            if (
+              resolvedRestaurant
+            ) {
+              /*
+               * IMPORTANT:
+               *
+               * Only restaurant marker
+               * is updated here.
+               *
+               * Customer marker will NEVER
+               * be overwritten during
+               * Accepted by Delivery.
+               */
+
+              if (
+                restaurantWasMissing ||
+                !restaurantLocation
+              ) {
+                setRestaurantLocation(
+                  resolvedRestaurant
+                );
+
+                console.log(
+                  "🏪 RESTAURANT DESTINATION RESOLVED:",
+                  resolvedRestaurant
+                );
+              }
+
+              lastRouteDestinationRef.current =
+                resolvedRestaurant;
+
+              console.log(
+                "🏪 ACCEPTED ROUTE DESTINATION:",
+                resolvedRestaurant
+              );
+            }
+          }
+
+          /*
+           * =================================================
+           * OUT FOR DELIVERY
+           *
+           * Partner → Customer
+           * =================================================
+           */
+
+          if (
+            orderStatus ===
+            "Out for Delivery"
+          ) {
+            const resolvedCustomer =
+              customerLocation ||
+              backendCustomer ||
+              backendDestination ||
+              validCoordinates[
+                validCoordinates.length -
+                  1
+              ];
+
+            if (
+              resolvedCustomer
+            ) {
+              /*
+               * IMPORTANT:
+               *
+               * Only customer marker
+               * is updated here.
+               *
+               * Restaurant marker will NEVER
+               * be overwritten during
+               * Out for Delivery.
+               */
+
+              if (
+                customerWasMissing ||
+                !customerLocation
+              ) {
+                setCustomerLocation(
+                  resolvedCustomer
+                );
+
+                console.log(
+                  "📍 CUSTOMER DESTINATION RESOLVED:",
+                  resolvedCustomer
+                );
+              }
+
+              lastRouteDestinationRef.current =
+                resolvedCustomer;
+
+              console.log(
+                "📍 OUT FOR DELIVERY DESTINATION:",
+                resolvedCustomer
+              );
+            }
+          }
+
+          console.log(
+            "✅ DELIVERY ROUTE SET:",
+            validCoordinates.length,
+            "points"
+          );
+
+          console.log(
+            "📍 ROUTE START:",
+            validCoordinates[0]
+          );
+
+          console.log(
+            "📍 ROUTE END:",
+            validCoordinates[
+              validCoordinates.length - 1
+            ]
+          );
+
+          return;
+        }
+
+        /*
+         * =================================================
+         * NO VALID ROUTE
+         * =================================================
          */
 
         console.warn(
@@ -1115,9 +1683,9 @@ if (
     };
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * LOCATION TRACKING
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   const startLocationTracking =
@@ -1178,7 +1746,9 @@ if (
             },
             {
               enableHighAccuracy: true,
+
               maximumAge: 3000,
+
               timeout: 15000,
             }
           );
@@ -1224,7 +1794,9 @@ if (
               },
               {
                 enableHighAccuracy: true,
+
                 maximumAge: 3000,
+
                 timeout: 15000,
               }
             );
@@ -1340,9 +1912,9 @@ if (
     };
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * STOP LOCATION TRACKING
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   const stopLocationTracking =
@@ -1382,9 +1954,9 @@ if (
     };
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * SOCKET SETUP
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   const connectSocket =
@@ -1563,17 +2135,21 @@ if (
             if (
               data?.orderId ===
                 currentOrderId &&
-              typeof data.latitude ===
-                "number" &&
-              typeof data.longitude ===
-                "number"
+              Number.isFinite(
+                Number(data.latitude)
+              ) &&
+              Number.isFinite(
+                Number(data.longitude)
+              )
             ) {
               setCurrentLocation({
-                latitude:
-                  data.latitude,
+                latitude: Number(
+                  data.latitude
+                ),
 
-                longitude:
-                  data.longitude,
+                longitude: Number(
+                  data.longitude
+                ),
 
                 updatedAt:
                   data.updatedAt ||
@@ -1598,17 +2174,21 @@ if (
             if (
               data?.orderId ===
                 currentOrderId &&
-              typeof data.latitude ===
-                "number" &&
-              typeof data.longitude ===
-                "number"
+              Number.isFinite(
+                Number(data.latitude)
+              ) &&
+              Number.isFinite(
+                Number(data.longitude)
+              )
             ) {
               setCustomerLocation({
-                latitude:
-                  data.latitude,
+                latitude: Number(
+                  data.latitude
+                ),
 
-                longitude:
-                  data.longitude,
+                longitude: Number(
+                  data.longitude
+                ),
 
                 updatedAt:
                   data.updatedAt ||
@@ -1626,9 +2206,9 @@ if (
     };
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * FETCH INITIAL ORDER
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   useEffect(() => {
@@ -1636,9 +2216,9 @@ if (
   }, []);
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * ORDER / SOCKET EFFECT
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   useEffect(() => {
@@ -1696,9 +2276,9 @@ if (
   }, [orderId]);
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * START / STOP GPS BASED ON ORDER STATUS
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   useEffect(() => {
@@ -1737,9 +2317,9 @@ if (
   ]);
 
   /*
-   * =======================================================
+   * =====================================================
    * AUTOMATIC ROAD ROUTE FETCH
-   * =======================================================
+   * =====================================================
    */
 
   useEffect(() => {
@@ -1748,8 +2328,10 @@ if (
     }
 
     /*
-     * Route only needed for active
-     * delivery stages.
+     * Route only needed for:
+     *
+     * Accepted by Delivery
+     * Out for Delivery
      */
 
     const routeRequired =
@@ -1757,6 +2339,42 @@ if (
         "Accepted by Delivery" ||
       orderStatus ===
         "Out for Delivery";
+
+    /*
+     * ===================================================
+     * STATUS CHANGED
+     *
+     * Accepted by Delivery
+     *        ↓
+     * Out for Delivery
+     *
+     * Clear old route.
+     * New route will be fetched.
+     * ===================================================
+     */
+
+    if (
+      lastRouteStatusRef.current !==
+      orderStatus
+    ) {
+      console.log(
+        "🔄 ROUTE STATUS CHANGED:",
+        lastRouteStatusRef.current,
+        "→",
+        orderStatus
+      );
+
+      setRouteCoordinates([]);
+
+      lastRouteOriginRef.current =
+        null;
+
+      lastRouteDestinationRef.current =
+        null;
+
+      lastRouteStatusRef.current =
+        orderStatus;
+    }
 
     if (!routeRequired) {
       setRouteCoordinates([]);
@@ -1786,9 +2404,9 @@ if (
     }
 
     /*
-     * Wait 1 second after GPS/location
+     * Wait 1 second after location
      * changes before asking backend
-     * for a new route.
+     * for route.
      */
 
     routeTimerRef.current =
@@ -1810,22 +2428,26 @@ if (
     };
   }, [
     orderId,
+
     orderStatus,
 
     currentLocation?.latitude,
+
     currentLocation?.longitude,
 
     restaurantLocation?.latitude,
+
     restaurantLocation?.longitude,
 
     customerLocation?.latitude,
+
     customerLocation?.longitude,
   ]);
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * DELIVER ORDER
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   const handleDelivered =
@@ -1891,9 +2513,9 @@ if (
     };
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * LOADING
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   if (loading) {
@@ -1929,9 +2551,9 @@ if (
   }
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * NO ACTIVE ORDER
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   if (!orderId) {
@@ -2043,9 +2665,9 @@ if (
   }
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * STATUS
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   const isDelivered =
@@ -2060,9 +2682,9 @@ if (
     "Out for Delivery";
 
   /*
-   * -------------------------------------------------------
+   * =====================================================
    * MAIN UI
-   * -------------------------------------------------------
+   * =====================================================
    */
 
   return (
@@ -2532,7 +3154,11 @@ if (
                   styles.routeBadgeText
                 }
               >
-                ROAD ROUTE
+                {isAccepted
+                  ? "TO RESTAURANT"
+                  : isOutForDelivery
+                  ? "TO CUSTOMER"
+                  : "ROAD ROUTE"}
               </Text>
             </View>
           )}
@@ -3238,3 +3864,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
+
