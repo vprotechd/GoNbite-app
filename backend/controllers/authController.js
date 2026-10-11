@@ -227,14 +227,16 @@ export const forgotPassword = async (req, res) => {
 
     const { data, error } =
       await resend.emails.send({
-        from: "Snax <onboarding@resend.dev>",
+     
+from: "GoNbite <noreply@gonbite.com>",
+
         to: [cleanEmail],
-        subject: "Snax Password Reset OTP",
+        subject: "GoNbite Password Reset OTP",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
 
             <h2 style="color: #081A33;">
-              Snax Password Reset
+              GoNbite Password Reset
             </h2>
 
             <p>
